@@ -322,6 +322,6 @@ def drawDot(graph):   # pragma: no cover
     '''
     from subprocess import Popen, PIPE
     dot = draw(graph)
-    p = Popen(['dot', '-T', 'png'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    p = Popen(['dot', '-T', 'png','-o','dot.png'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
     stdout, stderr = p.communicate(dot.encode('utf-8'))
     return stdout
