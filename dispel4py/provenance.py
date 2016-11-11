@@ -397,7 +397,7 @@ class ProvenancePE(GenericPE):
             self.resetflow=True
             
     def pe_init(self, *args, **kwargs):
-        # ProvenancePE.__init__(self)
+        #ProvenancePE.__init__(self,*args, **kwargs)
 
         global _d4p_plan_sqn
 
@@ -442,7 +442,7 @@ class ProvenancePE(GenericPE):
         _d4p_plan_sqn = _d4p_plan_sqn + 1
         self.countstatewrite=0
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         GenericPE.__init__(self)
         self.parameters = {}
         self._add_output(OUTPUT_METADATA)
@@ -527,10 +527,10 @@ class ProvenancePE(GenericPE):
         trace = {}
         stream = data
         try:
-            if self.provon:
-                self.endTime = datetime.datetime.utcnow()
-                trace = self.packageAll(metadata)
-                stream = self.prepareOutputStream(data, trace)
+            #if self.provon:
+            self.endTime = datetime.datetime.utcnow()
+            trace = self.packageAll(metadata)
+            stream = self.prepareOutputStream(data, trace)
 
             try:
                 if port is not None and port != '_d4p_state' \
@@ -668,12 +668,14 @@ class ProvenancePE(GenericPE):
             self.__markIteration()
 
             if self.impcls is not None and isinstance(self, self.impcls):
-
-                if hasattr(self, 'params'):
-                    self.parameters = self.params
-                result = self._process(inputs[self.impcls.INPUT_NAME])
-                if result is not None:
-                    self.writeResults(self.impcls.OUTPUT_NAME, result)
+                try:
+                    if hasattr(self, 'params'):
+                        self.parameters = self.params
+                    result = self._process(inputs[self.impcls.INPUT_NAME])
+                    if result is not None:
+                        self.writeResults(self.impcls.OUTPUT_NAME, result)
+                except:
+                    result = self._process(inputs)
             else:
                 result = self._process(inputs)
 
@@ -1041,18 +1043,19 @@ class ProvenancePE(GenericPE):
 
 ' This function dinamically extend the type of each the nodes of the graph '
 ' or subgraph with ProvenancePE type or its specialization'
+meta =True
 
-
-def injectProv(object, provType, active=True, **kwargs):
+def injectProv(object, provType, active=True,componentsType=None, **kwargs):
     print('Change grouping implementation ')
+    print ("CADADAD "+str(componentsType))
     dispel4py.new.processor.GroupByCommunication.getDestination = \
         getDestination_prov
-
+    global meta
     if isinstance(object, WorkflowGraph):
         object.flatten()
         nodelist = object.getContainedObjects()
         for x in nodelist:
-            injectProv(x, provType, **kwargs)
+            injectProv(x, provType, componentsType=componentsType, **kwargs)
     else:
         print("Injecting provenance to: " + object.name +
               " Original type: " + str(object.__class__.__bases__))
@@ -1061,13 +1064,23 @@ def injectProv(object, provType, active=True, **kwargs):
 
         # if not isinstance(object,provType):
         #    provType.__init__(object,pe_class=parent, **kwargs)
-
-        object.__class__ = type(str(object.__class__),
-                                (provType, object.__class__), {})
-
-        print("Injecting provenance to: " + object.name +
-              " Transoformed: " + str(type(object)))
+        
+        #if(meta):
+        #print(str(componentsType))
+        if componentsType!=None and object.name in componentsType: 
+            
+            object.__class__ = type(str(object.__class__),
+                                (componentsType[object.name], object.__class__), componentsType[object.name]().__dict__)
+             
+            
+        else:
+            object.__class__ = type(str(object.__class__),
+                                (provType, object.__class__), provType().__dict__)
+          
         object.pe_init(pe_class=parent, **kwargs)
+        
+        print("Injecting provenance to: " + object.name +
+              " Transoformed: " + str(object.__class__.__bases__))
         object.name = localname
 
 
@@ -1092,6 +1105,7 @@ def InitiateNewRun(
         workflowName=None,
         w3c_prov=False,
         runId=None,
+        componentsType=None,
         clustersRecorders={},
         feedbackPEs=[]):
 
@@ -1120,7 +1134,7 @@ def InitiateNewRun(
     # newrun.provon=True
     simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
 
-    injectProv(graph, provImpClass)
+    injectProv(graph, provImpClass, componentsType=componentsType)
     print("PREPARING PROVENANCE RECORDERS:")
     print("Provenance Recorders Clusters: " + str(clustersRecorders))
     print("PEs processing Recorders feedback: " + str(feedbackPEs))
@@ -1186,7 +1200,7 @@ def attachProvenanceRecorderPE(
 
             if provtag is not None:
 
-                ' checks if specific recorders have been specified'
+                ' checks if specific recorders have been indicated'
                 if provtag in clustersRecorders:
                     provrecorder = clustersRecorders[provtag](toW3C=w3c_prov)
 
@@ -1211,8 +1225,9 @@ def attachProvenanceRecorderPE(
                               OUTPUT_METADATA,
                               provrecorder,
                               provport)
-            
             if x.name in feedbackPEs:
+                 
+                
                 y = PassThroughPE()
                 graph.connect(
                     provrecorder,
