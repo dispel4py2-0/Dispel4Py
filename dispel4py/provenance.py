@@ -358,9 +358,11 @@ _d4p_plan_sqn = 0
 
 class ProvenancePE(GenericPE):
     
+    PROV_PATH="./"
     REPOS_URL=""
     SAVE_MODE_SERVICE='service' 
     SAVE_MODE_FILE='file'
+    SAVE_MODE_SENSOR='sensor'
     BULK_SIZE=1
     
     send_prov_to_sensor=False
@@ -541,6 +543,41 @@ class ProvenancePE(GenericPE):
 
         return {}
     
+    
+    def preprocess(self):
+        if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
+            self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
+            self.connection = httplib.HTTPConnection(
+                                                     self.provurl.netloc)
+        self._preprocess()
+    
+    def postprocess(self):
+         
+        #self.log("TO SERVICE POSTP________________ID: "+str(self.bulk))
+        if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
+            params = urllib.urlencode({'prov': json.dumps(self.bulk_prov)})
+            headers = {
+                       "Content-type": "application/x-www-form-urlencoded",
+                       "Accept": "application/json"}
+            self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
+            self.connection.request(
+                                    "POST",
+                                    self.provurl.path,
+                                    params,
+                                    headers)
+            response = self.connection.getresponse()
+            self.log("Postprocress: " +
+                     str((response.status, response.reason, response,
+                    response.read())))
+            self.connection.close()
+            self.bulk_prov = []
+        elif self.save_mode==ProvenancePE.SAVE_MODE_FILE:
+            filep = open(ProvenancePE.PROV_PATH + "/bulk_" + self.makeUniqueId(), "wr")
+            json.dump(self.bulk_prov, filep)
+            self.bulk_prov = []
+        
+        self._postprocess()
+        
     def sendProvToService(self, prov):
          
         
@@ -556,20 +593,39 @@ class ProvenancePE(GenericPE):
             headers = {
                 "Content-type": "application/x-www-form-urlencoded",
                 "Accept": "application/json"}
-            provurl = urlparse(ProvenanceRecorder.REPOS_URL)
-            connection=httplib.HTTPConnection(provurl.netloc)
-            connection.request(
-                "POST", provurl.path, params, headers)
-            response = connection.getresponse()
+            
+            self.connection.request(
+                "POST", self.provurl.path, params, headers)
+            response = self.connection.getresponse()
             self.log("progress: " + str((response.status, response.reason,
                                          response, response.read())))
-            connection.close()
+             
             self.bulk_prov = []
 
         return None
 
 
-    #def writeProvToFile(self, data, bulk_size):
+    def writeProvToFile(self, prov):
+        
+        if isinstance(prov, list) and "data" in prov[0]:
+            prov = prov[0]["data"]
+
+        self.bulk_prov.append(prov)
+
+        if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
+            filep = open(
+                ProvenancePE.PROV_PATH +
+                "/bulk_" +
+                self.makeUniqueId(),
+                "wr")
+            json.dump(self.bulk_prov, filep)
+             
+            self.bulk_prov = []
+
+        return None
+        
+        
+             
 
     def flushData(self, data, metadata, port):
         trace = {}
@@ -583,7 +639,7 @@ class ProvenancePE(GenericPE):
             try:
                 if port is not None and port != '_d4p_state' \
                         and port != 'error':
-                    #self.log('WEWEWEWEWEWEWE: '+str(stream))
+                     
                     super(ProvenancePE, self).write(port, stream)
 
             except:
@@ -593,28 +649,20 @@ class ProvenancePE(GenericPE):
             try:
                 if self.provon:
                      
-                    #if not self.resetflow:
-                    #    
-                    #    super(
-                    #        ProvenancePE,
-                    #        self).write(
-                    #        OUTPUT_METADATA,
-                    #        deepcopy(trace['metadata']))
-                    #else:
-                        #if self.name=='Start':
-                         #   self.log(str(trace['metadata'])+ ' to '+OUTPUT_METADATA)
-                    self.log(ProvenancePE.send_prov_to_sensor) 
-                    if ProvenancePE.send_prov_to_sensor==True:
+                    if (ProvenancePE.send_prov_to_sensor==True) or (self.save_mode==ProvenancePE.SAVE_MODE_SENSOR):
                             
                             super(
                                   ProvenancePE,
                                   self).write(
                                               OUTPUT_METADATA,
                                               deepcopy(trace['metadata']))
+                    
                     if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
-                         
                         self.sendProvToService(deepcopy(trace['metadata']))
-                    #elif self.sendToService:
+                    if self.save_mode==ProvenancePE.SAVE_MODE_FILE:
+                        self.writeProvToFile(deepcopy(trace['metadata']))
+                         
+                   
             except:
                 self.log(traceback.format_exc())
                 'if cant write doesnt matter move on'
@@ -870,15 +918,12 @@ class ProvenancePE(GenericPE):
             stateless=False,
             **kwargs
     ):
-       # if self.name=='CrossProd':
-       #     self.log("AAAAAAAAAA "+str(self.statemap))
-        
+         
         self.endTime = datetime.datetime.utcnow()
         self.resetflow = stateless
         self.ignore_inputs = ignore_inputs
         self.addprov=True
         kwargs['name']=name
-        #self.log("AAA: "+str(self.derivationIds))
         if 'dep' in kwargs and kwargs['dep']!=None:
             for d in kwargs['dep']:
                 did=self.getProvStateObjectId(d)
@@ -1053,8 +1098,6 @@ class ProvenancePE(GenericPE):
             derivation = {'port': port, 'DerivedFromDatasetID':
                           data['id'], 'TriggeredByProcessIterationID':
                           data['TriggeredByProcessIterationID']}
-            #self.log(derivation)
-            #self.log(data)
             self.derivationIds.append(derivation)
 
         except Exception:
@@ -1183,10 +1226,16 @@ def InitiateNewRun(
                          "mapping": sys.argv[1]
                          }
     _graph = WorkflowGraph()
-    #provrec0 = ProvenancePE(toW3C=w3c_prov)
-    dummype = IterativePE()
-    _graph.connect(newrun, "output", dummype, "input")
-
+    provrec = None
+    
+    if provRecorderClass!=None:
+        provrec = provRecorderClass(toW3C=w3c_prov)
+        _graph.connect(newrun, "output", provrec, "metadata")
+    else:
+        provrec = IterativePE()
+        _graph.connect(newrun, "output", provrec, "input")
+    
+     
     # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
 
     # newrun.provon=True
@@ -1344,7 +1393,7 @@ class NewWorkflowRun(ProvenancePE):
         
         
     def packageAll(self, contentmeta):
-        self.log(contentmeta)
+         
         return {'metadata':contentmeta[0]['content'][0]}
         
     def makeRunMetdataBundle(
@@ -1382,7 +1431,7 @@ class NewWorkflowRun(ProvenancePE):
 
     def _process(self, inputs):
         self.name = 'NewWorkflowRun'
-        self.log("NEWWWWWW")
+         
         bundle = self.makeRunMetdataBundle(
             username=self.parameters["username"],
             input=self.parameters["input"],
@@ -1507,6 +1556,7 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
             self.provurl.netloc)
 
     def postprocess(self):
+        #self.log("TO SERVICE POSTP________________ID: "+str(self.bulk))
         params = urllib.urlencode({'prov': json.dumps(self.bulk)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
@@ -1528,8 +1578,12 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
         for x in inputs:
             prov = inputs[x]
         out = None
-        if isinstance(prov, list) and "data" in prov[0]:
-            prov = prov[0]["data"]
+        #self.log("TO SERVICE ________________ID: "+str(prov))
+        
+        if isinstance(prov, list) and "_d4p" in prov[0]:
+            prov = prov[0]["_d4p"]
+        elif "_d4p" in prov:
+            prov = prov["_d4p"]
 
         if self.convertToW3C:
             out = toW3Cprov(prov)
@@ -1539,7 +1593,7 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
         self.bulk.append(out)
 
         if len(self.bulk) == 15:
-            # self.log("TO SERVICE ________________ID: "+str(self.bulk))
+            self.log("TO SERVICE ________________ID: "+str(self.bulk))
             params = urllib.urlencode({'prov': json.dumps(self.bulk)})
             headers = {
                 "Content-type": "application/x-www-form-urlencoded",
@@ -1547,8 +1601,8 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
             self.connection.request(
                 "POST", self.provurl.path, params, headers)
             response = self.connection.getresponse()
-            #self.log("progress: " + str((response.status, response.reason,
-             #                            response, response.read())))
+            self.log("progress: " + str((response.status, response.reason,
+                                        response, response.read())))
             self.connection.close()
             self.bulk = []
 
