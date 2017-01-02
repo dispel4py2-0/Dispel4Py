@@ -10,20 +10,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
 import dispel4py.new.processor
 from dispel4py.utils import make_hash
 from dispel4py.core import GenericPE
 from dispel4py.base import IterativePE, NAME, SimpleFunctionPE
 from dispel4py.workflow_graph import WorkflowGraph
+import json
 import sys
 import datetime
 import uuid
 import traceback
 import os
 import socket
-import json
+import ujson
 import httplib
 import urllib
 import pickle
@@ -94,7 +94,7 @@ def total_size(o, handlers={}, verbose=False):
 
 
 def write(self, name, data):
-    
+
     if isinstance(data, dict) and '_d4p_prov' in data:
         data = (data['_d4p_data'])
 
@@ -125,14 +125,17 @@ dispel4py.base.SimpleFunctionPE._process = _process
 
 def getDestination_prov(self, data):
 #    print ("Enabled Grouping for pe port: " + str(self)]))
-    
+
     if 'TriggeredByProcessIterationID' in data[self.input_name]:
         output = tuple([data[self.input_name]['_d4p'][x]
                         for x in self.groupby])
     else:
-        output = tuple([data[self.input_name][x] for x in self.groupby])
-    
-    
+        #print(data[self.input_name])
+        try:
+            output = tuple([data[self.input_name][x] for x in self.groupby])
+        except:
+            print(data)
+
     dest_index = abs(make_hash(output)) % len(self.destinations)
     return [self.destinations[dest_index]]
 
@@ -357,44 +360,44 @@ _d4p_plan_sqn = 0
 
 
 class ProvenancePE(GenericPE):
-    
+
     PROV_PATH="./"
     REPOS_URL=""
-    SAVE_MODE_SERVICE='service' 
+    SAVE_MODE_SERVICE='service'
     SAVE_MODE_FILE='file'
     SAVE_MODE_SENSOR='sensor'
     BULK_SIZE=1
-    
+
     send_prov_to_sensor=False
-    
+
     def getProvStateObjectId(self,name):
         if name in self.statemap:
             return self.statemap[name]
         else:
             return None
-        
+
     def makeUniqueId(self):
         return socket.gethostname() + "-" + \
             str(os.getpid()) + "-" + str(uuid.uuid1())
-     
+
     def _updateState(self,name,id):
         if name in self.statemap:
                 self.statemapId.remove(self.statemap[name])
         self.statemap[name]=id
         self.statemapId.append(id)
-        
-               
+
+
     def getUniqueId(self,**kwargs):
-    
+
         data_id = self.makeUniqueId()
         if 'name' in kwargs:
             self._updateState(kwargs['name'],data_id)
-            
-            
-            
+
+
+
         return data_id
-            
-        
+
+
 
     def applyFlowResetPolicy(self,event,value):
         if (event=='write'):
@@ -404,22 +407,27 @@ class ProvenancePE(GenericPE):
             self.resetflow=True
         elif(event=='void_iteration') and value==False:
             self.resetflow=True
-            
+
     def pe_init(self, *args, **kwargs):
         #ProvenancePE.__init__(self,*args, **kwargs)
 
         global _d4p_plan_sqn
-
         self._add_input('_d4py_feedback', grouping='all')
         self.statemap={}
         self.statemapId=[]
         self.impcls = None
         self.bulk_prov = []
-        
+
 
         if 'pe_class' in kwargs and kwargs['pe_class'] != GenericPE:
             self.impcls = kwargs['pe_class']
-
+       
+        if 'skip_rules' in kwargs and self.name in kwargs['skip_rules']:
+            print(self.name+" "+str(kwargs['skip_rules'][self.name]))
+            self.skip_rules = kwargs['skip_rules'][self.name]
+        else:
+            self.skip_rules=None
+        
         if 'creator' not in kwargs:
             self.creator = None
         else:
@@ -431,7 +439,7 @@ class ProvenancePE(GenericPE):
             self.parameters = {}
         if not hasattr(self, 'controlParameters'):
             self.controlParameters = {}
-            
+
         if 'controlParameters' in kwargs:
             self.controlParameters = kwargs['controlParameters']
 
@@ -446,27 +454,30 @@ class ProvenancePE(GenericPE):
 
         # self.appParameters = None
         self.provon = True
-        
+
         if 'save_mode' not in kwargs:
             self.save_mode=ProvenancePE.SAVE_MODE_FILE
         else:
             self.save_mode=SAVE_MODE_FILE = kwargs['save_mode']
-        
-        
+
+
         self.resetflow = False
-        
+
         self.ignore_inputs = False
         self.derivationIds = list()
         self.iterationIndex = 0
-        self.behalfOf = self.name + '_' + str(_d4p_plan_sqn)
+        self.behalfOf = self.id 
+        #name + '_' + str(_d4p_plan_sqn)
         _d4p_plan_sqn = _d4p_plan_sqn + 1
         self.countstatewrite=0
+        if not hasattr(self, 'prov_cluster'):
+                    self.prov_cluster=self.behalfOf
 
     def __init__(self):
         GenericPE.__init__(self)
         self.parameters = {}
         self._add_output(OUTPUT_METADATA)
-        
+
 
     def __getUniqueId(self):
         return socket.gethostname() + "-" + str(os.getpid()) + \
@@ -515,7 +526,7 @@ class ProvenancePE(GenericPE):
             self.process_feedback(inputs['_d4py_feedback'])
         else:
             self.__processwrapper(inputs)
-         
+
         #if (self.void_iteration==True):
         self.applyFlowResetPolicy('void_iteration',self.void_iteration)
         #self.log('VOID ITERATION CAPTURE, RESET FLOW: '+str(self.void_iteration)+" RESET "+str(self.resetflow))
@@ -524,11 +535,11 @@ class ProvenancePE(GenericPE):
         #        self.derivationIds.pop()
         #    except:
         #        None
-                
+
         if not self.resetflow:
-            
+
             if self.provon:
-                
+
                 #self.extractProvenance(self, output_port=None)
                 try:
                     None#self.derivationIds = [self.derivationIds.pop()]
@@ -542,105 +553,139 @@ class ProvenancePE(GenericPE):
     def extractItemMetadata(self, data, port='output'):
 
         return {}
-    
-    
+
+
     def preprocess(self):
         if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
             self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
-            self.connection = httplib.HTTPConnection(
-                                                     self.provurl.netloc)
+            #self.connection = httplib.HTTPConnection(
+            #                                         self.provurl.netloc)
         self._preprocess()
-    
+
     def postprocess(self):
-         
+
         #self.log("TO SERVICE POSTP________________ID: "+str(self.bulk))
-        if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
-            params = urllib.urlencode({'prov': json.dumps(self.bulk_prov)})
-            headers = {
+        if len(self.bulk_prov)>0:
+            if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
+                params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
+                headers = {
                        "Content-type": "application/x-www-form-urlencoded",
                        "Accept": "application/json"}
-            self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
-            self.connection.request(
+                self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
+                self.connection = httplib.HTTPConnection(
+                                                     self.provurl.netloc)
+                self.connection.request(
                                     "POST",
                                     self.provurl.path,
                                     params,
                                     headers)
-            response = self.connection.getresponse()
-            self.log("Postprocress: " +
-                     str((response.status, response.reason, response,
-                    response.read())))
-            self.connection.close()
-            self.bulk_prov = []
-        elif self.save_mode==ProvenancePE.SAVE_MODE_FILE:
-            filep = open(ProvenancePE.PROV_PATH + "/bulk_" + self.makeUniqueId(), "wr")
-            json.dump(self.bulk_prov, filep)
-            self.bulk_prov = []
-        
+                response = self.connection.getresponse()
+                #self.log("Postprocress: " +
+                #     str((response.status, response.reason, response,
+                #    response.read())))
+                self.connection.close()
+                self.bulk_prov[:]=[]
+            elif (self.save_mode==ProvenancePE.SAVE_MODE_FILE):
+                filep = open(ProvenancePE.PROV_PATH + "/bulk_" + self.makeUniqueId(), "wr")
+                ujson.dump(self.bulk_prov, filep)
+                filep.write(ujson.dumps(self.bulk_prov))
+            elif (self.save_mode==ProvenancePE.SAVE_MODE_SENSOR):
+                super(
+                                  ProvenancePE,
+                                  self).write(
+                                              OUTPUT_METADATA,
+                                              {'prov_cluster':self.prov_cluster,'provenance':deepcopy(self.bulk_prov)})
+            #self.bulk_prov[:]=[]
+
         self._postprocess()
+
+    
+    
+    def sendProvToSensor(self, prov):
         
+
+        self.bulk_prov.append(deepcopy(prov))
+
+        if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
+            #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
+            super(
+                                  ProvenancePE,
+                                  self).write(
+                                              OUTPUT_METADATA,
+                                              {'prov_cluster':self.prov_cluster,'provenance':deepcopy(self.bulk_prov)})
+
+             
+            self.bulk_prov[:]=[]
+
+        return None
+    
     def sendProvToService(self, prov):
-         
-        
-        
+
+
+
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
 
-        self.bulk_prov.append(prov)
+        self.bulk_prov.append(deepcopy(prov))
 
         if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
-            self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
-            params = urllib.urlencode({'prov': json.dumps(self.bulk_prov)})
+            #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
+            params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
             headers = {
                 "Content-type": "application/x-www-form-urlencoded",
                 "Accept": "application/json"}
-            
+            self.connection = httplib.HTTPConnection(
+                                                     self.provurl.netloc)
             self.connection.request(
                 "POST", self.provurl.path, params, headers)
             response = self.connection.getresponse()
-            self.log("progress: " + str((response.status, response.reason,
-                                         response, response.read())))
+            #self.log("progress: " + str((response.status, response.reason,
+            #                             response, response.read())))
+
              
-            self.bulk_prov = []
+            self.bulk_prov[:]=[]
 
         return None
 
 
     def writeProvToFile(self, prov):
-        
+
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
+        
+         
 
         self.bulk_prov.append(prov)
-
         if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
             filep = open(
                 ProvenancePE.PROV_PATH +
                 "/bulk_" +
                 self.makeUniqueId(),
                 "wr")
-            json.dump(self.bulk_prov, filep)
-             
-            self.bulk_prov = []
+            ujson.dump(self.bulk_prov, filep)
+            #filep.write(json.dumps(self.bulk_prov))
+            self.bulk_prov[:]=[]
 
         return None
-        
-        
-             
+
+
+
 
     def flushData(self, data, metadata, port):
         trace = {}
         stream = data
         try:
-            #if self.provon:
-            self.endTime = datetime.datetime.utcnow()
-            trace = self.packageAll(metadata)
-            stream = self.prepareOutputStream(data, trace)
-
+            if self.provon:
+                self.endTime = datetime.datetime.utcnow()
+                trace = self.packageAll(metadata)
+                stream = self.prepareOutputStream(data, trace)
+              
             try:
                 if port is not None and port != '_d4p_state' \
                         and port != 'error':
-                     
+
                     super(ProvenancePE, self).write(port, stream)
+#stream)
 
             except:
                 self.log(traceback.format_exc())
@@ -648,21 +693,20 @@ class ProvenancePE(GenericPE):
                 pass
             try:
                 if self.provon:
-                     
                     if (ProvenancePE.send_prov_to_sensor==True) or (self.save_mode==ProvenancePE.SAVE_MODE_SENSOR):
-                            
-                            super(
-                                  ProvenancePE,
-                                  self).write(
-                                              OUTPUT_METADATA,
-                                              deepcopy(trace['metadata']))
-                    
+
+                            self.sendProvToSensor(trace['metadata'])
+                            #super(
+                            #      ProvenancePE,
+                            #      self).write(
+                            #                  OUTPUT_METADATA,
+                            #                  deepcopy(trace['metadata']))
+
                     if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
-                        self.sendProvToService(deepcopy(trace['metadata']))
+                        self.sendProvToService(trace['metadata'])
                     if self.save_mode==ProvenancePE.SAVE_MODE_FILE:
-                        self.writeProvToFile(deepcopy(trace['metadata']))
-                         
-                   
+                         self.writeProvToFile(trace['metadata'])
+                         None
             except:
                 self.log(traceback.format_exc())
                 'if cant write doesnt matter move on'
@@ -696,7 +740,7 @@ class ProvenancePE(GenericPE):
         self.username = None
         self.runId = None
 
-        
+
         try:
                 # self.iterationId = self.name + '-' + getUniqueId()
             if "username" in self.controlParameters:
@@ -743,7 +787,7 @@ class ProvenancePE(GenericPE):
         #self.resetflow = True
         self.applyFlowResetPolicy('write',True)
         self.void_iteration=False
-        
+
         if isinstance(result, dict) and '_d4p_prov' in result:
             meta = result['_d4p_prov']
             result = (result['_d4p_data'])
@@ -801,6 +845,8 @@ class ProvenancePE(GenericPE):
                         'metadata']["streams"][0]["id"]
                     streamtransfer[
                         "TriggeredByProcessIterationID"] = self.iterationId
+                    streamtransfer[
+                        "prov_cluster"] = self.prov_cluster
                     if not self.resetflow:
                         #self.log(''' Building SELF Derivation '''+str(trace))
                         self._updateState('_d4p_state',trace[
@@ -816,62 +862,62 @@ class ProvenancePE(GenericPE):
                 traceback.format_exc()
             raise
 
-    def packageAll(self, contentmeta):
+
+
+    def packageAll (self, contentmeta):
         metadata = {}
         if self.provon:
             try:
 
                 # identifies the actual iteration over the instance
-                metadata.update({'iterationId': self.iterationId})
+                metadata.update({'iterationId': self.iterationId,
                 # identifies the actual writing process'
-                metadata.update({'actedOnBehalfOf': self.behalfOf})
-                metadata.update(
-                    {'_id': self.name + '_write_' + str(self.getUniqueId())})
-                metadata.update({'iterationIndex': self.iterationIndex})
-                metadata.update({'instanceId': self.instanceId})
-                metadata.update({'annotations': {}})
+                'actedOnBehalfOf': self.behalfOf,
+                '_id': self.id + '_write_' + str(self.getUniqueId()),
+                'iterationIndex': self.iterationIndex,
+                'instanceId': self.instanceId,
+                'annotations': {}})
 
                 if self.feedbackIteration:
                     metadata.update(
-                        {'_id': self.name + '_feedback_' + str(self.getUniqueId())})
+                        {'_id': self.id + '_feedback_' + str(self.getUniqueId())})
                 elif not self.resetflow:
                     metadata.update(
-                        {'_id': self.name + '_stateful_' + str(self.getUniqueId())})
-                    
+                        {'_id': self.id + '_stateful_' + str(self.getUniqueId())})
+
                 else:
                     metadata.update(
-                        {'_id': self.name + '_write_' + str(self.getUniqueId())})
-                     
-                        
-                metadata.update({'stateful': not self.resetflow})
-                metadata.update({'feedbackIteration': self.feedbackIteration})
-                metadata.update({'worker': socket.gethostname()})
-                metadata.update(
-                    {'parameters': self.dicToKeyVal(self.parameters)})
-                metadata.update({'errors': self.error})
-                metadata.update({'pid': '%s' % (os.getpid())})
-                
+                        {'_id': self.id + '_write_' + str(self.getUniqueId())})
+
+
+                metadata.update({'stateful': not self.resetflow,
+                'feedbackIteration': self.feedbackIteration,
+                'worker': socket.gethostname(),
+                'parameters': self.dicToKeyVal(self.parameters),
+                'errors': self.error,
+                'pid': '%s' % os.getpid()})
+
                 if self.ignore_inputs:
                     derivations = [x for x in self.derivationIds if x['port']=='_d4p_state' and x['DerivedFromDatasetID'] in self.statemapId]
                     metadata.update({'derivationIds': derivations})
                     self.ignore_inputs = False
                 else:
                     metadata.update({'derivationIds': self.derivationIds})
-                    
-                    
-                metadata.update({'name': self.name})
-                metadata.update({'runId': self.runId})
-                metadata.update({'username': self.username})
-                metadata.update({'startTime': str(self.startTime)})
-                metadata.update({'endTime': str(self.endTime)})
-                metadata.update({'type': 'lineage'})
-                 
-                metadata.update({'streams': contentmeta})
-                metadata.update({'mapping': sys.argv[1]})
+
+
+                metadata.update({'name': self.name,
+                'runId': self.runId,
+                'username': self.username,
+                'startTime': str(self.startTime),
+                'endTime': str(self.endTime),
+                'type': 'lineage',
+
+                'streams': contentmeta,
+                'mapping': sys.argv[1]})
                 if hasattr(self, 'prov_cluster'):
+                     
                     metadata.update({'prov_cluster': self.prov_cluster})
-                else:
-                    metadata.update({'prov_cluster': self.instanceId})
+                
 
                 if self.creator is not None:
                     metadata.update({'creator': self.creator})
@@ -881,11 +927,12 @@ class ProvenancePE(GenericPE):
         output = {
             "metadata": metadata,
             "error": self.error,
-            "pid": "%s" %
-            (os.getpid(),
-             )}
+            #"pid": "%s" %
+            #os.getpid()
+             }
 
         return output
+
 
     """
     Imports Input metadata if available, the metadata will be
@@ -905,8 +952,8 @@ class ProvenancePE(GenericPE):
     self.streamItemsFormat
     self.outputstreams
     """
-       
-        
+
+
     def addToProvState(
             self,
             name,
@@ -918,34 +965,36 @@ class ProvenancePE(GenericPE):
             stateless=False,
             **kwargs
     ):
-         
+
         self.endTime = datetime.datetime.utcnow()
         self.resetflow = stateless
         self.ignore_inputs = ignore_inputs
         self.addprov=True
         kwargs['name']=name
-        if 'dep' in kwargs and kwargs['dep']!=None:
-            for d in kwargs['dep']:
-                did=self.getProvStateObjectId(d)
-                if did!=None:
-                    self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId}, port="_d4p_state")
+        self.applyFlowResetPolicy('state', None)
+        if self.provon:
+            if 'dep' in kwargs and kwargs['dep']!=None:
+                for d in kwargs['dep']:
+                    did=self.getProvStateObjectId(d)
+                    if did!=None:
+                        self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster}, port="_d4p_state")
 
 
-        self.extractProvenance(data,
+            self.extractProvenance(data,
                                location,
                                format,
                                metadata,
                                output_port="_d4p_state",
                                **kwargs)
-         
-        
-        
+
+
+
         self.ignore_inputs = False
-        
-        
+
+
         if 'dep' in kwargs and kwargs['dep']!=None:
             self.removeDerivation(port='_d4p_state')
-                
+
         #self.log("FF: "+str(self.derivationIds))
 
     def extractProvenance(
@@ -972,7 +1021,7 @@ class ProvenancePE(GenericPE):
             self.provon = False
         else:
             self.provon = True
-            usermeta = self.buildUserMetadata(
+            usermeta= self.buildUserMetadata(
                 data,
                 location=location,
                 format=format,
@@ -983,8 +1032,10 @@ class ProvenancePE(GenericPE):
                 output_port=output_port,
                 **kwargs)
         
-        self.flushData(data, usermeta, output_port)
+         
         
+        self.flushData(data, usermeta, output_port)
+
         return usermeta
 
     """
@@ -1014,34 +1065,51 @@ class ProvenancePE(GenericPE):
         #else:
         #    None
 #            self.resetflow = True
-        
+
         if 'dep' in kwargs and kwargs['dep']!=None:
             for d in kwargs['dep']:
-                self.buildDerivation({'id':self.getProvStateObjectId(d),'TriggeredByProcessIterationID':self.iterationId}, port="_d4p_state")
+                self.buildDerivation({'id':self.getProvStateObjectId(d),'TriggeredByProcessIterationID':self.iterationId, 'prov_cluster':self.prov_cluster}, port="_d4p_state")
                 #self.log(self.derivationIds)
-                
+
         if 'ignore_inputs' in kwargs:
             #self.log("IGNORONG: "+str(self.ignore_inputs))
             self.ignore_inputs=kwargs['ignore_inputs']
-        
+
         self.extractProvenance(data, output_port=name, **kwargs)
-        
+
         if 'dep' in kwargs and kwargs['dep']!=None:
             for d in kwargs['dep']:
                 self.removeDerivation(name=d)
-                
-       
 
+    def checkSkipRule(self,streammeta):
+        for key in self.skip_rules:
+                for s in streammeta:
+                    if key in s: 
+                        #self.log("A"+str(self.skip_rules[key]))
+                        #self.log(s[key]) 
+                        #self.log(type(s[key]))
+                        #self.log(type(self.skip_rules[key]['$lt']))
+                        if '$eq' in self.skip_rules[key] and s[key]==self.skip_rules[key]['$eq']:
+                            return False
+                        elif '$gt' in self.skip_rules[key] and s[key]>self.skip_rules[key]['$gt']:
+                            return False
+                        elif '$gt' in self.skip_rules[key] and'$lt' in self.skip_rules[key] and (s[key]>self.skip_rules[key]['$gt'] and s[key]<self.skip_rules[key]['$lt']):
+                            return False
+                        elif '$lt' in self.skip_rules[key] and s[key]<self.skip_rules[key]['$lt']:
+                            return False
+                        else:
+                            return self.provon
+        return self.provon
     
-
+            
     def buildUserMetadata(self, data, **kwargs):
         streamlist = list()
 
         streamItem = {}
-        streammeta = {}
+        streammeta = []
 
         streammeta = self.extractItemMetadata(data)
-
+        
         if not isinstance(streammeta, list):
             streammeta = kwargs['metadata'] if isinstance(
                 kwargs['metadata'], list) else [kwargs['metadata']]
@@ -1055,57 +1123,61 @@ class ProvenancePE(GenericPE):
             except:
                 traceback.print_exc(file=sys.stderr)
                 None
-        streamItem.update({"content": streammeta})
         
-        streamItem.update({"id": self.getUniqueId(**kwargs)})
+        if self.skip_rules!=None:
+            self.provon=self.checkSkipRule(streammeta)
+            
+        if not self.provon:
+            return streamItem
         
-        streamItem.update({"format": ""})
-        streamItem.update({"location": ""})
-        streamItem.update({"annotations": []})
-        # if (output_port in self.streamItemsPorts!={}):
-        streamItem.update({"port": kwargs['output_port']})
-        # if (self.streamItemsControl!={}):
+        streamItem.update({"content": streammeta,
+                           "id": self.getUniqueId(**kwargs),
+                           "format": "",
+                           "location": "",
+                           "annotations": [],
+                           "port": kwargs['output_port']})
+        # if (self.streamItemsControl!={,:
         streamItem.update(kwargs['control'])
-        # if (self.streamItemsLocations!={}):
-        streamItem.update({"location": kwargs['location']})
-        # if (self.streamItemsFormat!={}):
-        streamItem.update({"format": kwargs['format']})
-        streamItem.update({"size": total_size(data)})
+        # if (self.streamItemsLocations!={,:
+        streamItem.update({"location": kwargs['location'],
+                          "format": kwargs['format']})
+        #streamItem.update({"size": total_size(data)})
+        streamItem.update({"size": 0})
         streamlist.append(streamItem)
         return streamlist
-    
+
     def removeDerivation(self,**kwargs):
         if 'name' in kwargs:
             id = self.getProvStateObjectId(kwargs['name'])
             for j in self.derivationIds:
-            
+
                 if j['DerivedFromDatasetID']==id:
-                
+
                     del self.derivationIds[self.derivationIds.index(j)]
         else:
             if 'port' in kwargs:
                 for j in self.derivationIds:
-            
+
                     if j['port']==kwargs['port']:
-                
+
                         del self.derivationIds[self.derivationIds.index(j)]
-            
-         
+
+
     def buildDerivation(self, data, port=""):
 
         try:
 
             derivation = {'port': port, 'DerivedFromDatasetID':
                           data['id'], 'TriggeredByProcessIterationID':
-                          data['TriggeredByProcessIterationID']}
+                          data['TriggeredByProcessIterationID'], 'prov_cluster':
+                          data['prov_cluster']
+                          }
             self.derivationIds.append(derivation)
 
         except Exception:
+            traceback.print_exc(file=sys.stderr)
             if self.provon:
                 None
-                # traceback.print_exc(file=sys.stderr)
-                # self.error+= " Build Derivation Error: %s" % \
-                # traceback.format_exc()
 
     def dicToKeyVal(self, dict, valueToString=False):
         try:
@@ -1144,7 +1216,7 @@ meta =True
 
 def injectProv(object, provType, active=True,componentsType=None, **kwargs):
     print('Change grouping implementation ')
-    
+
     dispel4py.new.processor.GroupByCommunication.getDestination = \
         getDestination_prov
     global meta
@@ -1161,21 +1233,28 @@ def injectProv(object, provType, active=True,componentsType=None, **kwargs):
 
         # if not isinstance(object,provType):
         #    provType.__init__(object,pe_class=parent, **kwargs)
-        
+
         #if(meta):
         #print(str(componentsType))
-        if componentsType!=None and object.name in componentsType: 
-            
+        if componentsType!=None and object.name in componentsType:
+            body = {}
+            for x in componentsType[object.name]:
+                body.update(x().__dict__)
+                
             object.__class__ = type(str(object.__class__),
-                                (componentsType[object.name], object.__class__), componentsType[object.name]().__dict__)
-             
-            
+                                componentsType[object.name]+(object.__class__,), body)
+
+
         else:
+            body = {}
+            for x in provType:
+                
+                body.update(x().__dict__)
             object.__class__ = type(str(object.__class__),
-                                (provType, object.__class__), provType().__dict__)
-          
+                                provType+(object.__class__,), body)
+
         object.pe_init(pe_class=parent, **kwargs)
-        
+
         print("Injecting provenance to: " + object.name +
               " Transoformed: " + str(object.__class__.__bases__))
         object.name = localname
@@ -1206,7 +1285,8 @@ def InitiateNewRun(
         componentsType=None,
         clustersRecorders={},
         feedbackPEs=[],
-        save_mode='file'
+        save_mode='file',
+        skip_rules={}
         ):
 
     if username is None or workflowId is None or workflowName is None:
@@ -1223,31 +1303,32 @@ def InitiateNewRun(
                          "system_id": system_id,
                          "workflowName": workflowName,
                          "runId": runId,
-                         "mapping": sys.argv[1]
+                         "mapping": sys.argv[1],
+                         "skip_rules":skip_rules
                          }
     _graph = WorkflowGraph()
     provrec = None
-    
+
     if provRecorderClass!=None:
         provrec = provRecorderClass(toW3C=w3c_prov)
         _graph.connect(newrun, "output", provrec, "metadata")
     else:
         provrec = IterativePE()
         _graph.connect(newrun, "output", provrec, "input")
-    
-     
+
+
     # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
 
     # newrun.provon=True
     simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
 
-    injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId})
-    
+    injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},skip_rules=skip_rules)
+
     if (provRecorderClass!=None):
         print("PREPARING PROVENANCE SENSORS:")
         print("Provenance Recorders Clusters: " + str(clustersRecorders))
         print("PEs processing Recorders feedback: " + str(feedbackPEs))
-         
+
         ProvenancePE.send_prov_to_sensor=True
         attachProvenanceRecorderPE(
                                    graph,
@@ -1256,8 +1337,9 @@ def InitiateNewRun(
                                    username,
                                    w3c_prov,
                                    clustersRecorders,
-                                   feedbackPEs)
-     
+                                   feedbackPEs
+                                   )
+
     return runId
 
 
@@ -1268,9 +1350,10 @@ def attachProvenanceRecorderPE(
         username=None,
         w3c_prov=False,
         clustersRecorders={},
-        feedbackPEs=[]):
-    
-    
+        feedbackPEs=[]
+        ):
+
+
     provclusters={}
     partitions = []
     provtag = None
@@ -1297,7 +1380,6 @@ def attachProvenanceRecorderPE(
 
         if isinstance(x, (ProvenancePE)) and x.provon:
             provrecorder = provRecorderClass(toW3C=w3c_prov)
-            # provrecorder.numprocesses=1
             if isinstance(x, (SimpleFunctionPE)):
 
                 if 'prov_cluster' in x.params:
@@ -1317,12 +1399,12 @@ def attachProvenanceRecorderPE(
                 print("PROV CLUSTER: Attaching " + x.name +
                       " to provenance cluster: " + provtag +
                       " with recorder:"+str(provrecorder))
-                
+
                 if provtag not in provclusters:
                     provclusters[provtag] = provrecorder
                 else:
                     provrecorder = provclusters[provtag]
-                     
+
 
             x.controlParameters["runId"] = runId
             x.controlParameters["username"] = username
@@ -1330,14 +1412,16 @@ def attachProvenanceRecorderPE(
             provrecorder._add_input(provport, grouping=['prov_cluster'])
             provrecorder._add_output(provport)
             provrecorder.porttopemap[x.name] = provport
+            #provrecorder.numprocesses=2
+
             graph.connect(
                               x,
                               OUTPUT_METADATA,
                               provrecorder,
                               provport)
             if x.name in feedbackPEs:
-                 
-                
+
+
                 y = PassThroughPE()
                 graph.connect(
                     provrecorder,
@@ -1390,12 +1474,12 @@ class NewWorkflowRun(ProvenancePE):
         ProvenancePE.__init__(self)
         self.pe_init(pe_class=ProvenancePE,save_mode=save_mode)
         self._add_output('output')
-        
-        
+
+
     def packageAll(self, contentmeta):
-         
+
         return {'metadata':contentmeta[0]['content'][0]}
-        
+
     def makeRunMetdataBundle(
             self,
             input=[],
@@ -1431,7 +1515,7 @@ class NewWorkflowRun(ProvenancePE):
 
     def _process(self, inputs):
         self.name = 'NewWorkflowRun'
-         
+
         bundle = self.makeRunMetdataBundle(
             username=self.parameters["username"],
             input=self.parameters["input"],
@@ -1459,8 +1543,8 @@ class ProvenanceRecorder(GenericPE):
         GenericPE.__init__(self)
         self.porttopemap = {}
         self._add_output('feedback')
-        self._add_input(ProvenanceRecorder.INPUT_NAME,
-                        grouping=['prov_cluster'])
+        self._add_input(ProvenanceRecorder.INPUT_NAME)
+                     #   grouping=['prov_cluster'])
 
 
 class ProvenanceRecorderToFile(ProvenanceRecorder):
@@ -1489,6 +1573,7 @@ class ProvenanceRecorderToFile(ProvenanceRecorder):
 
         filep = open(os.environ['PROV_PATH'] + "/" + prov["_id"], "wr")
         json.dump(out, filep)
+        filep.close()
 
 
 class ProvenanceRecorderToService(ProvenanceRecorder):
@@ -1506,11 +1591,11 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
             self.provurl.netloc)
 
     def _process(self, inputs):
-        
+
         #ports are assigned automatically as numbers, we just need to read from any of these
         for x in inputs:
             prov = inputs[x]
-            
+
         out = None
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
@@ -1519,7 +1604,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
             out = toW3Cprov(prov)
         else:
             out = prov
-        
+
         params = urllib.urlencode({'prov': json.dumps(out)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
@@ -1547,6 +1632,7 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
         self.name = name
         self.convertToW3C = toW3C
         self.bulk = []
+        self.numprocesses=2
         self.timestamp = datetime.datetime.utcnow()
 
     def _preprocess(self):
@@ -1556,30 +1642,31 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
             self.provurl.netloc)
 
     def postprocess(self):
+        if len(self.bulk)>0:
+            
         #self.log("TO SERVICE POSTP________________ID: "+str(self.bulk))
-        params = urllib.urlencode({'prov': json.dumps(self.bulk)})
-        headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"}
-        self.connection.request(
-            "POST",
-            self.provurl.path,
-            params,
-            headers)
-        response = self.connection.getresponse()
-        #self.log("Postprocress: " +
-        #         str((response.status, response.reason, response,
-        #              response.read())))
-        self.connection.close()
-        self.bulk = []
-
+            params = urllib.urlencode({'prov': json.dumps(self.bulk)})
+            headers = {
+                       "Content-type": "application/x-www-form-urlencoded",
+                       "Accept": "application/json"}
+            self.connection.request(
+                                    "POST",
+                                    self.provurl.path,
+                                    params,
+                                    headers)
+            response = self.connection.getresponse()
+            #self.log("Postprocress: " +
+            #     str((response.status, response.reason, response,
+            #          response.read())))
+            self.connection.close()
+            
     def _process(self, inputs):
         prov = None
         for x in inputs:
             prov = inputs[x]
         out = None
         #self.log("TO SERVICE ________________ID: "+str(prov))
-        
+
         if isinstance(prov, list) and "_d4p" in prov[0]:
             prov = prov[0]["_d4p"]
         elif "_d4p" in prov:
@@ -1589,11 +1676,11 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
             out = toW3Cprov(prov)
         else:
             out = prov
-            
+
         self.bulk.append(out)
 
-        if len(self.bulk) == 15:
-            self.log("TO SERVICE ________________ID: "+str(self.bulk))
+        if len(self.bulk) == 100:
+            #self.log("TO SERVICE ________________ID: "+str(self.bulk))
             params = urllib.urlencode({'prov': json.dumps(self.bulk)})
             headers = {
                 "Content-type": "application/x-www-form-urlencoded",
@@ -1601,10 +1688,10 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
             self.connection.request(
                 "POST", self.provurl.path, params, headers)
             response = self.connection.getresponse()
-            self.log("progress: " + str((response.status, response.reason,
-                                        response, response.read())))
+            #self.log("progress: " + str((response.status, response.reason,
+            #                            response, response.read())))
             self.connection.close()
-            self.bulk = []
+            self.bulk[:]=[]
 
         return None
 
@@ -1638,34 +1725,37 @@ class ProvenanceRecorderToFileBulk(ProvenanceRecorder):
     def postprocess(self):
         filep = open(os.environ['PROV_PATH'] + "/bulk_" + getUniqueId(), "wr")
         json.dump(self.bulk, filep)
-        self.bulk = []
+        self.bulk[:]=[]
 
     def process(self, inputs):
 
         out = None
         for x in inputs:
             prov = inputs[x]
-             
+
         if isinstance(prov, list) and "data" in prov[0]:
-
             prov = prov[0]["data"]
-
+        elif "_d4p" in prov:
+            prov = prov["_d4p"]
+            
+         
+            
         if self.convertToW3C:
             out = toW3Cprov(prov)
         else:
             out = prov
-        
+
         self.bulk.append(out)
-        self.log(len(self.bulk))
-        if len(self.bulk) == 15:
-            
+        #self.log(len(self.bulk))
+        if len(self.bulk) == 140:
+
             filep = open(
                 os.environ['PROV_PATH'] +
                 "/bulk_" +
                 getUniqueId(),
                 "wr")
             json.dump(self.bulk, filep)
-            self.bulk=[]
+            self.bulk[:]=[]
 
 
 class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
@@ -1684,7 +1774,7 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
 
     def postprocess(self):
         self.connection.close()
-        
+
     def _process(self, inputs):
         prov = None
         for x in inputs:
@@ -1698,8 +1788,8 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
         else:
             out = prov
 
-            
-            
+
+
         self.write(self.porttopemap[prov['name']], "FEEDBACK MESSAGGE FROM RECORDER")
 
         self.bulk.append(out)
@@ -1712,6 +1802,6 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
         response = self.connection.getresponse()
         #self.log("progress: " + str((response.status, response.reason,
         #                                response, response.read())))
-        
+
 
         return None
