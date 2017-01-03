@@ -113,12 +113,12 @@ def _process(self, data):
         return results
 
 
-def addToProvState(self, *args, **kwargs):
+def update_prov_state(self, *args, **kwargs):
     #self.log("Need to Activate Provenance to use addToProv method")
     None
 
 # dispel4py.core.GenericPE.write = write
-dispel4py.base.GenericPE.addToProvState = addToProvState
+dispel4py.base.GenericPE.update_prov_state = update_prov_state
 dispel4py.base.SimpleFunctionPE.write = write
 dispel4py.base.SimpleFunctionPE._process = _process
 
@@ -399,7 +399,7 @@ class ProvenancePE(GenericPE):
 
 
 
-    def applyFlowResetPolicy(self,event,value):
+    def apply_state_reset_policy(self,event,value):
         if (event=='write'):
             self.resetflow=True
             #self.void_iteration=False
@@ -528,7 +528,7 @@ class ProvenancePE(GenericPE):
             self.__processwrapper(inputs)
 
         #if (self.void_iteration==True):
-        self.applyFlowResetPolicy('void_iteration',self.void_iteration)
+        self.apply_state_reset_policy('void_iteration',self.void_iteration)
         #self.log('VOID ITERATION CAPTURE, RESET FLOW: '+str(self.void_iteration)+" RESET "+str(self.resetflow))
         #else:
         #    try:
@@ -785,7 +785,7 @@ class ProvenancePE(GenericPE):
     def writeResults(self, name, result):
 
         #self.resetflow = True
-        self.applyFlowResetPolicy('write',True)
+        self.apply_state_reset_policy('write',True)
         self.void_iteration=False
 
         if isinstance(result, dict) and '_d4p_prov' in result:
@@ -954,7 +954,7 @@ class ProvenancePE(GenericPE):
     """
 
 
-    def addToProvState(
+    def update_prov_state(
             self,
             name,
             data,
@@ -971,7 +971,7 @@ class ProvenancePE(GenericPE):
         self.ignore_inputs = ignore_inputs
         self.addprov=True
         kwargs['name']=name
-        self.applyFlowResetPolicy('state', None)
+        self.apply_state_reset_policy('state', None)
         if self.provon:
             if 'dep' in kwargs and kwargs['dep']!=None:
                 for d in kwargs['dep']:
@@ -1056,7 +1056,7 @@ class ProvenancePE(GenericPE):
 
     def write(self, name, data, **kwargs):
         self.void_iteration=False
-        self.applyFlowResetPolicy('write',True)
+        self.apply_state_reset_policy('write',True)
         # self.__markIteration()
         self.endTime = datetime.datetime.utcnow()
 
@@ -1270,7 +1270,7 @@ provclusters = {}
 
 prov_save_mode={}
 
-def InitiateNewRun(
+def profile_prov_run(
         graph,
         provRecorderClass,
         provImpClass=ProvenancePE,
@@ -1409,7 +1409,8 @@ def attachProvenanceRecorderPE(
             x.controlParameters["runId"] = runId
             x.controlParameters["username"] = username
             provport = str(id(x))
-            provrecorder._add_input(provport, grouping=['prov_cluster'])
+            provrecorder._add_input(provport)
+            # grouping=['prov_cluster'])
             provrecorder._add_output(provport)
             provrecorder.porttopemap[x.name] = provport
             #provrecorder.numprocesses=2
