@@ -1175,9 +1175,9 @@ class ProvenancePE(GenericPE):
             self.derivationIds.append(derivation)
 
         except Exception:
-            traceback.print_exc(file=sys.stderr)
-            if self.provon:
-                None
+            pass
+            #traceback.print_exc(file=sys.stderr)
+            
 
     def dicToKeyVal(self, dict, valueToString=False):
         try:
@@ -1409,8 +1409,7 @@ def attachProvenanceRecorderPE(
             x.controlParameters["runId"] = runId
             x.controlParameters["username"] = username
             provport = str(id(x))
-            provrecorder._add_input(provport)
-            # grouping=['prov_cluster'])
+            provrecorder._add_input(provport, grouping=['prov_cluster'])
             provrecorder._add_output(provport)
             provrecorder.porttopemap[x.name] = provport
             #provrecorder.numprocesses=2
