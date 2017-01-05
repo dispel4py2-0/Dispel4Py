@@ -557,21 +557,22 @@ class ProvenancePE(GenericPE):
 
     def preprocess(self):
         if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
-            self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
+            self.provurl = urlparse(ProvenancePE.REPOS_URL)
             #self.connection = httplib.HTTPConnection(
             #                                         self.provurl.netloc)
         self._preprocess()
 
     def postprocess(self):
 
-        #self.log("TO SERVICE POSTP________________ID: "+str(self.bulk))
+        
         if len(self.bulk_prov)>0:
+            
             if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
+                self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
                 params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
                 headers = {
                        "Content-type": "application/x-www-form-urlencoded",
                        "Accept": "application/json"}
-                self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
                 self.connection = httplib.HTTPConnection(
                                                      self.provurl.netloc)
                 self.connection.request(
@@ -580,9 +581,9 @@ class ProvenancePE(GenericPE):
                                     params,
                                     headers)
                 response = self.connection.getresponse()
-                #self.log("Postprocress: " +
-                #     str((response.status, response.reason, response,
-                #    response.read())))
+                self.log("Postprocress: " +
+                     str((response.status, response.reason, response)))
+#                    response.read())))
                 self.connection.close()
                 self.bulk_prov[:]=[]
             elif (self.save_mode==ProvenancePE.SAVE_MODE_FILE):
@@ -621,14 +622,14 @@ class ProvenancePE(GenericPE):
     
     def sendProvToService(self, prov):
 
-
+        #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
 
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
 
         self.bulk_prov.append(deepcopy(prov))
 
-        if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
+        if len(self.bulk_prov) > ProvenancePE.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
             params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
             headers = {
