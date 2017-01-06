@@ -363,6 +363,10 @@ class ProvenancePE(GenericPE):
 
     PROV_PATH="./"
     REPOS_URL=""
+    PROV_EXPORT_URL=""
+    
+    
+    
     SAVE_MODE_SERVICE='service'
     SAVE_MODE_FILE='file'
     SAVE_MODE_SENSOR='sensor'
@@ -376,7 +380,10 @@ class ProvenancePE(GenericPE):
         else:
             return None
 
-    def makeUniqueId(self):
+    def makeUniqueId(self, **kwargs):
+        #if ('data' in kwargs):
+        #    self.log(str(kwargs['data']))
+        
         return socket.gethostname() + "-" + \
             str(os.getpid()) + "-" + str(uuid.uuid1())
 
@@ -388,8 +395,8 @@ class ProvenancePE(GenericPE):
 
 
     def getUniqueId(self,**kwargs):
-
-        data_id = self.makeUniqueId()
+        #self.log(kwargs)
+        data_id = self.makeUniqueId(**kwargs)
         if 'name' in kwargs:
             self._updateState(kwargs['name'],data_id)
 
@@ -454,6 +461,7 @@ class ProvenancePE(GenericPE):
 
         # self.appParameters = None
         self.provon = True
+        self.embed = False
 
         if 'save_mode' not in kwargs:
             self.save_mode=ProvenancePE.SAVE_MODE_FILE
@@ -553,7 +561,9 @@ class ProvenancePE(GenericPE):
     def extractItemMetadata(self, data, port='output'):
 
         return {}
-
+    
+    def embedProvIntoData(self,dataid,location):
+        self.log("Embedding trace into data:"+ProvenancePE.PROV_EXPORT_URL)
 
     def preprocess(self):
         if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
@@ -568,7 +578,7 @@ class ProvenancePE(GenericPE):
         if len(self.bulk_prov)>0:
             
             if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
-                self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
+                #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
                 params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
                 headers = {
                        "Content-type": "application/x-www-form-urlencoded",
@@ -582,7 +592,7 @@ class ProvenancePE(GenericPE):
                                     headers)
                 response = self.connection.getresponse()
                 self.log("Postprocress: " +
-                     str((response.status, response.reason, response)))
+                     str((response.status, response.reason, response.read())))
 #                    response.read())))
                 self.connection.close()
                 self.bulk_prov[:]=[]
@@ -640,10 +650,9 @@ class ProvenancePE(GenericPE):
             self.connection.request(
                 "POST", self.provurl.path, params, headers)
             response = self.connection.getresponse()
-            #self.log("progress: " + str((response.status, response.reason,
+            self.log("progress: " + str((response.status, response.reason,response.read())))
             #                             response, response.read())))
 
-             
             self.bulk_prov[:]=[]
 
         return None
@@ -707,6 +716,8 @@ class ProvenancePE(GenericPE):
                         self.sendProvToService(trace['metadata'])
                     if self.save_mode==ProvenancePE.SAVE_MODE_FILE:
                          self.writeProvToFile(trace['metadata'])
+                    if self.embed:
+                         self.embedProvIntoData(trace['metadata']['streams'][0]['id'],trace['metadata']['streams'][0]['location'])
                          None
             except:
                 self.log(traceback.format_exc())
@@ -1132,7 +1143,7 @@ class ProvenancePE(GenericPE):
             return streamItem
         
         streamItem.update({"content": streammeta,
-                           "id": self.getUniqueId(**kwargs),
+                           "id": self.getUniqueId(data=data,**kwargs),
                            "format": "",
                            "location": "",
                            "annotations": [],
@@ -1162,7 +1173,10 @@ class ProvenancePE(GenericPE):
                     if j['port']==kwargs['port']:
 
                         del self.derivationIds[self.derivationIds.index(j)]
-
+    
+    def extractExternalInputDataId(self,data):
+        self.makeUniqueId()
+        
 
     def buildDerivation(self, data, port=""):
 
@@ -1176,8 +1190,14 @@ class ProvenancePE(GenericPE):
             self.derivationIds.append(derivation)
 
         except Exception:
-            pass
-            #traceback.print_exc(file=sys.stderr)
+            id=self.extractExternalInputDataId(data)
+            derivation = {'port': port, 'DerivedFromDatasetID':
+                          id, 'TriggeredByProcessIterationID':
+                          None, 'prov_cluster':
+                          None
+                          }
+            self.derivationIds.append(derivation)
+            self.log("BUILDING INITIAL DERIVATION")
             
 
     def dicToKeyVal(self, dict, valueToString=False):
