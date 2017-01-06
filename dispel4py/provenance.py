@@ -461,7 +461,7 @@ class ProvenancePE(GenericPE):
 
         # self.appParameters = None
         self.provon = True
-        self.embed = False
+        
 
         if 'save_mode' not in kwargs:
             self.save_mode=ProvenancePE.SAVE_MODE_FILE
@@ -562,9 +562,7 @@ class ProvenancePE(GenericPE):
 
         return {}
     
-    def embedProvIntoData(self,dataid,location):
-        self.log("Embedding trace into data:"+ProvenancePE.PROV_EXPORT_URL)
-
+     
     def preprocess(self):
         if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
             self.provurl = urlparse(ProvenancePE.REPOS_URL)
@@ -716,9 +714,7 @@ class ProvenancePE(GenericPE):
                         self.sendProvToService(trace['metadata'])
                     if self.save_mode==ProvenancePE.SAVE_MODE_FILE:
                          self.writeProvToFile(trace['metadata'])
-                    if self.embed:
-                         self.embedProvIntoData(trace['metadata']['streams'][0]['id'],trace['metadata']['streams'][0]['location'])
-                         None
+                     
             except:
                 self.log(traceback.format_exc())
                 'if cant write doesnt matter move on'
