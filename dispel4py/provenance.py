@@ -379,7 +379,14 @@ class ProvenancePE(GenericPE):
             return self.statemap[name]
         else:
             return None
-
+        
+        
+    def makeProcessId(self, **kwargs):
+        
+        return socket.gethostname() + "-" + \
+            str(os.getpid()) + "-" + str(uuid.uuid1())
+            
+            
     def makeUniqueId(self, **kwargs):
         #if ('data' in kwargs):
         #    self.log(str(kwargs['data']))
@@ -595,7 +602,7 @@ class ProvenancePE(GenericPE):
                 self.connection.close()
                 self.bulk_prov[:]=[]
             elif (self.save_mode==ProvenancePE.SAVE_MODE_FILE):
-                filep = open(ProvenancePE.PROV_PATH + "/bulk_" + self.makeUniqueId(), "wr")
+                filep = open(ProvenancePE.PROV_PATH + "/bulk_" + self.makeProcessId(), "wr")
                 ujson.dump(self.bulk_prov, filep)
                 filep.write(ujson.dumps(self.bulk_prov))
             elif (self.save_mode==ProvenancePE.SAVE_MODE_SENSOR):
@@ -668,7 +675,7 @@ class ProvenancePE(GenericPE):
             filep = open(
                 ProvenancePE.PROV_PATH +
                 "/bulk_" +
-                self.makeUniqueId(),
+                self.makeProcessId(),
                 "wr")
             ujson.dump(self.bulk_prov, filep)
             #filep.write(json.dumps(self.bulk_prov))
