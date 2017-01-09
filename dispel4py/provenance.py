@@ -516,7 +516,7 @@ class ProvenancePE(GenericPE):
 
     def _preprocess(self):
         self.instanceId = self.name + "-Instance-" + \
-            "-" + self.getUniqueId()
+            "-" + self.makeProcessId()
 
         super(ProvenancePE, self)._preprocess()
 
@@ -819,7 +819,7 @@ class ProvenancePE(GenericPE):
 
     def __markIteration(self):
         self.startTime = datetime.datetime.utcnow()
-        self.iterationId = self.name + '-' + self.getUniqueId()
+        self.iterationId = self.name + '-' + self.makeProcessId()
 
     def __computewrapper(self, inputs):
 
@@ -888,21 +888,21 @@ class ProvenancePE(GenericPE):
                 metadata.update({'iterationId': self.iterationId,
                 # identifies the actual writing process'
                 'actedOnBehalfOf': self.behalfOf,
-                '_id': self.id + '_write_' + str(self.getUniqueId()),
+                '_id': self.id + '_write_' + str(self.makeProcessId()),
                 'iterationIndex': self.iterationIndex,
                 'instanceId': self.instanceId,
                 'annotations': {}})
 
                 if self.feedbackIteration:
                     metadata.update(
-                        {'_id': self.id + '_feedback_' + str(self.getUniqueId())})
+                        {'_id': self.id + '_feedback_' + str(self.makeProcessId())})
                 elif not self.resetflow:
                     metadata.update(
-                        {'_id': self.id + '_stateful_' + str(self.getUniqueId())})
+                        {'_id': self.id + '_stateful_' + str(self.makeProcessId())})
 
                 else:
                     metadata.update(
-                        {'_id': self.id + '_write_' + str(self.getUniqueId())})
+                        {'_id': self.id + '_write_' + str(self.makeProcessId())})
 
 
                 metadata.update({'stateful': not self.resetflow,
