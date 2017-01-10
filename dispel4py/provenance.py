@@ -1252,7 +1252,7 @@ def get_source(object, spacing=10, collapse=1):
     return source
 
 
-def injectProv(object, provType, active=True,componentsType=None, sources={},**kwargs):
+def injectProv(object, provType, active=True,componentsType=None, source={},**kwargs):
     print('Change grouping implementation ')
 
     dispel4py.new.processor.GroupByCommunication.getDestination = \
@@ -1262,7 +1262,7 @@ def injectProv(object, provType, active=True,componentsType=None, sources={},**k
         object.flatten()
         nodelist = object.getContainedObjects()
         for x in nodelist:
-            injectProv(x, provType, componentsType=componentsType, sources=sources,**kwargs)
+            injectProv(x, provType, componentsType=componentsType, source=source,**kwargs)
     else:
         print("Injecting provenance to: " + object.name +
               " Original type: " + str(object.__class__.__bases__))
@@ -1301,8 +1301,8 @@ def injectProv(object, provType, active=True,componentsType=None, sources={},**k
         for x in inspect.getmembers(object.__class__, predicate=inspect.ismethod):
             code+=inspect.getsource(x[len(x)-1])+'\n'
             
-        sources.update({object.id:{'type':str(object.__class__.__bases__),'source':code}})
-    return sources
+        source.update({object.id:{'type':str(object.__class__.__bases__),'code':code}})
+    return source
 
 ' This methods enriches the graph to enable the production and recording '
 ' of run-specific provenance information the provRecorderClass parameter '
@@ -1338,7 +1338,7 @@ def profile_prov_run(
     if runId is None:
         runId = getUniqueId()
     
-    sources=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},skip_rules=skip_rules)
+    source=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},skip_rules=skip_rules)
     
     newrun = NewWorkflowRun(save_mode)
 
@@ -1351,7 +1351,7 @@ def profile_prov_run(
                          "runId": runId,
                          "mapping": sys.argv[1],
                          "skip_rules":skip_rules,
-                         "sources":sources
+                         "source":source
                          }
     _graph = WorkflowGraph()
     provrec = None
@@ -1536,7 +1536,7 @@ class NewWorkflowRun(ProvenancePE):
             w3c=False,
             runId=None,
             modules=None,
-            sources=None):
+            source=None):
 
         bundle = {}
         if username is None or workflowId is None or workflowName is None:
@@ -1558,7 +1558,7 @@ class NewWorkflowRun(ProvenancePE):
             bundle["mapping"] = self.parameters['mapping']
             bundle["type"] = "workflow_run"
             bundle["modules"] = modules
-            bundle["sources"] = sources
+            bundle["source"] = source
 
         return bundle
 
@@ -1574,7 +1574,7 @@ class NewWorkflowRun(ProvenancePE):
             workflowName=self.parameters["workflowName"],
             runId=self.parameters["runId"],
             modules=sorted(["%s==%s" % (i.key, i.version) for i in pip.get_installed_distributions()]),
-            sources=self.parameters["sources"])
+            source=self.parameters["source"])
             
         print("RUN Metadata: " + str(bundle))
 
