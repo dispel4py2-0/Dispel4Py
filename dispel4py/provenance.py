@@ -32,6 +32,8 @@ from dispel4py.new import simple_process
 from subprocess import Popen, PIPE
 import collections
 from copy import deepcopy
+import pip
+import inspect
 
 
 from itertools import chain
@@ -1237,7 +1239,20 @@ class ProvenancePE(GenericPE):
 ' or subgraph with ProvenancePE type or its specialization'
 meta =True
 
-def injectProv(object, provType, active=True,componentsType=None, **kwargs):
+def get_source(object, spacing=10, collapse=1):
+    """Print methods and doc strings.
+
+    Takes module, class, list, dictionary, or string."""
+    methodList = [e for e in dir(object) if callable(getattr(object, e))]
+    processFunc = collapse and (lambda s: " ".join(s.split())) or (lambda s: s)
+    source= "\n".join(["%s %s" %
+                     (method.ljust(spacing),
+                      processFunc(str(getattr(object, method).__doc__)))
+                     for method in methodList])
+    return source
+
+
+def injectProv(object, provType, active=True,componentsType=None, sources={},**kwargs):
     print('Change grouping implementation ')
 
     dispel4py.new.processor.GroupByCommunication.getDestination = \
@@ -1247,7 +1262,7 @@ def injectProv(object, provType, active=True,componentsType=None, **kwargs):
         object.flatten()
         nodelist = object.getContainedObjects()
         for x in nodelist:
-            injectProv(x, provType, componentsType=componentsType, **kwargs)
+            injectProv(x, provType, componentsType=componentsType, sources=sources,**kwargs)
     else:
         print("Injecting provenance to: " + object.name +
               " Original type: " + str(object.__class__.__bases__))
@@ -1281,7 +1296,13 @@ def injectProv(object, provType, active=True,componentsType=None, **kwargs):
         print("Injecting provenance to: " + object.name +
               " Transoformed: " + str(object.__class__.__bases__))
         object.name = localname
-
+        
+        code=""
+        for x in inspect.getmembers(object.__class__, predicate=inspect.ismethod):
+            code+=inspect.getsource(x[len(x)-1])+'\n'
+            
+        sources.update({object.id:{'type':str(object.__class__.__bases__),'source':code}})
+    return sources
 
 ' This methods enriches the graph to enable the production and recording '
 ' of run-specific provenance information the provRecorderClass parameter '
@@ -1316,7 +1337,9 @@ def profile_prov_run(
         raise Exception("Missing values")
     if runId is None:
         runId = getUniqueId()
-
+    
+    sources=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},skip_rules=skip_rules)
+    
     newrun = NewWorkflowRun(save_mode)
 
     newrun.parameters = {"input": input,
@@ -1327,7 +1350,8 @@ def profile_prov_run(
                          "workflowName": workflowName,
                          "runId": runId,
                          "mapping": sys.argv[1],
-                         "skip_rules":skip_rules
+                         "skip_rules":skip_rules,
+                         "sources":sources
                          }
     _graph = WorkflowGraph()
     provrec = None
@@ -1344,8 +1368,6 @@ def profile_prov_run(
 
     # newrun.provon=True
     simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
-
-    injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},skip_rules=skip_rules)
 
     if (provRecorderClass!=None):
         print("PREPARING PROVENANCE SENSORS:")
@@ -1512,7 +1534,9 @@ class NewWorkflowRun(ProvenancePE):
             system_id=None,
             workflowName=None,
             w3c=False,
-            runId=None):
+            runId=None,
+            modules=None,
+            sources=None):
 
         bundle = {}
         if username is None or workflowId is None or workflowName is None:
@@ -1533,6 +1557,8 @@ class NewWorkflowRun(ProvenancePE):
             bundle["workflowName"] = workflowName
             bundle["mapping"] = self.parameters['mapping']
             bundle["type"] = "workflow_run"
+            bundle["modules"] = modules
+            bundle["sources"] = sources
 
         return bundle
 
@@ -1546,7 +1572,10 @@ class NewWorkflowRun(ProvenancePE):
             description=self.parameters["description"],
             system_id=self.parameters["system_id"],
             workflowName=self.parameters["workflowName"],
-            runId=self.parameters["runId"])
+            runId=self.parameters["runId"],
+            modules=sorted(["%s==%s" % (i.key, i.version) for i in pip.get_installed_distributions()]),
+            sources=self.parameters["sources"])
+            
         print("RUN Metadata: " + str(bundle))
 
         self.write('output', bundle, metadata=bundle)
