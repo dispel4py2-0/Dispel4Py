@@ -387,7 +387,7 @@ class ProvenancePE(GenericPE):
             str(os.getpid()) + "-" + str(uuid.uuid1())
             
             
-    def makeUniqueId(self, **kwargs):
+    def makeUniqueId(self,data,port):
         #if ('data' in kwargs):
         #    self.log(str(kwargs['data']))
         
@@ -401,9 +401,8 @@ class ProvenancePE(GenericPE):
         self.statemapId.append(id)
 
 
-    def getUniqueId(self,**kwargs):
-        #self.log(kwargs)
-        data_id = self.makeUniqueId(**kwargs)
+    def getUniqueId(self,data,port,**kwargs):
+        data_id = self.makeUniqueId(data,port)
         if 'name' in kwargs:
             self._updateState(kwargs['name'],data_id)
 
@@ -1144,9 +1143,9 @@ class ProvenancePE(GenericPE):
             
         if not self.provon:
             return streamItem
-        
+        #self.log(kwargs)
         streamItem.update({"content": streammeta,
-                           "id": self.getUniqueId(data=data,**kwargs),
+                           "id": self.getUniqueId(data,kwargs['output_port'],**kwargs),
                            "format": "",
                            "location": "",
                            "annotations": [],
@@ -1177,8 +1176,8 @@ class ProvenancePE(GenericPE):
 
                         del self.derivationIds[self.derivationIds.index(j)]
     
-    def extractExternalInputDataId(self,data):
-        self.makeUniqueId()
+    def extractExternalInputDataId(self,data,port):
+        self.makeUniqueId(data,port)
         
 
     def buildDerivation(self, data, port=""):
@@ -1193,7 +1192,7 @@ class ProvenancePE(GenericPE):
             self.derivationIds.append(derivation)
 
         except Exception:
-            id=self.extractExternalInputDataId(data)
+            id=self.extractExternalInputDataId(data,port)
             derivation = {'port': port, 'DerivedFromDatasetID':
                           id, 'TriggeredByProcessIterationID':
                           None, 'prov_cluster':
