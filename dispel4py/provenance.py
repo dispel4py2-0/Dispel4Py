@@ -564,7 +564,7 @@ class ProvenancePE(GenericPE):
             self.derivationIds = []
             #self.resetflow = False
 
-    def extractItemMetadata(self, data, port='output'):
+    def extractItemMetadata(self, data, port):
 
         return {}
     
@@ -1122,7 +1122,7 @@ class ProvenancePE(GenericPE):
         streamItem = {}
         streammeta = []
 
-        streammeta = self.extractItemMetadata(data)
+        streammeta = self.extractItemMetadata(data,kwargs['output_port'])
         
         if not isinstance(streammeta, list):
             streammeta = kwargs['metadata'] if isinstance(
