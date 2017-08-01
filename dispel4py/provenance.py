@@ -546,8 +546,14 @@ class ProvenancePE(GenericPE):
             self.__processwrapper(inputs)
 
         #if (self.void_iteration==True):
+         
+        #for x in inputs: 
+        #    try:
+        #        self.log(inputs[x])
+        #        self.apply_dependency_rule('void_iteration',self.void_iteration,data=inputs[x]['_d4p'],port=x)
+        #    except:
         self.apply_dependency_rule('void_iteration',self.void_iteration)
-        
+
     
 
     def extractItemMetadata(self, data, port):
@@ -639,7 +645,7 @@ class ProvenancePE(GenericPE):
             self.connection.request(
                 "POST", self.provurl.path, params, headers)
             response = self.connection.getresponse()
-            self.log("progress: " + str((response.status, response.reason,response.read())))
+            #self.log("progress: " + str((response.status, response.reason,response.read())))
             #                             response, response.read())))
 
             self.bulk_prov[:]=[]
@@ -673,14 +679,14 @@ class ProvenancePE(GenericPE):
 
 
 
-    def flushData(self, data, metadata, port):
+    def flushData(self, data, metadata, port,**kwargs):
         trace = {}
         stream = data
         try:
             if self.provon:
                 self.endTime = datetime.datetime.utcnow()
                 trace = self.packageAll(metadata)
-                stream = self.prepareOutputStream(data, trace, port)
+                stream = self.prepareOutputStream(data, trace, port,**kwargs)
               
             try:
                 if port is not None and port != '_d4p_state' \
@@ -845,7 +851,7 @@ class ProvenancePE(GenericPE):
             # self.endTime = datetime.datetime.utcnow()
             self.writeResults('error', {'error': 'null'})
 
-    def prepareOutputStream(self, data, trace,port):
+    def prepareOutputStream(self, data, trace,port,**kwargs):
         try:
             streamtransfer = {}
             streamtransfer['_d4p'] = data
@@ -862,8 +868,9 @@ class ProvenancePE(GenericPE):
                         "port"] = port
                     if port=='_d4p_state':
                         #self.log(''' Building SELF Derivation '''+str(trace))
-                        self._updateState('_d4p_state',trace[
+                        self._updateState(kwargs['lookupterm'],trace[
                         'metadata']["streams"][0]['id'])
+                        streamtransfer['lookupterm']=kwargs['lookupterm']
                         self.buildDerivation(streamtransfer,port='_d4p_state')
                         #if self.resetflow==True:
 						#    self.discardOutFlow()
@@ -925,8 +932,9 @@ class ProvenancePE(GenericPE):
                     self.ignore_inputs = False
                     
                 elif self.ignore_past_flow==True:
-                    
+                     
                     derivations = [x for x in self.derivationIds if (x['iterationIndex'] == self.iterationIndex or x['port']=='_d4p_state')]
+                     
                     metadata.update({'derivationIds': derivations})
 
                 elif self.ignore_state==True:
@@ -1010,7 +1018,7 @@ class ProvenancePE(GenericPE):
         
         
         if discardState==True:
-            self.log("discarding")
+            #self.log("discarding")
             self.derivationIds=[]
         else:
             maxit=0
@@ -1027,12 +1035,12 @@ class ProvenancePE(GenericPE):
         
         
         #self.log("ITENDEX "+str(self.iterationIndex))    
-        self.log('AFTER '+str(self.derivationIds))
+        #self.log('AFTER '+str(self.derivationIds))
 
 
     def update_prov_state(
             self,
-            name,
+            lookupterm,
             data,
             location="",
             format="",
@@ -1048,7 +1056,7 @@ class ProvenancePE(GenericPE):
         self.ignore_inputs = ignore_inputs
         self.ignore_state = ignore_state
         self.addprov=True
-        kwargs['name']=name
+        kwargs['lookupterm']=lookupterm
         #self.apply_dependency_rule('state', None)
         if self.provon:
             if 'dep' in kwargs and kwargs['dep']!=None:
@@ -1121,7 +1129,7 @@ class ProvenancePE(GenericPE):
         
          
         
-        self.flushData(data, usermeta, output_port)
+        self.flushData(data, usermeta, output_port,**kwargs)
 
         return usermeta
 
@@ -1187,7 +1195,7 @@ class ProvenancePE(GenericPE):
         for key in self.sel_rules:
                 for s in streammeta:
                     if key in s: 
-                        self.log("A"+str(self.sel_rules[key]))
+                        #self.log("A"+str(self.sel_rules[key]))
                         self.log(s[key]) 
                         self.log(type(s[key]))
                         self.log(type(self.sel_rules[key]['$lt']))
@@ -1292,6 +1300,7 @@ class ProvenancePE(GenericPE):
 
         except Exception:
             id=self.extractExternalInputDataId(data,port)
+            traceback.print_exc(file=sys.stderr)
             derivation = {'port': port, 'DerivedFromDatasetID':
                           id, 'TriggeredByProcessIterationID':
                           None, 'prov_cluster':
@@ -1347,6 +1356,28 @@ class AccumulateFlow(ProvenancePE):
 
 
 
+class AccumulateFlowGrouped(ProvenancePE):
+    def __init__(self):
+        ProvenancePE.__init__(self)
+        
+    
+    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+       
+        if (event=='write'):  
+            vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
+            self.update_prov_state(vv,data,metadata=metadata,dep=vv)
+
+        if (event=='void_iteration' and value==True):
+            if data!=None:
+                vv=abs(make_hash(tuple([data[x] for x in self.inputconnections[port]['grouping']])))
+                #self.log("gRERERE: "+str(data[0]))
+                self.update_prov_state(vv,data,metadata=metadata,dep=vv)
+                self.discardInFlow()
+
+            
+
+
+
         
           
 
@@ -1357,15 +1388,17 @@ class SingleInvocationStateDep(ProvenancePE):
         
     
     def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
-         
+        #self.log(self.STATEFUL_PORT)
         self.ignore_past_flow=False
         self.ignore_inputs=False
-        if (event=='write' and port == 'avg'):
-            
-            self.update_prov_state('avg',data,metadata=metadata)
-        if (event=='write' and port != 'avg'):
+        if (event=='write' and port == self.STATEFUL_PORT):
+            #self.log(self.STATEFUL_PORT)
+            self.update_prov_state(self.STATEFUL_PORT,data,metadata=metadata)
+        if (event=='write' and port != self.STATEFUL_PORT):
+            #self.log("IGNORE "+self.STATEFUL_PORT)
             self.ignorePastFlow()
         if (event=='void_iteration' and value==False):
+           # self.log("VOID "+self.STATEFUL_PORT)
             self.discardInFlow()
             self.discardState()
         
@@ -1485,11 +1518,15 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
          
         if componentsType!=None and object.name in componentsType:
             body = {}
-            for x in componentsType[object.name]:
+            for x in componentsType[object.name]['type']:
                 body.update(x().__dict__)
                 
             object.__class__ = type(str(object.__class__),
-                                componentsType[object.name]+(object.__class__,), body)
+                                componentsType[object.name]['type']+(object.__class__,), body)
+
+            # if any associates a statful to the provenance type
+            if 'state_dep_port' in componentsType[object.name]:
+                object.STATEFUL_PORT= componentsType[object.name]['state_dep_port']
 
 
         else:
@@ -1510,7 +1547,7 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
         for x in inspect.getmembers(object.__class__, predicate=inspect.ismethod):
             code+=inspect.getsource(x[len(x)-1])+'\n'
             
-        source.update({object.id:{'type':str(object.__class__.__bases__),'code':code}})
+        source.update({object.id:{'type':str(object.__class__.__bases__),'code':code,'functionName':object.name}})
         if hasattr(object, 'ns'):
             namespaces.update(object.ns)
     return source
