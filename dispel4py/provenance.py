@@ -377,8 +377,8 @@ class ProvenancePE(GenericPE):
     send_prov_to_sensor=False
 
     def getProvStateObjectId(self,name):
-        if name in self.statemap:
-            return self.statemap[name]
+        if name in self.stateCollection:
+            return self.stateCollection[name]
         else:
             return None
         
@@ -397,10 +397,10 @@ class ProvenancePE(GenericPE):
             str(os.getpid()) + "-" + str(uuid.uuid1())
 
     def _updateState(self,name,id):
-        if name in self.statemap:
-                self.statemapId.remove(self.statemap[name])
-        self.statemap[name]=id
-        self.statemapId.append(id)
+        if name in self.stateCollection:
+                self.stateCollectionId.remove(self.stateCollection[name])
+        self.stateCollection[name]=id
+        self.stateCollectionId.append(id)
 
 
     def getUniqueId(self,data,port,**kwargs):
@@ -414,12 +414,12 @@ class ProvenancePE(GenericPE):
 
 
 
-    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
         
-        if (event=='void_iteration') and value==True:
+        if (event=='void_invocation') and value==True:
             self.discardInFlow(discardState=True)
         
-        if (event=='void_iteration') and value==False:
+        if (event=='void_invocation') and value==False:
             self.discardInFlow(discardState=True)
 
     def pe_init(self, *args, **kwargs):
@@ -427,11 +427,12 @@ class ProvenancePE(GenericPE):
 
         global _d4p_plan_sqn
         self._add_input('_d4py_feedback', grouping='all')
-        self.statemap={}
-        self.statemapId=[]
+        self.stateCollection={}
+        self.stateCollectionId=[]
         self.impcls = None
         self.bulk_prov = []
-
+        self.stateful=False
+        self.stateDerivations=[]
 
         if 'pe_class' in kwargs and kwargs['pe_class'] != GenericPE:
             self.impcls = kwargs['pe_class']
@@ -533,8 +534,9 @@ class ProvenancePE(GenericPE):
 
     def process(self, inputs):
         self.feedbackIteration = False
-        self.void_iteration = True
+        self.void_invocation = True
         self.iterationIndex += 1
+
          
         
 
@@ -545,14 +547,14 @@ class ProvenancePE(GenericPE):
         else:
             self.__processwrapper(inputs)
 
-        #if (self.void_iteration==True):
+        #if (self.void_invocation==True):
          
         #for x in inputs: 
         #    try:
         #        self.log(inputs[x])
-        #        self.apply_dependency_rule('void_iteration',self.void_iteration,data=inputs[x]['_d4p'],port=x)
+        #        self.apply_derivation_rule('void_invocation',self.void_invocation,data=inputs[x]['_d4p'],port=x)
         #    except:
-        self.apply_dependency_rule('void_iteration',self.void_iteration)
+        self.apply_derivation_rule('void_invocation',self.void_invocation,data=inputs)
 
     
 
@@ -736,9 +738,9 @@ class ProvenancePE(GenericPE):
 
             self.initParameters()
 
-            inputs = self.importInputData(data)
+            self.inputs = self.importInputData(data)
             # self.__importInputMetadata()
-            return self.__computewrapper(inputs)
+            return self.__computewrapper(self.inputs)
 
         except:
             self.log(traceback.format_exc())
@@ -798,8 +800,8 @@ class ProvenancePE(GenericPE):
     def writeResults(self, name, result):
 
         #self.resetflow = True
-        self.apply_dependency_rule('write',True,data=data,port=name)
-        self.void_iteration=False
+        self.apply_derivation_rule('write',True,data=result,port=name)
+        self.void_invocation=False
         
         
 
@@ -908,7 +910,7 @@ class ProvenancePE(GenericPE):
                 if self.feedbackIteration:
                     metadata.update(
                         {'_id': self.id + '_feedback_' + str(self.makeProcessId())})
-                elif not self.resetflow:
+                elif self.stateful:
                     metadata.update(
                         {'_id': self.id + '_stateful_' + str(self.makeProcessId())})
 
@@ -927,7 +929,7 @@ class ProvenancePE(GenericPE):
 
                  
                 if self.ignore_inputs==True:
-                    derivations = [x for x in self.derivationIds if x['port']=='_d4p_state' and x['DerivedFromDatasetID'] in self.statemapId]
+                    derivations = [x for x in self.derivationIds if x['port']=='_d4p_state' and x['DerivedFromDatasetID'] in self.stateCollectionId]
                     metadata.update({'derivationIds': derivations})
                     self.ignore_inputs = False
                     
@@ -1052,20 +1054,23 @@ class ProvenancePE(GenericPE):
     ):
 
         self.endTime = datetime.datetime.utcnow()
-        self.resetflow = stateless
+        self.stateful = True
         self.ignore_inputs = ignore_inputs
         self.ignore_state = ignore_state
         self.addprov=True
         kwargs['lookupterm']=lookupterm
-        #self.apply_dependency_rule('state', None)
+        #self.apply_derivation_rule('state', None)
         if self.provon:
             if 'dep' in kwargs and kwargs['dep']!=None:
                 for d in kwargs['dep']:
                     did=self.getProvStateObjectId(d)
+                    
                     if did!=None:
                         self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
                         self.ignore_state = False
-                        #self.log(self.derivationIds)
+                        self.log("DERI "+str(did))
+                        self.log("DERI "+str(self.derivationIds))
+                        #
 
             self.extractProvenance(data,
                                location,
@@ -1074,6 +1079,7 @@ class ProvenancePE(GenericPE):
                                output_port="_d4p_state",
                                **kwargs)
 
+         
 
 
         self.ignore_inputs = False
@@ -1084,6 +1090,7 @@ class ProvenancePE(GenericPE):
         if 'dep' in kwargs and kwargs['dep']!=None:
             self.removeDerivation(port='_d4p_state')
 
+        self.stateful  = False
         
 
 
@@ -1150,45 +1157,44 @@ class ProvenancePE(GenericPE):
     """
 
     def write(self, name, data, **kwargs):
-        self.void_iteration=False
-
+        self.void_invocation=False
+        dep = []
 
         if 'metadata' in kwargs:
-            #self.log("GGGGGG "+str(kwargs['metadata']))
-            self.apply_dependency_rule('write',True,port=name,data=data,metadata=kwargs['metadata'])
+            dep = self.apply_derivation_rule('write',True,port=name,data=data,metadata=kwargs['metadata'])
         else:
-            self.apply_dependency_rule('write',True,port=name,data=data)
-        # self.__markIteration()
+            dep = self.apply_derivation_rule('write',True,port=name,data=data)
+        
         self.endTime = datetime.datetime.utcnow()
 
-        #if 'state_reset' in kwargs:
-        #    self.resetflow = bool(kwargs['state_reset'])
-        #else:
-        #    None
-#            self.resetflow = True
+       
         
-        if 'dep' in kwargs and kwargs['dep']!=None:
+        if 'dep' in kwargs and kwargs['dep']!=None: 
             for d in kwargs['dep']:
                 self.buildDerivation({'id':self.getProvStateObjectId(d),'TriggeredByProcessIterationID':self.iterationId, 'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
-                #self.log(self.derivationIds)
+        elif len(self.stateDerivations) > 0:
+            for d in self.stateDerivations:
+                self.buildDerivation({'id':self.getProvStateObjectId(d),'TriggeredByProcessIterationID':self.iterationId, 'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
 
         if 'ignore_inputs' in kwargs:
-            #self.log("IGNORONG: "+str(self.ignore_inputs))
             self.ignore_inputs=kwargs['ignore_inputs']
         
-        #if self.resetflow==True:
-        #    self.discardOutFlow()
+       
         
         self.extractProvenance(data, output_port=name, **kwargs)
 
         if 'dep' in kwargs and kwargs['dep']!=None:
             for d in kwargs['dep']:
                 self.removeDerivation(name=d)
+        elif len(self.stateDerivations) > 0:
+            for d in self.stateDerivations:
+                self.removeDerivation(name=d)
 
-        #if self.resetflow==True:
-        #    self.discardOutFlow()
-        
+
+        self.stateDerivations=[]
          
+    def setStateDerivations(self,terms):
+        self.stateDerivations=terms
 
     def checkSelectiveRule(self,streammeta):
         self.log("Checking Skip-Rules")
@@ -1348,10 +1354,10 @@ class AccumulateFlow(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
          
             
-        if (event=='void_iteration' and value==False):
+        if (event=='void_invocation' and value==False):
             self.discardInFlow()
 
 
@@ -1360,18 +1366,33 @@ class AccumulateFlowGrouped(ProvenancePE):
     def __init__(self):
         ProvenancePE.__init__(self)
         
-    
-    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+  
+    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
        
-        if (event=='write'):  
-            vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
-            self.update_prov_state(vv,data,metadata=metadata,dep=vv)
+        #if (event=='write'):  
+        #    vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
+        #    self.update_prov_state(vv,data,metadata=metadata,dep=vv)
 
-        if (event=='void_iteration' and value==True):
+         
+        self.ignore_past_flow=False
+        self.ignore_inputs=False
+        self.stateful=False
+
+
+        if (event=='write' and value==True):
+           
+           
+            vv=str(abs(make_hash(tuple([self.getInputAt(port='input',index=x) for x in self.inputconnections['input']['grouping']]))))
+            self.setStateDerivations([vv])
+            
+        if (event=='void_invocation' and value==True):
             if data!=None:
-                vv=abs(make_hash(tuple([data[x] for x in self.inputconnections[port]['grouping']])))
-                #self.log("gRERERE: "+str(data[0]))
-                self.update_prov_state(vv,data,metadata=metadata,dep=vv)
+              
+                vv=str(abs(make_hash(tuple([self.getInputAt(port='input',index=x) for x in self.inputconnections['input']['grouping']]))))
+                
+                self.update_prov_state(vv,data,metadata=metadata,dep=[vv])
+                
+                
                 self.discardInFlow()
 
             
@@ -1387,7 +1408,7 @@ class SingleInvocationStateDep(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
         #self.log(self.STATEFUL_PORT)
         self.ignore_past_flow=False
         self.ignore_inputs=False
@@ -1397,7 +1418,7 @@ class SingleInvocationStateDep(ProvenancePE):
         if (event=='write' and port != self.STATEFUL_PORT):
             #self.log("IGNORE "+self.STATEFUL_PORT)
             self.ignorePastFlow()
-        if (event=='void_iteration' and value==False):
+        if (event=='void_invocation' and value==False):
            # self.log("VOID "+self.STATEFUL_PORT)
             self.discardInFlow()
             self.discardState()
@@ -1409,7 +1430,7 @@ class MultiInvocationStateDep(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
          
         self.ignore_past_flow=False
         self.ignore_inputs=False
@@ -1430,7 +1451,7 @@ class AccumulateStateTrace(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_dependency_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
          
         
         if (event=='write'):
@@ -1439,13 +1460,13 @@ class AccumulateStateTrace(ProvenancePE):
             
             
             
-       # if (event=='void_iteration' and value==False):
+       # if (event=='void_invocation' and value==False):
             #ignores old flow-dependencies
         #    self.ignoreState();
 
         
 
-       
+    
         
        
     
@@ -1460,13 +1481,13 @@ class OnWriteOnly(ProvenancePE):
         self.streammeta=[]
         self.count=1
     
-    def apply_dependency_rule(self,event,value):
+    def apply_derivation_rule(self,event,value):
         
         if (event=='state'):
             #self.log(event)
             self.provon=False
         
-        super(ProvenanceOnWriteOnly,self).apply_dependency_rule(event,value)
+        super(ProvenanceOnWriteOnly,self).apply_derivation_rule(event,value)
  
 
 
