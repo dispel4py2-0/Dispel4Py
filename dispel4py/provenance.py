@@ -936,8 +936,8 @@ class ProvenancePE(GenericPE):
                 elif self.ignore_past_flow==True:
                      
                     derivations = [x for x in self.derivationIds if (x['iterationIndex'] == self.iterationIndex or x['port']=='_d4p_state')]
-                     
                     metadata.update({'derivationIds': derivations})
+                    #self.log("IGNOREPAST "+str(derivations))
 
                 elif self.ignore_state==True:
                     
@@ -1062,14 +1062,16 @@ class ProvenancePE(GenericPE):
         #self.apply_derivation_rule('state', None)
         if self.provon:
             if 'dep' in kwargs and kwargs['dep']!=None:
+                #self.removeDerivation(port='_d4p_state')
+                
                 for d in kwargs['dep']:
                     did=self.getProvStateObjectId(d)
                     
                     if did!=None:
-                        self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
-                        self.ignore_state = False
-                        self.log("DERI "+str(did))
-                        self.log("DERI "+str(self.derivationIds))
+                        self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="stateCollection")
+                        #self.ignore_state = False
+                        #self.log("DERI "+str(did))
+                        #self.log("DERI2 "+str(self.derivationIds))
                         #
 
             self.extractProvenance(data,
@@ -1088,7 +1090,9 @@ class ProvenancePE(GenericPE):
 
 
         if 'dep' in kwargs and kwargs['dep']!=None:
-            self.removeDerivation(port='_d4p_state')
+            for d in kwargs['dep']:
+                self.removeDerivation(name=d)
+        
 
         self.stateful  = False
         
@@ -1362,7 +1366,7 @@ class AccumulateFlow(ProvenancePE):
 
 
 
-class AccumulateFlowGrouped(ProvenancePE):
+class MultiInvocationStateUpdateGrouped(ProvenancePE):
     def __init__(self):
         ProvenancePE.__init__(self)
         
@@ -1377,23 +1381,33 @@ class AccumulateFlowGrouped(ProvenancePE):
         self.ignore_past_flow=False
         self.ignore_inputs=False
         self.stateful=False
+        iport=None
 
+        for i in self.inputs:
+            iport=i
+
+        #self.log("IPORT: "+str(iport))
 
         if (event=='write' and value==True):
            
            
-            vv=str(abs(make_hash(tuple([self.getInputAt(port='input',index=x) for x in self.inputconnections['input']['grouping']]))))
+            vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
+            self.log("LOOKUP: "+str(vv))
             self.setStateDerivations([vv])
+
             
         if (event=='void_invocation' and value==True):
+            
             if data!=None:
-              
-                vv=str(abs(make_hash(tuple([self.getInputAt(port='input',index=x) for x in self.inputconnections['input']['grouping']]))))
                 
-                self.update_prov_state(vv,data,metadata=metadata,dep=[vv])
-                
-                
+                vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
+                self.log("DADDDDD: "+str(vv))
+                self.ignorePastFlow()
+                self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
+
+        if (event=='void_invocation' and value==False):
+             self.discardInFlow()
 
             
 
