@@ -17,7 +17,7 @@ class SeismoPE(ProvenancePE):
     
     def __init__(self,*args,**kwargs):
         ProvenancePE.__init__(self,*args,**kwargs)
-        self.outputconnections[OUTPUT_DATA][TYPE] = ['timestamp', 'location', 'streams']
+        #self.outputconnections[OUTPUT_DATA][TYPE] = ['timestamp', 'location', 'streams']
 
         
     def extractItemMetadata(self,data):
