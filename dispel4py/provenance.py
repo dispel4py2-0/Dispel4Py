@@ -1538,7 +1538,7 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
         for x in nodelist:
             injectProv(x, provType, componentsType=componentsType, source=source,**kwargs)
     else:
-        print("Injecting provenance to: " + object.name +
+        print("Assigning Provenance Type to: " + object.name +
               " Original type: " + str(object.__class__.__bases__))
         parent = object.__class__.__bases__[0]
         localname = object.name
@@ -1574,8 +1574,7 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
 
         object.pe_init(pe_class=parent, **kwargs)
 
-        print("Injecting provenance to: " + object.name +
-              " Transoformed: " + str(object.__class__.__bases__))
+        print(" New type: " + str(object.__class__.__bases__))
         object.name = localname
         
         code=""
