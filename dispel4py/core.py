@@ -118,7 +118,7 @@ Example implementation::
         self.pickleIgnore = list(vars(self).keys())
         self.numprocesses = numprocesses
         self.name = self.__class__.__name__
-        print "SETTING NAME: "+self.name
+        #print "SETTING NAME: "+self.name
         self.id = self.name + str(uuid.uuid4())
 
     def _add_input(self, name, grouping=None, tuple_type=None):
