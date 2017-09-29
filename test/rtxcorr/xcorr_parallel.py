@@ -1,5 +1,6 @@
 from dispel4py.workflow_graph import WorkflowGraph 
 from dispel4py.provenance import *
+from dispel4py.seismo.seismo import *
 from dispel4py.new.processor  import *
 import time
 import random
@@ -7,6 +8,7 @@ import numpy
 import traceback 
 from dispel4py.base import create_iterative_chain, GenericPE, ConsumerPE, IterativePE, SimpleFunctionPE
 from dispel4py.new.simple_process import process_and_return
+from dispel4py.visualisation import display
 
 import IPython
 import pandas as pd
@@ -14,7 +16,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats.stats import pearsonr 
 import networkx as nx
-
+from itertools import combinations
 
 sns.set(style="white")
 
@@ -48,7 +50,7 @@ class Source(GenericPE):
         self.batchsize=batchsize
         #self.prov_cluster="myne"
          
-        self.parameters={'sampling_rate':sr}
+        self.parameters={'sampling_rate':sr,'batchsize':batchsize}
         
         #Uncomment this line to associate this PE to the mycluster provenance-cluster 
         #self.prov_cluster ='mycluster'
@@ -61,16 +63,17 @@ class Source(GenericPE):
         
         
         batch=[]
+        it=1
         #Streams out values at 1/self.sr sampling rate, until iteration>0
-        while (iteration>0):
+        while (it<=iteration):
             while (len(batch)<self.batchsize):
                 val=random.uniform(0,100)
                 time.sleep(1/self.sr)
                 batch.append(val)
                 
-            self.write('output',(iteration,self.var_index,batch),metadata={'var_index':self.var_index,'iteration':iteration})
+            self.write('output',(it,self.var_index,batch),metadata={'var':self.var_index,'iteration':it,'batch':batch})
             batch=[]
-            iteration-=1
+            it+=1
         
 
 class MaxClique(GenericPE):
@@ -79,7 +82,7 @@ class MaxClique(GenericPE):
         GenericPE.__init__(self)
         self._add_input('input')
         self._add_output('graph')
-        self._add_output('clique')
+        self._add_output('cliques')
         self.threshold=threshold
         #self.prov_cluster="myne"
          
@@ -94,45 +97,81 @@ class MaxClique(GenericPE):
          
         if 'input' in inputs:
             matrix=inputs['input'][0]
-            batch=inputs['input'][1]
+            iteration=inputs['input'][1]
         
         
-        self.log(matrix)
-        self.write('graph',matrix,metadata={'matrix':str(matrix),'batch':batch})
-        
-        G = nx.from_numpy_matrix(matrix)
-        labels = {i : i for i in G.nodes()}
-        plt.figure(batch)
-        pos = nx.circular_layout(G)
-        nx.draw_circular(G)
-        nx.draw_networkx_labels(G, pos, labels, font_size=15)
-        #nx.draw(G)
-        #fig1 = plt.gcf()
-       # plt.close(fig1)
+         
+       
         
         low_values_indices = matrix < self.threshold  # Where values are low
         matrix[low_values_indices] = 0 
-        self.log(matrix)
-        self.write('clique',matrix,metadata={'matrix':str(matrix),'batch':batch})
+        #plt.figure('graph_'+str(iteration))
                 
          
         
         H = nx.from_numpy_matrix(matrix)
-        plt.figure(2)
+        fig = plt.figure('graph_'+str(iteration))
+        text = "Iteration "+str(iteration)+" "+"graph"
+         
         labels = {i : i for i in H.nodes()}
         pos = nx.circular_layout(H)
         nx.draw_circular(H)
         nx.draw_networkx_labels(H, pos, labels, font_size=15)
+        fig.text(.1,.1,text)
+        self.write('graph',matrix,metadata={'graph':str(matrix),'batch':iteration})
        
          
-       # plt.close()
+        
+       # labels = {i : i for i in H.nodes()}
+       # pos = nx.circular_layout(H)
+       # nx.draw_circular(H)
+       # nx.draw_networkx_labels(H, pos, labels, font_size=15)
+       
+        
+        cliques = list(nx.find_cliques(H))
+        
+        fign=0
+        maxcnumber=0
+        maxclist=[]
+        
+        for nodes in cliques:
+            if (len(nodes)>maxcnumber):
+                maxcnumber=len(nodes)
+                
+        for nodes in cliques:
+            if (len(nodes)==maxcnumber):
+                maxclist.append(nodes)
+
+        for nodes in maxclist:    
+            edges = combinations(nodes, 2)
+            C = nx.Graph()
+            C.add_nodes_from(nodes)
+            C.add_edges_from(edges)
+            fig = plt.figure('clique_'+str(iteration)+str(fign))
+            text = "Iteration "+str(iteration)+" "+"clique "+str(fign)
+            fign+=1
+            labels = {i : i for i in C.nodes()}
+            pos = nx.circular_layout(C)
+            nx.draw_circular(C)
+            nx.draw_networkx_labels(C, pos, labels, font_size=15)
+            fig.text(.1,.1,text)
+            self.write('cliques',cliques,metadata={'clique':str(nodes),'label':text, 'order':maxcnumber}, location="file://cliques/")
+        
+        
+        
+#        C = nx.make_max_clique_graph(H)
+#        plt.figure('clique_'+str(iteration))
+#        labels = {i : i for i in C.nodes()}
+##        pos = nx.circular_layout(C)
+#        nx.draw_circular(C)
+#        nx.draw_networkx_labels(C, pos, labels, font_size=15)
          
        
         #Streams out values at 1/self.sr sampling rate, until iteration>0
         
         
 
-class CompMatrix(GenericPE):
+class CorrMatrix(GenericPE):
 
     def __init__(self,variables_number):
         GenericPE.__init__(self)
@@ -155,9 +194,10 @@ class CompMatrix(GenericPE):
                 self.data[inputs[x][0]]['matrix']=numpy.identity(self.size)
                 self.data[inputs[x][0]]['ro_count']=0
             
-            self.data[inputs[x][0]]['matrix'][inputs[x][1][1],inputs[x][1][0]]=inputs[x][2]
+            self.data[inputs[x][0]]['matrix'][inputs[x][1][0]-1,inputs[x][1][1]-1]=inputs[x][2]
             self.data[inputs[x][0]]['ro_count']+=1
-            self.log((inputs[x][0],self.data[inputs[x][0]]['ro_count']))
+            #self.log((inputs[x][0],self.data[inputs[x][0]]['ro_count']))
+            ##self.update_prov_state('iter_'+str(inputs[x][0]),None,metadata={'iter_'+str(inputs[x][0]):inputs[x][1]},dep=['iter_'+str(inputs[x][0])])
             
             if self.data[inputs[x][0]]['ro_count']==(self.size*(self.size-1))/2:
                 matrix=self.data[inputs[x][0]]['matrix']
@@ -181,7 +221,8 @@ class CompMatrix(GenericPE):
                 
                 sns.plt.show()   
                 self.log(matrix)
-                self.write('output',(matrix,inputs[x][0]),metadata={'matrix':str(d),'batch':str(inputs[x][0])})
+                self.write('output',(matrix,inputs[x][0]),metadata={'matrix':str(d),'iteration':str(inputs[x][0])})
+                ##dep=['iter_'+str(inputs[x][0])])
 
 
             
@@ -207,19 +248,19 @@ class CorrCoef(GenericPE):
                 
             for y in self.data[inputs[x][0]]:
                 #self.log([y,self.data])
-                ro=numpy.corrcoef(y[1],inputs[x][2])
-                self.log(((inputs[x][0],(inputs[x][1],y[0]),ro[0][1])))
-                self.write('output',(inputs[x][0],(inputs[x][1],y[0]),ro[0][1]))
+                ro=numpy.corrcoef(y[2],inputs[x][2])
+                #self.log(((inputs[x][0],(y[0],inputs[x][1]),ro[0][1])))
+                #self.write('output',(inputs[x][0],(y[1],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[1])+"_"+str(inputs[x][1]),'ro':ro[0][1]},dep=['var_'+str(y[1])+"_"+str(y[0])])
+                self.write('output',(inputs[x][0],(y[1],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[1])+"_"+str(inputs[x][1]),'ro':ro[0][1]})
             
-            if inputs[x][0] not in self.data:
-                self.data[inputs[x][0]]=[]
+            
             
             #appends var_index and value
-            self.data[inputs[x][0]].append((inputs[x][1],inputs[x][2]))
+            self.data[inputs[x][0]].append(inputs[x])
+            #self.log(self.data[inputs[x][0]])
+            #self.update_prov_state('var_'+str(inputs[x][1])+"_"+str(inputs[x][0]),inputs[x],metadata={'var_'+str(inputs[x][1]):inputs[x][2]}, ignore_inputs=False)
+            
      
- 
-
- 
 
      
 ####################################################################################################
@@ -236,9 +277,19 @@ input_data = {"Start": [{"iterations": [iterations]}]}
 # Instantiates the Workflow Components  
 # and generates the graph based on parameters
 
+variables_number=10
+sampling_rate=100
+batch_size=3
+iterations=2
+
+input_data = {"Start": [{"iterations": [iterations]}]}
+      
+# Instantiates the Workflow Components  
+# and generates the graph based on parameters
+
 def createWf():
     graph = WorkflowGraph()
-    mat=CompMatrix(variables_number)
+    mat=CorrMatrix(variables_number)
     mat.prov_cluster='record2'
     mc = MaxClique(-0.01)
     mc.prov_cluster='record0'
@@ -253,7 +304,7 @@ def createWf():
     cc.prov_cluster='record1'
     
       
-    for i in range(0,variables_number):
+    for i in range(1,variables_number+1):
         sources[i] = Source(sampling_rate,i,batch_size)
         sources[i].prov_cluster='record0'
         #'+str(i%variables_number)
@@ -261,7 +312,7 @@ def createWf():
         sources[i].numprocesses=1
         #sources[i].name="Source"+str(i)
 
-    for h in range(0,variables_number):
+    for h in range(1,variables_number+1):
         cc._add_input('input'+'_'+str(h+1),grouping=[0])
         graph.connect(start,'output',sources[h],'iterations')
         graph.connect(sources[h],'output',cc,'input'+'_'+str(h+1))
@@ -276,7 +327,13 @@ def createWf():
         
 
 
+
+
 print ("Preparing for: "+str(iterations/batch_size)+" projections" )
+
+
+#Store via recorders or sensors
+#ProvenanceRecorder.REPOS_URL='http://127.0.0.1:8080/j2ep-1.0/prov/workflow/insert'
 
 
 #Store via recorders or sensors
@@ -292,10 +349,9 @@ ProvenancePE.PROV_EXPORT_URL='http://127.0.0.1:8082/workflow/export/data/'
 ProvenancePE.PROV_PATH='./prov-files/'
 
 #Size of the provenance bulk before sent to storage or sensor
-ProvenancePE.BULK_SIZE=1
+ProvenancePE.BULK_SIZE=20
 
 #ProvenancePE.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
- 
 
 def createGraphWithProv():
     
@@ -303,53 +359,33 @@ def createGraphWithProv():
     #Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder subtypes
 
     # Ranomdly generated unique identifier for the current run
-    rid='CORR_SIMPLE_'+getUniqueId()
+    rid='CORR_LARGE_'+getUniqueId()
 
     
-    # Finally, provenance enhanced graph is prepared:
-
-
-    ##Initialise provenance storage in files:
-    #profile_prov_run(graph,None,provImpClass=(ProvenancePE,),componentsType={'CorrCoef':(ProvenancePE,)},username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='file')
-                  # skip_rules={'CorrCoef':{'ro':{'$lt':0}}})
-
-    #Initialise provenance storage to service:
-    #profile_prov_run(graph,None,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='service')
-                   #skip_rules={'CorrCoef':{'ro':{'$lt':0}}})
-
-    #clustersRecorders={'record0':ProvenanceRecorderToFileBulk,'record1':ProvenanceRecorderToFileBulk,'record2':ProvenanceRecorderToFileBulk,'record6':ProvenanceRecorderToFileBulk,'record3':ProvenanceRecorderToFileBulk,'record4':ProvenanceRecorderToFileBulk,'record5':ProvenanceRecorderToFileBulk}
-    #Initialise provenance storage to sensors and Files:
-    #profile_prov_run(graph,ProvenanceRecorderToFile,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
-    #clustersRecorders=clustersRecorders)
-    
-    #Initialise provenance storage to sensors and service:
-    #profile_prov_run(graph,ProvenanceRecorderToService,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
-   
-    #Summary view on each component
-    #profile_prov_run(graph,ProvenanceTimedSensorToService,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
-   
-   
-   
-    #Configuring provenance feedback-loop
-    #profile_prov_run(graph,ProvenanceTimedSensorToService,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor',feedbackPEs=['Source','MaxClique'])
-   
+    # Finally, provenance enhanced graph is prepared:   
    
     #Initialise provenance storage end associate a Provenance type with specific components:
     profile_prov_run(graph,None, provImpClass=(ProvenancePE,),
                      username='aspinuso',
                      runId=rid,
+                     input=[{'name':'variables_number','url':variables_number},
+                            {'name':'sampling_rate','url':sampling_rate},
+                            {'name':'batch_size','url':batch_size},
+                            {'name':'iterations','url':iterations}],
                      w3c_prov=False,
                      description="provState",
                      workflowName="test_rdwd",
                      workflowId="xx",
-                     componentsType= {'MaxClique':{'type':(SingleInvocationStateDep,),'state_dep_port':'graph'},
+                     #componentsType= {'MaxClique':{'type':(SingleInvocationStateDep,),'state_dep_port':'graph'},
+                     #                 #'CorrMatrix':{'type':(AccumulateFlow,)}},
+                     #                 'CorrMatrix':{'type':(MultiInvocationStateUpdateGrouped,)}},
                      save_mode='service')
 
     #
     return graph
 
+
+
 #graph=createWf()
 graph=createGraphWithProv()
 
-from dispel4py.visualisation import display
-display(graph)
