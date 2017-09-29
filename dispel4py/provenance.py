@@ -51,6 +51,13 @@ OUTPUT_METADATA = 'provenance'
 #    self._write(name, data)
 
 
+def clean_empty(d):
+    if not isinstance(d, (dict, list)):
+        return d
+    if isinstance(d, list):
+        return [v for v in (clean_empty(v) for v in d) if v]
+    return {k: v for k, v in ((k, clean_empty(v)) for k, v in d.items()) if v}
+
 def total_size(o, handlers={}, verbose=False):
     """ Returns the approximate memory footprint an object and all of its contents.
 
@@ -922,7 +929,7 @@ class ProvenancePE(GenericPE):
                 metadata.update({'stateful': not self.resetflow,
                 'feedbackIteration': self.feedbackIteration,
                 'worker': socket.gethostname(),
-                'parameters': self.dicToKeyVal(self.parameters),
+                'parameters': self.parameters,
                 'errors': self.error,
                 'pid': '%s' % os.getpid()})
 
@@ -1401,7 +1408,7 @@ class MultiInvocationStateUpdateGrouped(ProvenancePE):
             if data!=None:
                 
                 vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
-                self.log("DADDDDD: "+str(vv))
+               
                 self.ignorePastFlow()
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
@@ -1600,10 +1607,10 @@ def profile_prov_run(
         graph,
         provRecorderClass=None,
         provImpClass=ProvenancePE,
-        input=[],
+        input=None,
         username=None,
         workflowId=None,
-        description="",
+        description=None,
         system_id=None,
         workflowName=None,
         w3c_prov=False,
@@ -1612,10 +1619,11 @@ def profile_prov_run(
         clustersRecorders={},
         feedbackPEs=[],
         save_mode='file',
-        sel_rules={}
+        sel_rules={},
+        update=False
         ):
 
-    if username is None or workflowId is None or workflowName is None:
+    if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
     if runId is None:
         runId = getUniqueId()
@@ -1634,8 +1642,10 @@ def profile_prov_run(
                          "mapping": sys.argv[1],
                          "sel_rules":sel_rules,
                          "source":source,
-                         "ns":namespaces
+                         "ns":namespaces,
+                          "update":update
                          }
+    #newrun.parameters=clean_empty(newrun.parameters)
     _graph = WorkflowGraph()
     provrec = None
 
@@ -1820,10 +1830,11 @@ class NewWorkflowRun(ProvenancePE):
             runId=None,
             modules=None,
             source=None,
-            ns=None):
+            ns=None,
+            update=False):
 
         bundle = {}
-        if username is None or workflowId is None or workflowName is None:
+        if not update and (username is None or workflowId is None or workflowName is None):
             raise Exception("Missing values")
         else:
             if runId is None:
@@ -1844,7 +1855,7 @@ class NewWorkflowRun(ProvenancePE):
             bundle["modules"] = modules
             bundle["source"] = source
             bundle["ns"] = ns
-            
+            bundle=clean_empty(bundle)
              
 
         return bundle
