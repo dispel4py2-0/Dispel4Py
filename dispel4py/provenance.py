@@ -483,7 +483,7 @@ class ProvenancePE(GenericPE):
         else:
             self.save_mode=SAVE_MODE_FILE = kwargs['save_mode']
 
-
+        self.wcount=0
         self.resetflow = False
         self.stateUpdateIndex=0
         self.ignore_inputs = False
@@ -491,12 +491,16 @@ class ProvenancePE(GenericPE):
         self.ignore_past_flow = False
         self.derivationIds = list()
         self.iterationIndex = 0
-        self.behalfOf = self.id 
+        
         #name + '_' + str(_d4p_plan_sqn)
         _d4p_plan_sqn = _d4p_plan_sqn + 1
         self.countstatewrite=0
+        if not hasattr(self, 'comp_id'):
+            self.behalfOf=self.id
+        else:
+            self.behalfOf=self.comp_id
         if not hasattr(self, 'prov_cluster'):
-                    self.prov_cluster=self.behalfOf
+            self.prov_cluster=self.behalfOf
 
     def __init__(self):
         GenericPE.__init__(self)
@@ -1531,7 +1535,7 @@ namespaces={}
 ' This function dinamically extend the type of each the nodes of the graph '
 ' or subgraph with ProvenancePE type or its specialization'
 
-def injectProv(object, provType, active=True,componentsType=None, source={},**kwargs):
+def injectProv(object, provType, active=True,componentsType=None, workflow={},**kwargs):
     print('Change grouping implementation ')
 
     dispel4py.new.processor.GroupByCommunication.getDestination = \
@@ -1543,7 +1547,7 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
         object.flatten()
         nodelist = object.getContainedObjects()
         for x in nodelist:
-            injectProv(x, provType, componentsType=componentsType, source=source,**kwargs)
+            injectProv(x, provType, componentsType=componentsType, workflow=workflow,**kwargs)
     else:
         print("Assigning Provenance Type to: " + object.name +
               " Original type: " + str(object.__class__.__bases__))
@@ -1579,6 +1583,8 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
             object.__class__ = type(str(object.__class__),
                                 provType+(object.__class__,), body)
 
+        object.comp_id=object.id
+        #+"-component-"+getUniqueId()
         object.pe_init(pe_class=parent, **kwargs)
 
         print(" New type: " + str(object.__class__.__bases__))
@@ -1587,11 +1593,21 @@ def injectProv(object, provType, active=True,componentsType=None, source={},**kw
         code=""
         for x in inspect.getmembers(object.__class__, predicate=inspect.ismethod):
             code+=inspect.getsource(x[len(x)-1])+'\n'
-            
-        source.update({object.id:{'type':str(object.__class__.__bases__),'code':code,'functionName':object.name}})
+
+
+        #workflow.append({"@type":"s-prov:Implementation",
+        #                 "prov:wasPlanOf":{
+        #                    "@type":"s-prov:Component", 
+        #                    "s-prov:CName":object.id,
+        #                    "@id":object.comp_id, 
+        #                    "s-prov:type":str(object.__class__.__bases__)
+        #                    },
+        #                "s-prov:functionName":object.name,
+        #                "s-prov:source":code}) 
+        workflow.update({object.id:{'type':str(object.__class__.__bases__),'code':code,'functionName':object.name}})
         if hasattr(object, 'ns'):
             namespaces.update(object.ns)
-    return source
+    return workflow
 
 ' This methods enriches the graph to enable the production and recording '
 ' of run-specific provenance information the provRecorderClass parameter '
@@ -1628,7 +1644,7 @@ def profile_prov_run(
     if runId is None:
         runId = getUniqueId()
     
-    source=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules)
+    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules)
     
     newrun = NewWorkflowRun(save_mode)
 
@@ -1641,9 +1657,9 @@ def profile_prov_run(
                          "runId": runId,
                          "mapping": sys.argv[1],
                          "sel_rules":sel_rules,
-                         "source":source,
+                         "source":workflow,
                          "ns":namespaces,
-                          "update":update
+                         "update":update
                          }
     #newrun.parameters=clean_empty(newrun.parameters)
     _graph = WorkflowGraph()
@@ -1829,7 +1845,7 @@ class NewWorkflowRun(ProvenancePE):
             w3c=False,
             runId=None,
             modules=None,
-            source=None,
+            subProcesses=None,
             ns=None,
             update=False):
 
@@ -1853,7 +1869,7 @@ class NewWorkflowRun(ProvenancePE):
             bundle["mapping"] = self.parameters['mapping']
             bundle["type"] = "workflow_run"
             bundle["modules"] = modules
-            bundle["source"] = source
+            bundle["source"] = subProcesses
             bundle["ns"] = ns
             bundle=clean_empty(bundle)
              
@@ -1872,7 +1888,7 @@ class NewWorkflowRun(ProvenancePE):
             workflowName=self.parameters["workflowName"],
             runId=self.parameters["runId"],
             modules=sorted(["%s==%s" % (i.key, i.version) for i in pip.get_installed_distributions()]),
-            source=self.parameters["source"],
+            subProcesses=self.parameters["source"],
             ns=self.parameters["ns"])
             
         self.log("STORING WORKFLOW RUN METADATA")
