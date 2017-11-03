@@ -1302,8 +1302,8 @@ class ProvenancePE(GenericPE):
         
 
     def buildDerivation(self, data, port=""):
-		
-        try:
+        
+        if data!=None and 'id' in data:
 
             derivation = {'port': port, 'DerivedFromDatasetID':
                           data['id'], 'TriggeredByProcessIterationID':
@@ -1319,9 +1319,9 @@ class ProvenancePE(GenericPE):
 
             self.derivationIds.append(derivation)
 
-        except Exception:
+        else:
             id=self.extractExternalInputDataId(data,port)
-            traceback.print_exc(file=sys.stderr)
+            #traceback.print_exc(file=sys.stderr)
             derivation = {'port': port, 'DerivedFromDatasetID':
                           id, 'TriggeredByProcessIterationID':
                           None, 'prov_cluster':
