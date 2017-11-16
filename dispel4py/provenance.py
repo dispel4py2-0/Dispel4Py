@@ -699,7 +699,8 @@ class ProvenancePE(GenericPE):
             if self.provon:
                 self.endTime = datetime.datetime.utcnow()
                 trace = self.packageAll(metadata)
-                stream = self.prepareOutputStream(data, trace, port,**kwargs)
+            
+            stream = self.prepareOutputStream(data, trace, port,**kwargs)
               
             try:
                 if port is not None and port != '_d4p_state' \
@@ -868,28 +869,39 @@ class ProvenancePE(GenericPE):
         try:
             streamtransfer = {}
             streamtransfer['_d4p'] = data
-            if self.provon:
+            #self.log("PROVON: "+str(self.provon))
+            
+            try:
 
-                try:
+
+                streamtransfer["prov_cluster"] = self.prov_cluster
+                streamtransfer["port"] = port
+                
+
+                if self.provon:
+                    
+                    #self.log("lnking Component trace")
                     streamtransfer['id'] = trace[
                         'metadata']["streams"][0]["id"]
                     streamtransfer[
                         "TriggeredByProcessIterationID"] = self.iterationId
-                    streamtransfer[
-                        "prov_cluster"] = self.prov_cluster
-                    streamtransfer[
-                        "port"] = port
+                    
                     if port=='_d4p_state':
                         #self.log(''' Building SELF Derivation '''+str(trace))
                         self._updateState(kwargs['lookupterm'],trace[
                         'metadata']["streams"][0]['id'])
                         streamtransfer['lookupterm']=kwargs['lookupterm']
                         self.buildDerivation(streamtransfer,port='_d4p_state')
-                        #if self.resetflow==True:
-						#    self.discardOutFlow()
-                        #self.resetflow=True
-                except:
-                    pass
+                        
+                else:
+                    
+                    #self.log("Skip Component trace")
+                    streamtransfer["id"] = self.derivationIds[0]["DerivedFromDatasetID"]
+                    streamtransfer["TriggeredByProcessIterationID"] = self.derivationIds[0]["TriggeredByProcessIterationID"]
+                    
+            except:
+                #self.log(traceback.format_exc())
+                pass
             return streamtransfer
 
         except Exception:
@@ -1305,10 +1317,10 @@ class ProvenancePE(GenericPE):
         
         if data!=None and 'id' in data:
 
-            derivation = {'port': port, 'DerivedFromDatasetID':
-                          data['id'], 'TriggeredByProcessIterationID':
-                          data['TriggeredByProcessIterationID'], 'prov_cluster':
-                          data['prov_cluster'],
+            derivation = {'port': port, 
+                          'DerivedFromDatasetID': data['id'], 
+                          'TriggeredByProcessIterationID': data['TriggeredByProcessIterationID'], 
+                          'prov_cluster': data['prov_cluster'],
                           'iterationIndex':self.iterationIndex
                           }
                           
@@ -1377,7 +1389,7 @@ class AccumulateFlow(ProvenancePE):
 
 
 
-class MultiInvocationStateUpdateGrouped(ProvenancePE):
+class MultiInvocationGrouped(ProvenancePE):
     def __init__(self):
         ProvenancePE.__init__(self)
         
@@ -1427,7 +1439,7 @@ class MultiInvocationStateUpdateGrouped(ProvenancePE):
         
           
 
-class SingleInvocationStateDep(ProvenancePE):
+class SingleInvocationStateful(ProvenancePE):
     STATEFUL_PORT='avg'
     def __init__(self):
         ProvenancePE.__init__(self)
@@ -1449,7 +1461,7 @@ class SingleInvocationStateDep(ProvenancePE):
             self.discardState()
         
 
-class MultiInvocationStateDep(ProvenancePE):
+class MultiInvocationStateful(ProvenancePE):
     STATEFUL_PORT='avg'
     def __init__(self):
         ProvenancePE.__init__(self)
