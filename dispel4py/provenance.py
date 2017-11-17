@@ -446,10 +446,17 @@ class ProvenancePE(GenericPE):
        
         if 'sel_rules' in kwargs and self.name in kwargs['sel_rules']:
             print(self.name+" "+str(kwargs['sel_rules'][self.name]))
-            self.sel_rules = kwargs['sel_rules'][self.name]
+            self.sel_rules = kwargs['sel_rules'][self.name]['rules']
         else:
             self.sel_rules=None
         
+        if 'transfer_rules' in kwargs and self.name in kwargs['transfer_rules']:
+            print(self.name+" "+str(kwargs['transfer_rules'][self.name]))
+            self.transfer_rules = kwargs['transfer_rules'][self.name]
+        else:
+            self.transfer_rules=None
+
+
         if 'creator' not in kwargs:
             self.creator = None
         else:
@@ -1231,7 +1238,7 @@ class ProvenancePE(GenericPE):
                         #self.log("A"+str(self.sel_rules[key]))
                         self.log(s[key]) 
                         self.log(type(s[key]))
-                        self.log(type(self.sel_rules[key]['$lt']))
+                         
                         if '$eq' in self.sel_rules[key] and s[key]==self.sel_rules[key]['$eq']:
                             return True
                         elif '$gt' in self.sel_rules[key] and '$lt' in self.sel_rules[key]:
@@ -1247,6 +1254,37 @@ class ProvenancePE(GenericPE):
                         else:
                             return self.provon
         return self.provon
+
+
+    def checkTransferRule(self,streammeta):
+        self.log("Checking Transfer-Rules")
+        for key in self.transfer_rules["rules"]:
+                for s in streammeta:
+                    if key in s: 
+                        #self.log("A"+str(self.sel_rules[key]))
+                        self.log(s[key]) 
+                        self.log(type(s[key]))
+                        
+                        if '$eq' in self.transfer_rules["rules"][key] and s[key]==self.transfer_rules["rules"][key]['$eq']:
+                             
+                            return True
+                        elif '$gt' in self.transfer_rules["rules"][key] and '$lt' in self.transfer_rules["rules"][key]:
+                            if (s[key]>self.transfer_rules["rules"][key]['$gt'] and s[key]<self.transfer_rules["rules"][key]['$lt']):
+                                self.log("GT-LT")
+                                 
+                                return True
+                        elif '$gt' in self.transfer_rules["rules"][key] and s[key]>self.transfer_rules["rules"][key]['$gt']:
+                            self.log("GT") 
+                            
+                            return True
+                        elif '$lt' in self.transfer_rules["rules"][key] and s[key]<self.transfer_rules["rules"][key]['$lt']:
+                            self.log("LT")
+                            
+                            return True
+                        else:
+                            return False
+        return False
+        
     
             
     def buildUserMetadata(self, data, **kwargs):
@@ -1254,7 +1292,7 @@ class ProvenancePE(GenericPE):
 
         streamItem = {}
         streammeta = []
-
+        settransfer=False
         streammeta = self.extractItemMetadata(data,kwargs['output_port'])
         
         if not isinstance(streammeta, list):
@@ -1273,7 +1311,8 @@ class ProvenancePE(GenericPE):
         
         if self.sel_rules!=None:
             self.provon=self.checkSelectiveRule(streammeta)
-            
+
+       
         if not self.provon:
             return streamItem
         #self.log(kwargs)
@@ -1290,6 +1329,17 @@ class ProvenancePE(GenericPE):
                           "format": kwargs['format']})
         #streamItem.update({"size": total_size(data)})
         streamItem.update({"size": 0})
+
+        if self.transfer_rules!=None:
+            settransfer=self.checkTransferRule(streammeta)
+
+
+        if settransfer:
+            streamItem["s-prov:immediateAccess"]=True
+            streamItem["s-prov:first-known-destination"]=self.transfer_rules["destination"]
+
+        
+        
         streamlist.append(streamItem)
         return streamlist
 
@@ -1648,6 +1698,7 @@ def profile_prov_run(
         feedbackPEs=[],
         save_mode='file',
         sel_rules={},
+        transfer_rules={},
         update=False
         ):
 
@@ -1656,7 +1707,7 @@ def profile_prov_run(
     if runId is None:
         runId = getUniqueId()
     
-    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules)
+    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules,transfer_rules=transfer_rules)
     
     newrun = NewWorkflowRun(save_mode)
 
@@ -1669,6 +1720,7 @@ def profile_prov_run(
                          "runId": runId,
                          "mapping": sys.argv[1],
                          "sel_rules":sel_rules,
+                         "transfer_rules":transfer_rules,
                          "source":workflow,
                          "ns":namespaces,
                          "update":update
