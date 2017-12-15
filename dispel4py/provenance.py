@@ -421,12 +421,12 @@ class ProvenancePE(GenericPE):
 
 
 
-    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
         
-        if (event=='void_invocation') and value==True:
+        if (event=='end_invocation_event') and voidInvocation==True:
             self.discardInFlow(discardState=True)
         
-        if (event=='void_invocation') and value==False:
+        if (event=='end_invocation_event') and voidInvocation==False:
             self.discardInFlow(discardState=True)
 
     def pe_init(self, *args, **kwargs):
@@ -446,7 +446,7 @@ class ProvenancePE(GenericPE):
        
         if 'sel_rules' in kwargs and self.name in kwargs['sel_rules']:
             print(self.name+" "+str(kwargs['sel_rules'][self.name]))
-            self.sel_rules = kwargs['sel_rules'][self.name]['rules']
+            self.sel_rules = kwargs['sel_rules'][self.name]
         else:
             self.sel_rules=None
         
@@ -565,14 +565,8 @@ class ProvenancePE(GenericPE):
         else:
             self.__processwrapper(inputs)
 
-        #if (self.void_invocation==True):
          
-        #for x in inputs: 
-        #    try:
-        #        self.log(inputs[x])
-        #        self.apply_derivation_rule('void_invocation',self.void_invocation,data=inputs[x]['_d4p'],port=x)
-        #    except:
-        self.apply_derivation_rule('void_invocation',self.void_invocation,data=inputs)
+        self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=inputs)
 
     
 
@@ -1045,25 +1039,58 @@ class ProvenancePE(GenericPE):
 
      
 
-    def discardInFlow(self,discardState=False): 
+    def discardInFlow(self,wlength=None,discardState=False): 
         #self.log('BEFORE '+str(self.derivationIds))
         
         
         if discardState==True:
+            if wlength==None:
             #self.log("discarding")
-            self.derivationIds=[]
+                self.derivationIds=[]
+            else:
+                count=0
+                for x in self.derivationIds:
+                    if x!=None and x['port']!='_d4p_state' and count>=wlength-1:
+                        self.derivationIds.remove(x)
+                    count+=1
+                for x in self.derivationIds:
+                    if x!=None and x['port']=='_d4p_state':
+                        self.derivationIds.remove(x)
+                        
+
+
+
         else:
             maxit=0
             state=None
-            for x in self.derivationIds: 
-                if x['port']=='_d4p_state' and x['iterationIndex']>=maxit:
+            self.log("BEFORE" +str(self.derivationIds))
+            for x in self.derivationIds:
+                 
+                if x!=None and x['port']=='_d4p_state' and x['iterationIndex']>=maxit:
+                    
                     state=x
                     maxit=x['iterationIndex']
             
-            if state!=None:   
-                self.derivationIds=[state]
+            if wlength==None:
+                if state!=None:   
+                    self.derivationIds=[state]
+                else:
+                    self.derivationIds=[]
             else:
-                self.derivationIds=[]
+                count=0
+                for x in self.derivationIds:
+                    self.log("COUNT: "+str(count)+" WLENTGH: "+str(wlength))
+                    if x!=None and x['port']!='_d4p_state' and count>=wlength-1:
+                        self.log("REMOVE: "+str(x['iterationIndex']))
+                        del self.derivationIds[0]   
+                    count+=1
+
+               
+
+                if state!=None: 
+                    self.derivationIds.append(state)
+
+            self.log("AFTER" +str(self.derivationIds))
         
         
         #self.log("ITENDEX "+str(self.iterationIndex))    
@@ -1431,12 +1458,34 @@ class AccumulateFlow(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
          
             
-        if (event=='void_invocation' and value==False):
+        if (event=='end_invocation_event' and voidInvocation==False):
             self.discardInFlow()
 
+
+
+
+
+class SlideFlow(ProvenancePE):
+    def __init__(self):
+        ProvenancePE.__init__(self)
+    
+    #self.W_LENTGH
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+       
+        #if (event=='write'):  
+        #    vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
+        #    self.update_prov_state(vv,data,metadata=metadata,dep=vv)
+
+         
+        self.ignore_past_flow=False
+        self.ignore_inputs=False
+        self.stateful=False
+        
+        if (event=='end_invocation_event'):
+             self.discardInFlow(wlength=self.WLENTGH)
 
 
 class MultiInvocationGrouped(ProvenancePE):
@@ -1444,7 +1493,7 @@ class MultiInvocationGrouped(ProvenancePE):
         ProvenancePE.__init__(self)
         
   
-    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
        
         #if (event=='write'):  
         #    vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
@@ -1461,7 +1510,7 @@ class MultiInvocationGrouped(ProvenancePE):
 
         #self.log("IPORT: "+str(iport))
 
-        if (event=='write' and value==True):
+        if (event=='write' and voidInvocation==True):
            
            
             vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
@@ -1469,7 +1518,7 @@ class MultiInvocationGrouped(ProvenancePE):
             self.setStateDerivations([vv])
 
             
-        if (event=='void_invocation' and value==True):
+        if (event=='end_invocation_event' and voidInvocation==True):
             
             if data!=None:
                 
@@ -1479,7 +1528,7 @@ class MultiInvocationGrouped(ProvenancePE):
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
 
-        if (event=='void_invocation' and value==False):
+        if (event=='end_invocation_event' and voidInvocation==False):
              self.discardInFlow()
 
             
@@ -1490,12 +1539,12 @@ class MultiInvocationGrouped(ProvenancePE):
           
 
 class SingleInvocationStateful(ProvenancePE):
-    STATEFUL_PORT='avg'
+     
     def __init__(self):
         ProvenancePE.__init__(self)
         
     
-    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
         #self.log(self.STATEFUL_PORT)
         self.ignore_past_flow=False
         self.ignore_inputs=False
@@ -1505,7 +1554,7 @@ class SingleInvocationStateful(ProvenancePE):
         if (event=='write' and port != self.STATEFUL_PORT):
             #self.log("IGNORE "+self.STATEFUL_PORT)
             self.ignorePastFlow()
-        if (event=='void_invocation' and value==False):
+        if (event=='end_invocation_event' and voidInvocation==False):
            # self.log("VOID "+self.STATEFUL_PORT)
             self.discardInFlow()
             self.discardState()
@@ -1517,7 +1566,7 @@ class MultiInvocationStateful(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
          
         self.ignore_past_flow=False
         self.ignore_inputs=False
@@ -1538,7 +1587,7 @@ class AccumulateStateTrace(ProvenancePE):
         ProvenancePE.__init__(self)
         
     
-    def apply_derivation_rule(self,event,value,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
          
         
         if (event=='write'):
@@ -1547,7 +1596,7 @@ class AccumulateStateTrace(ProvenancePE):
             
             
             
-       # if (event=='void_invocation' and value==False):
+       # if (event=='end_invocation_event' and value==False):
             #ignores old flow-dependencies
         #    self.ignoreState();
 
@@ -1568,13 +1617,13 @@ class OnWriteOnly(ProvenancePE):
         self.streammeta=[]
         self.count=1
     
-    def apply_derivation_rule(self,event,value):
+    def apply_derivation_rule(self,event,voidInvocation):
         
         if (event=='state'):
             #self.log(event)
             self.provon=False
         
-        super(ProvenanceOnWriteOnly,self).apply_derivation_rule(event,value)
+        super(ProvenanceOnWriteOnly,self).apply_derivation_rule(event,voidInvocation)
  
 
 
@@ -1635,6 +1684,8 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
             # if any associates a statful to the provenance type
             if 'state_dep_port' in componentsType[object.name]:
                 object.STATEFUL_PORT= componentsType[object.name]['state_dep_port']
+            if 'wlength' in componentsType[object.name]:
+                object.WLENTGH= componentsType[object.name]['wlength']
 
 
         else:
