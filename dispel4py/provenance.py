@@ -441,6 +441,7 @@ class ProvenancePE(GenericPE):
         self.stateful=False
         self.stateDerivations=[]
 
+
         if 'pe_class' in kwargs and kwargs['pe_class'] != GenericPE:
             self.impcls = kwargs['pe_class']
        
@@ -513,6 +514,7 @@ class ProvenancePE(GenericPE):
         GenericPE.__init__(self)
         self.parameters = {}
         self._add_output(OUTPUT_METADATA)
+        self.ns={}
 
 
     def __getUniqueId(self):
@@ -568,7 +570,9 @@ class ProvenancePE(GenericPE):
          
         self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=inputs)
 
-    
+    def addNameSpacePrefix(self,prefix,url):
+        self.ns.update({prefix:url})
+
 
     def extractItemMetadata(self, data, port):
 
