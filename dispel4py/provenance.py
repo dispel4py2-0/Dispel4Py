@@ -570,7 +570,7 @@ class ProvenancePE(GenericPE):
          
         self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=inputs)
 
-    def addNameSpacePrefix(self,prefix,url):
+    def addNamespacePrefix(self,prefix,url):
         self.ns.update({prefix:url})
 
 
