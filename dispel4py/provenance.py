@@ -534,8 +534,11 @@ class ProvenancePE(GenericPE):
             streams["streams"].update({inp: data})
         return streams
 
-    def getInputAt(self, port="input", index=0):
-        return self.inputs[port][index]
+    def getInputAt(self, port="input", index=None):
+        if index==None:
+            return self.inputs[port]
+        else:
+            return self.inputs[port][index]
 
     def _preprocess(self):
         self.instanceId = self.name + "-Instance-" + \
@@ -567,8 +570,13 @@ class ProvenancePE(GenericPE):
         else:
             self.__processwrapper(inputs)
 
-         
-        self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=inputs)
+        for x in inputs:
+            data=inputs[x]
+            if type(data)==dict and '_d4p' in data:
+                self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=data['_d4p'])   
+            else:
+                self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=data)  
+        
 
     def addNamespacePrefix(self,prefix,url):
         self.ns.update({prefix:url})
@@ -1067,7 +1075,7 @@ class ProvenancePE(GenericPE):
         else:
             maxit=0
             state=None
-            self.log("BEFORE" +str(self.derivationIds))
+            #self.log("BEFORE" +str(self.derivationIds))
             for x in self.derivationIds:
                  
                 if x!=None and x['port']=='_d4p_state' and x['iterationIndex']>=maxit:
@@ -1094,7 +1102,7 @@ class ProvenancePE(GenericPE):
                 if state!=None: 
                     self.derivationIds.append(state)
 
-            self.log("AFTER" +str(self.derivationIds))
+            #self.log("AFTER" +str(self.derivationIds))
         
         
         #self.log("ITENDEX "+str(self.iterationIndex))    
@@ -1129,7 +1137,7 @@ class ProvenancePE(GenericPE):
                     did=self.getProvStateObjectId(d)
                     
                     if did!=None:
-                        self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="stateCollection")
+                        self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
                         #self.ignore_state = False
                         #self.log("DERI "+str(did))
                         #self.log("DERI2 "+str(self.derivationIds))
@@ -1469,6 +1477,47 @@ class AccumulateFlow(ProvenancePE):
             self.discardInFlow()
 
 
+class Nby1Flow(ProvenancePE):
+    def __init__(self):
+        ProvenancePE.__init__(self)
+        self.ports_lookups={}
+        
+
+    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    
+        for i in self.inputs:
+                iport=i
+
+            #self.log("IPORT: "+str(iport))
+
+        if (event=='write'):
+            dep=[]
+            for x in self.inputconnections:
+                if x!=iport and x!='_d4py_feedback':
+                    vv=self.ports_lookups[x].pop(0)
+                    dep.append(vv)
+                    #self.log("LOOKUP: "+str(vv))
+                self.setStateDerivations(dep)
+                
+
+        if (event=='end_invocation_event' and voidInvocation==True):
+                
+            if data!=None:
+                #self.ports_lookups['iport'].append(vv)
+                vv=str(abs(make_hash(tuple(iport+str(self.iterationIndex)))))
+                if not (iport in self.ports_lookups):
+                    self.ports_lookups[iport]=[]
+
+                self.ports_lookups[iport].append(vv)
+                self.log(self.ports_lookups)
+                #self.ignorePastFlow()
+                self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)})
+                self.discardInFlow()
+
+
+        if (event=='end_invocation_event' and voidInvocation==False):
+                 self.discardInFlow()
+                 self.discardState()
 
 
 
@@ -1514,7 +1563,7 @@ class MultiInvocationGrouped(ProvenancePE):
 
         #self.log("IPORT: "+str(iport))
 
-        if (event=='write' and voidInvocation==True):
+        if (event=='write'):
            
            
             vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
@@ -1565,7 +1614,7 @@ class SingleInvocationStateful(ProvenancePE):
         
 
 class MultiInvocationStateful(ProvenancePE):
-    STATEFUL_PORT='avg'
+     
     def __init__(self):
         ProvenancePE.__init__(self)
         
@@ -1575,12 +1624,12 @@ class MultiInvocationStateful(ProvenancePE):
         self.ignore_past_flow=False
         self.ignore_inputs=False
         self.stateful=False
-        if (event=='write' and port == 'avg'):
-            self.update_prov_state('avg',data,metadata=metadata)
+        if (event=='write' and port == self.STATEFUL_PORT):
+            self.update_prov_state(self.STATEFUL_PORT,data,metadata=metadata)
             self.discardInFlow()
             
             
-        if (event=='write' and port != 'avg'):
+        if (event=='write' and port != self.STATEFUL_PORT):
             #ignores old flow-dependencies
             self.ignorePastFlow()
 
