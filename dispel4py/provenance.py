@@ -911,6 +911,8 @@ class ProvenancePE(GenericPE):
                     #self.log("Skip Component trace")
                     streamtransfer["id"] = self.derivationIds[0]["DerivedFromDatasetID"]
                     streamtransfer["TriggeredByProcessIterationID"] = self.derivationIds[0]["TriggeredByProcessIterationID"]
+                    streamtransfer["up:assertionType"] = "up:Incomplete"
+                    self.log(streamtransfer)
                     
             except:
                 #self.log(traceback.format_exc())
@@ -1270,28 +1272,33 @@ class ProvenancePE(GenericPE):
         self.stateDerivations=terms
 
     def checkSelectiveRule(self,streammeta):
-        self.log("Checking Skip-Rules")
-        for key in self.sel_rules:
+        self.log("Checking Skip-Rules: "+str(self.sel_rules))
+        rules=self.sel_rules["rules"]
+
+        for key in rules:
+
                 for s in streammeta:
                     if key in s: 
                         #self.log("A"+str(self.sel_rules[key]))
                         self.log(s[key]) 
                         self.log(type(s[key]))
                          
-                        if '$eq' in self.sel_rules[key] and s[key]==self.sel_rules[key]['$eq']:
+                        if '$eq' in rules[key] and s[key]==rules[key]['$eq']:
                             return True
-                        elif '$gt' in self.sel_rules[key] and '$lt' in self.sel_rules[key]:
-                            if (s[key]>self.sel_rules[key]['$gt'] and s[key]<self.sel_rules[key]['$lt']):
+                        elif '$gt' in rules[key] and '$lt' in rules[key]:
+                            if (s[key]>rules[key]['$gt'] and s[key]<rules[key]['$lt']):
                                 self.log("GT-LT") 
                                 return True
-                        elif '$gt' in self.sel_rules[key] and s[key]>self.sel_rules[key]['$gt']:
+                            else:
+                                return False
+                        elif '$gt' in rules[key] and s[key]>rules[key]['$gt']:
                             self.log("GT") 
                             return True
-                        elif '$lt' in self.sel_rules[key] and s[key]<self.sel_rules[key]['$lt']:
+                        elif '$lt' in rules[key] and s[key]<rules[key]['$lt']:
                             self.log("LT") 
                             return True
                         else:
-                            return self.provon
+                            return False
         return self.provon
 
 
@@ -1398,7 +1405,7 @@ class ProvenancePE(GenericPE):
 
                         del self.derivationIds[self.derivationIds.index(j)]
     
-    def extractExternalInputDataId(self,data,port):
+    def extractDataSourceId(self,data,port):
         self.makeUniqueId(data,port)
         
 
@@ -1410,18 +1417,26 @@ class ProvenancePE(GenericPE):
                           'DerivedFromDatasetID': data['id'], 
                           'TriggeredByProcessIterationID': data['TriggeredByProcessIterationID'], 
                           'prov_cluster': data['prov_cluster'],
-                          'iterationIndex':self.iterationIndex
+                          'iterationIndex':self.iterationIndex,
+                          
+
+
+
                           }
                           
             if port=="_d4p_state": 
                 derivation.update({'lookupterm':data['lookupterm']})
                  
 		    
+            if "up:assertionType" in data:
+                derivation.update({"up:assertionType":data["up:assertionType"]})
+
+
 
             self.derivationIds.append(derivation)
 
         else:
-            id=self.extractExternalInputDataId(data,port)
+            id=self.extractDataSourceId(data,port)
             #traceback.print_exc(file=sys.stderr)
             derivation = {'port': port, 'DerivedFromDatasetID':
                           id, 'TriggeredByProcessIterationID':
@@ -1580,6 +1595,7 @@ class MultiInvocationGrouped(ProvenancePE):
                 self.ignorePastFlow()
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
+                self.discardState()
 
         if (event=='end_invocation_event' and voidInvocation==False):
              self.discardInFlow()
