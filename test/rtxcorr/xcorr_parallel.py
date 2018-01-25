@@ -267,10 +267,10 @@ class CorrCoef(GenericPE):
 
 #Declare workflow inputs: (each iteration prduces a batch_size of samples at the specified sampling_rate)
 # number of projections = iterations/batch_size at speed defined by sampling rate
-variables_number=7
+variables_number=10
 sampling_rate=100
 batch_size=5
-iterations=5
+iterations=20
 
 input_data = {"Start": [{"iterations": [iterations]}]}
       
@@ -302,13 +302,11 @@ def createWf():
     
     cc=CorrCoef()
     cc.prov_cluster='record1'
-    
+    stock=['NASDAQ','MIBTEL','DOWJ']
       
     for i in range(1,variables_number+1):
         sources[i] = Source(sampling_rate,i,batch_size)
-        sources[i].prov_cluster='record0'
-        #'+str(i%variables_number)
-        #+str(i%7)
+        sources[i].prov_cluster=stock[i%len(stock)-1]
         sources[i].numprocesses=1
         #sources[i].name="Source"+str(i)
 
@@ -376,10 +374,15 @@ def createGraphWithProv():
                      description="provState",
                      workflowName="test_rdwd",
                      workflowId="xx",
-                     #componentsType= {'MaxClique':{'type':(SingleInvocationStateDep,),'state_dep_port':'graph'},
-                     #                 #'CorrMatrix':{'type':(AccumulateFlow,)}},
-                     #                 'CorrMatrix':{'type':(MultiInvocationStateUpdateGrouped,)}},
-                     save_mode='service')
+                     componentsType= {'MaxClique':{'s-prov:type':(SingleInvocationStateful,),
+                                                   'state_dep_port':'graph',
+                                                   's-prov:prov-cluster':'knmi:stockAnalyser'},
+                                      'CorrMatrix':{'s-prov:type':(MultiInvocationGrouped,),
+                                                    's-prov:prov-cluster':'knmi:stockAnalyser'},
+                                      'CorrCoef':{'s-prov:type':(SingleInvocationFlow,),
+                                                    's-prov:prov-cluster':'knmi:Correlator'}},
+                                      
+                    save_mode='service')
 
     #
     return graph
