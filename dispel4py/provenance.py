@@ -1001,7 +1001,7 @@ class ProvenancePE(GenericPE):
                 
                 if hasattr(self, 'prov_cluster'):
                      
-                    metadata.update({'prov-cluster': self.prov_cluster})
+                    metadata.update({'prov_cluster': self.prov_cluster})
                 
 
                 if self.creator is not None:
@@ -1754,11 +1754,19 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
          
         if componentsType!=None and object.name in componentsType:
             body = {}
-            for x in componentsType[object.name]['s-prov:type']:
-                body.update(x().__dict__)
-                
-            object.__class__ = type(str(object.__class__),
+            
+            if 's-prov:type' in componentsType[object.name]:
+             
+                for x in componentsType[object.name]['s-prov:type']:
+                    body.update(x().__dict__)
+                object.__class__ = type(str(object.__class__),
                                 componentsType[object.name]['s-prov:type']+(object.__class__,), body)
+            else:
+
+                for x in provType:
+                    body.update(x().__dict__)
+                object.__class__ = type(str(object.__class__),
+                                provType+(object.__class__,), body)
 
             # if any associates a statful to the provenance type
             if 'state_dep_port' in componentsType[object.name]:
@@ -1771,11 +1779,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
 
         else:
             body = {}
-            for x in provType:
-                
-                body.update(x().__dict__)
-            object.__class__ = type(str(object.__class__),
-                                provType+(object.__class__,), body)
+            
 
         object.comp_id=object.id
         #+"-component-"+getUniqueId()
@@ -1823,6 +1827,7 @@ def profile_prov_run(
         description=None,
         system_id=None,
         workflowName=None,
+        workflowType=None,
         w3c_prov=False,
         runId=None,
         componentsType=None,
@@ -1855,6 +1860,7 @@ def profile_prov_run(
                          "transfer_rules":transfer_rules,
                          "source":workflow,
                          "ns":namespaces,
+                         "prov:type":workflowType,
                          "update":update
                          }
     #newrun.parameters=clean_empty(newrun.parameters)
@@ -2038,6 +2044,7 @@ class NewWorkflowRun(ProvenancePE):
             description="",
             system_id=None,
             workflowName=None,
+            workflowType=None,
             w3c=False,
             runId=None,
             modules=None,
@@ -2065,6 +2072,7 @@ class NewWorkflowRun(ProvenancePE):
             bundle["mapping"] = self.parameters['mapping']
             bundle["type"] = "workflow_run"
             bundle["modules"] = modules
+            bundle["prov:type"] = workflowType
             bundle["source"] = subProcesses
             bundle["ns"] = ns
             bundle=clean_empty(bundle)
