@@ -194,7 +194,13 @@ class CorrMatrix(GenericPE):
                 self.data[inputs[x][0]]['matrix']=numpy.identity(self.size)
                 self.data[inputs[x][0]]['ro_count']=0
             
-            self.data[inputs[x][0]]['matrix'][inputs[x][1][0]-1,inputs[x][1][1]-1]=inputs[x][2]
+            #if inputs[x][2]==0:
+            #self.log(inputs[x])
+            if (inputs[x][1][0]>inputs[x][1][1]):
+                self.data[inputs[x][0]]['matrix'][inputs[x][1][0]-1,inputs[x][1][1]-1]=inputs[x][2]
+            if (inputs[x][1][0]<inputs[x][1][1]):
+                self.data[inputs[x][0]]['matrix'][inputs[x][1][1]-1,inputs[x][1][0]-1]=inputs[x][2]
+
             self.data[inputs[x][0]]['ro_count']+=1
             #self.log((inputs[x][0],self.data[inputs[x][0]]['ro_count']))
             ##self.update_prov_state('iter_'+str(inputs[x][0]),None,metadata={'iter_'+str(inputs[x][0]):inputs[x][1]},dep=['iter_'+str(inputs[x][0])])
@@ -220,7 +226,8 @@ class CorrMatrix(GenericPE):
                     linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
                 
                 sns.plt.show()   
-                self.log(matrix)
+                
+                self.log('\r\n'+str(matrix))
                 self.write('output',(matrix,inputs[x][0]),metadata={'matrix':str(d),'iteration':str(inputs[x][0])})
                 ##dep=['iter_'+str(inputs[x][0])])
 
@@ -250,34 +257,32 @@ class CorrCoef(GenericPE):
                 #self.log([y,self.data])
                 ro=numpy.corrcoef(y[2],inputs[x][2])
                 #self.log(((inputs[x][0],(y[0],inputs[x][1]),ro[0][1])))
-                #self.write('output',(inputs[x][0],(y[1],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[1])+"_"+str(inputs[x][1]),'ro':ro[0][1]},dep=['var_'+str(y[1])+"_"+str(y[0])])
-                self.write('output',(inputs[x][0],(y[1],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[1])+"_"+str(inputs[x][1]),'ro':ro[0][1]})
+                self.write('output',(inputs[x][0],(y[1],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[1])+"_"+str(inputs[x][1]),'rho':ro[0][1]},dep=['var_'+str(y[1])+"_"+str(y[0])])
+                #self.write('output',(inputs[x][0],(y[0],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[0])+"_"+str(inputs[x][1]),'ro':ro[0][1]})
             
             
             
             #appends var_index and value
             self.data[inputs[x][0]].append(inputs[x])
             #self.log(self.data[inputs[x][0]])
-            #self.update_prov_state('var_'+str(inputs[x][1])+"_"+str(inputs[x][0]),inputs[x],metadata={'var_'+str(inputs[x][1]):inputs[x][2]}, ignore_inputs=False)
+            self.update_prov_state('var_'+str(inputs[x][1])+"_"+str(inputs[x][0]),None,metadata={'var_'+str(inputs[x][1]):inputs[x][2]})
             
-     
-
      
 ####################################################################################################
 
 #Declare workflow inputs: (each iteration prduces a batch_size of samples at the specified sampling_rate)
 # number of projections = iterations/batch_size at speed defined by sampling rate
-variables_number=10
+variables_number=5
 sampling_rate=100
 batch_size=5
-iterations=20
+iterations=3
 
 input_data = {"Start": [{"iterations": [iterations]}]}
       
 # Instantiates the Workflow Components  
 # and generates the graph based on parameters
 
-variables_number=10
+variables_number=6
 sampling_rate=100
 batch_size=3
 iterations=2
@@ -351,6 +356,22 @@ ProvenancePE.BULK_SIZE=20
 
 #ProvenancePE.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
 
+selrule1 = {"CorrCoef": { 
+                         "rules":{ 
+                                 "rho": {
+                                            "$gt": 0 }
+                                }
+                        }
+           }
+
+selrule2 = {"Start": { 
+                         "rules":{ 
+                                 "iterations": {
+                                            "$lt": 0 }
+                                }
+                        }
+           }
+
 def createGraphWithProv():
     
     graph=createWf()
@@ -378,11 +399,10 @@ def createGraphWithProv():
                                                    'state_dep_port':'graph',
                                                    's-prov:prov-cluster':'knmi:stockAnalyser'},
                                       'CorrMatrix':{'s-prov:type':(MultiInvocationGrouped,),
-                                                    's-prov:prov-cluster':'knmi:stockAnalyser'},
-                                      'CorrCoef':{'s-prov:type':(SingleInvocationFlow,),
-                                                    's-prov:prov-cluster':'knmi:Correlator'}},
+                                                    's-prov:prov-cluster':'knmi:stockAnalyser'}},
                                       
-                    save_mode='service')
+                                      save_mode='service',
+                                      sel_rules=selrule2)
 
     #
     return graph
