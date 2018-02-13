@@ -1,7 +1,6 @@
-{ "COLLECTOR1": [ { "input": [ "data/newA.nc"]} ,  { "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]},
-{ "input": [ "data/newA.nc"]} ,  { "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]}  ]  
+{ "COLLECTOR1": [ { "input": [ "data/new_0.nc"]} ,  { "input": [ "data/new_1.nc"]} , { "input": [ "data/new_2.nc"]} , { "input": [ "data/new_3.nc"]} , { "input": [ "data/new_4.nc"]} ]  
 ,
-"COLLECTOR2": [ { "input": [ "data/newA.nc"]} ,  { "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]},
-{ "input": [ "data/newA.nc"]} ,  { "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]} ,{ "input": [ "data/newA.nc"]}  ] 
+  "COLLECTOR2": [ {"input": [ "data/new_5.nc"]} ,  { "input": [ "data/new_6.nc"]} ,{"input": [ "data/new_7.nc"]} ,  { "input": [ "data/new_8.nc"]} 
+   , { "input": [ "data/new_9.nc"]} ]  
 
 }
