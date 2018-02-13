@@ -21,258 +21,124 @@ from itertools import combinations
 sns.set(style="white")
 
 
-class Start(GenericPE):
-
+class Read(GenericPE):
+    
     def __init__(self):
-        GenericPE.__init__(self)
-        self._add_input('iterations')
-        self._add_output('output')
-        #self.prov_cluster="myne"
-    
-    def _process(self,inputs):
-        
-        if 'iterations' in inputs:
-            inp=inputs['iterations']
-             
-            self.write('output',inp,metadata={'iterations':inp})
-            
-        #Uncomment this line to associate this PE to the mycluster provenance-cluster 
-        #self.prov_cluster ='mycluster'
-
-class Source(GenericPE):
-
-    def __init__(self,sr,index,batchsize):
-        GenericPE.__init__(self)
-        self._add_input('iterations')
-        self._add_output('output')
-        self.sr=sr
-        self.var_index=index
-        self.batchsize=batchsize
-        #self.prov_cluster="myne"
-         
-        self.parameters={'sampling_rate':sr,'batchsize':batchsize}
-        
-        #Uncomment this line to associate this PE to the mycluster provenance-cluster 
-        #self.prov_cluster ='mycluster'
-        
-    
-    def _process(self,inputs):
-         
-        if 'iterations' in inputs:
-            iteration=inputs['iterations'][0]
-        
-        
-        batch=[]
-        it=1
-        #Streams out values at 1/self.sr sampling rate, until iteration>0
-        while (it<=iteration):
-            while (len(batch)<self.batchsize):
-                val=random.uniform(0,100)
-                time.sleep(1/self.sr)
-                batch.append(val)
-                
-            self.write('output',(it,self.var_index,batch),metadata={'var':self.var_index,'iteration':it,'batch':batch})
-            batch=[]
-            it+=1
-        
-
-class MaxClique(GenericPE):
-
-    def __init__(self,threshold):
         GenericPE.__init__(self)
         self._add_input('input')
-        self._add_output('graph')
-        self._add_output('cliques')
-        self.threshold=threshold
-        #self.prov_cluster="myne"
-         
-        self.parameters={'threshold':threshold}
+        self._add_output('xarray')
+        self.count=0
+
+    def _process(self,inputs):
+        self.log('Read_Process')
+     
+        self.log(inputs)
         
-                
-        #Uncomment this line to associate this PE to the mycluster provenance-cluster 
-        #self.prov_cluster ='mycluster'
+        inputLocation = inputs['input'][0]
+
+        ds = xarray.open_dataset( inputLocation )
         
+        self.write( 'xarray' , (ds, self.count) , location=inputLocation )
+        self.count+=1
+            
+class Write(GenericPE):
     
-    def _process(self,inputs):
-         
-        if 'input' in inputs:
-            matrix=inputs['input'][0]
-            iteration=inputs['input'][1]
-        
-        
-         
-       
-        
-        low_values_indices = matrix < self.threshold  # Where values are low
-        matrix[low_values_indices] = 0 
-        #plt.figure('graph_'+str(iteration))
-                
-         
-        
-        H = nx.from_numpy_matrix(matrix)
-        fig = plt.figure('graph_'+str(iteration))
-        text = "Iteration "+str(iteration)+" "+"graph"
-         
-        labels = {i : i for i in H.nodes()}
-        pos = nx.circular_layout(H)
-        nx.draw_circular(H)
-        nx.draw_networkx_labels(H, pos, labels, font_size=15)
-        fig.text(.1,.1,text)
-        self.write('graph',matrix,metadata={'graph':str(matrix),'batch':iteration})
-       
-         
-        
-       # labels = {i : i for i in H.nodes()}
-       # pos = nx.circular_layout(H)
-       # nx.draw_circular(H)
-       # nx.draw_networkx_labels(H, pos, labels, font_size=15)
-       
-        
-        cliques = list(nx.find_cliques(H))
-        
-        fign=0
-        maxcnumber=0
-        maxclist=[]
-        
-        for nodes in cliques:
-            if (len(nodes)>maxcnumber):
-                maxcnumber=len(nodes)
-                
-        for nodes in cliques:
-            if (len(nodes)==maxcnumber):
-                maxclist.append(nodes)
-
-        for nodes in maxclist:    
-            edges = combinations(nodes, 2)
-            C = nx.Graph()
-            C.add_nodes_from(nodes)
-            C.add_edges_from(edges)
-            fig = plt.figure('clique_'+str(iteration)+str(fign))
-            text = "Iteration "+str(iteration)+" "+"clique "+str(fign)
-            fign+=1
-            labels = {i : i for i in C.nodes()}
-            pos = nx.circular_layout(C)
-            nx.draw_circular(C)
-            nx.draw_networkx_labels(C, pos, labels, font_size=15)
-            fig.text(.1,.1,text)
-            self.write('cliques',cliques,metadata={'clique':str(nodes),'label':text, 'order':maxcnumber}, location="file://cliques/")
-        
-        
-        
-#        C = nx.make_max_clique_graph(H)
-#        plt.figure('clique_'+str(iteration))
-#        labels = {i : i for i in C.nodes()}
-##        pos = nx.circular_layout(C)
-#        nx.draw_circular(C)
-#        nx.draw_networkx_labels(C, pos, labels, font_size=15)
-         
-       
-        #Streams out values at 1/self.sr sampling rate, until iteration>0
-        
-        
-
-class CorrMatrix(GenericPE):
-
-    def __init__(self,variables_number):
-        GenericPE.__init__(self)
-        self._add_input('input',grouping=[0]) 
-        self._add_output('output')
-        self.size=variables_number
-        self.parameters={'variables_number':variables_number}
-        self.data={}
-         
-        
-        #Uncomment this line to associate this PE to the mycluster provenance-cluster 
-        #self.prov_cluster ='mycluster'self.prov_cluster='mycluster'
-            
-    def _process(self,inputs):
-        for x in inputs:
-            
-            if inputs[x][0] not in self.data:
-                #prepares the data to visualise the xcor matrix of a specific batch number.
-                self.data[inputs[x][0]]={}
-                self.data[inputs[x][0]]['matrix']=numpy.identity(self.size)
-                self.data[inputs[x][0]]['ro_count']=0
-            
-            #if inputs[x][2]==0:
-            #self.log(inputs[x])
-            if (inputs[x][1][0]>inputs[x][1][1]):
-                self.data[inputs[x][0]]['matrix'][inputs[x][1][0]-1,inputs[x][1][1]-1]=inputs[x][2]
-            if (inputs[x][1][0]<inputs[x][1][1]):
-                self.data[inputs[x][0]]['matrix'][inputs[x][1][1]-1,inputs[x][1][0]-1]=inputs[x][2]
-
-            self.data[inputs[x][0]]['ro_count']+=1
-            #self.log((inputs[x][0],self.data[inputs[x][0]]['ro_count']))
-            ##self.update_prov_state('iter_'+str(inputs[x][0]),None,metadata={'iter_'+str(inputs[x][0]):inputs[x][1]},dep=['iter_'+str(inputs[x][0])])
-            
-            if self.data[inputs[x][0]]['ro_count']==(self.size*(self.size-1))/2:
-                matrix=self.data[inputs[x][0]]['matrix']
-                
-                d = pd.DataFrame(data=matrix,
-                 columns=range(0,self.size),index=range(0,self.size))
-                
-                mask = numpy.zeros_like(d, dtype=numpy.bool)
-                mask[numpy.triu_indices_from(mask)] = True
-
-                # Set up the matplotlib figure
-                f, ax = plt.subplots(figsize=(11, 9))
-
-                # Generate a custom diverging colormap
-                cmap = sns.diverging_palette(220, 10, as_cmap=True)
-
-                # Draw the heatmap with the mask and correct aspect ratio
-                sns.heatmap(d, mask=mask, cmap=cmap, vmax=1,
-                    square=True,
-                    linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
-                
-                sns.plt.show()   
-                
-                self.log('\r\n'+str(matrix))
-                self.write('output',(matrix,inputs[x][0]),metadata={'matrix':str(d),'iteration':str(inputs[x][0])})
-                ##dep=['iter_'+str(inputs[x][0])])
-
-
-            
-class CorrCoef(GenericPE):
-
     def __init__(self):
         GenericPE.__init__(self)
-        #self._add_input('input1',grouping=[0])
-        #self._add_input('input2',grouping=[0])
-        self._add_output('output')
-        self.data={}
-        
-        
+        self._add_input('input')
+        self._add_output('location')
+        self.count=0
+         
          
         
-    def _process(self, inputs):
-        index=None
-        val=None
-              
-        for x in inputs:
-            if inputs[x][0] not in self.data:
-                self.data[inputs[x][0]]=[]
-                
-            for y in self.data[inputs[x][0]]:
-                #self.log([y,self.data])
-                ro=numpy.corrcoef(y[2],inputs[x][2])
-                #self.log(((inputs[x][0],(y[0],inputs[x][1]),ro[0][1])))
-                self.write('output',(inputs[x][0],(y[1],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[1])+"_"+str(inputs[x][1]),'rho':ro[0][1]},dep=['var_'+str(y[1])+"_"+str(y[0])])
-                #self.write('output',(inputs[x][0],(y[0],inputs[x][1]),ro[0][1]),metadata={'iteration':inputs[x][0],'vars':str(y[0])+"_"+str(inputs[x][1]),'ro':ro[0][1]})
+    def _process(self,inputs):
+        self.log('Write_Function')
+        #self.log(inputs)
+        outputLocation = "data/new_"+str(self.count)+".nc"
+        self.count+=1
+        inputs['input'][0].to_netcdf( outputLocation )
+        #self.log(outputLocation)
+        self.write('location', outputLocation,location=outputLocation)
+        
+        
+        
+class Analysis(GenericPE):
+        
+    def __init__(self):
+        GenericPE.__init__(self)
+        self._add_input('input')
+        self._add_output('output')
+         
+        
+    def _process(self,inputs):
+        self.log('Workflow_process')
+        #self.log( len(inputs))
+        
+        #nc = inputs['input'][0]
+        
+        nc = inputs['input'][0]
+        #self.log(nc)
+        #
+        self.write('output', (nc,inputs['input'][1]),metadata={'prov:type':'clipc:sum','index':inputs['input'][1]})
+        
+        
+
+
+class Combine(GenericPE):
+     
+    def __init__(self):
+        GenericPE.__init__(self)
+        self._add_input('combine1',grouping=[1])
+        self._add_input('combine2',grouping=[1])
+        self._add_output('combo')
+        self.count=0
+        self.data1=[]
+        self.data2=[]
+        self.nc1 = None
+        self.nc2 = None
+        self.out = None
+        
+    def _process(self,inputs):
+        self.log('Combine_process')
+        self.log(inputs.keys())
+        
+        if 'combine1' in inputs.keys():
+            self.data1.append(inputs['combine1'][0])
             
+        
+        if 'combine2' in inputs.keys():
+            self.data2.append(inputs['combine2'][0])
             
+        
+        
+        if (len(self.data1)>0 and len(self.data2)>0):
+            #self.log("LEN"+str(len(self.data1)))
+            nc1 =  self.data1.pop(0)
+            nc2 =  self.data2.pop(0)
             
-            #appends var_index and value
-            self.data[inputs[x][0]].append(inputs[x])
-            #self.log(self.data[inputs[x][0]])
-            self.update_prov_state('var_'+str(inputs[x][1])+"_"+str(inputs[x][0]),None,metadata={'var_'+str(inputs[x][1]):inputs[x][2]})
+            nc=nc1
+            # numpy arithmetic for DataArrays...
+             
+            #self.log(nc2)
+            for k,v in nc2.attrs.items():
+                if k in nc.attrs.keys():
+                    nc.attrs[k] = v
+                else:
+                    nc.attrs[k] = v
+            
+           
+            
+            self.write('combo', (nc,self.count))
+            self.count+=1
+
+
             
      
 ####################################################################################################
 
 #Declare workflow inputs: (each iteration prduces a batch_size of samples at the specified sampling_rate)
 # number of projections = iterations/batch_size at speed defined by sampling rate
-variables_number=5
+variables_number=40
 sampling_rate=100
 batch_size=5
 iterations=3
@@ -282,12 +148,6 @@ input_data = {"Start": [{"iterations": [iterations]}]}
 # Instantiates the Workflow Components  
 # and generates the graph based on parameters
 
-variables_number=6
-sampling_rate=100
-batch_size=3
-iterations=2
-
-input_data = {"Start": [{"iterations": [iterations]}]}
       
 # Instantiates the Workflow Components  
 # and generates the graph based on parameters
@@ -310,7 +170,11 @@ def createWf():
     stock=['NASDAQ','MIBTEL','DOWJ']
       
     for i in range(1,variables_number+1):
-        sources[i] = Source(sampling_rate,i,batch_size)
+        if (i==1):
+            print("CC")
+            sources[i] = Source(sampling_rate/50,i,batch_size)
+        else:
+            sources[i] = Source(sampling_rate,i,batch_size)
         sources[i].prov_cluster=stock[i%len(stock)-1]
         sources[i].numprocesses=1
         #sources[i].name="Source"+str(i)
@@ -384,7 +248,7 @@ def createGraphWithProv():
     # Finally, provenance enhanced graph is prepared:   
    
     #Initialise provenance storage end associate a Provenance type with specific components:
-    profile_prov_run(graph,None, provImpClass=(ProvenancePE,),
+    configure_prov_run(graph,None, provImpClass=(ProvenancePE,),
                      username='aspinuso',
                      runId=rid,
                      input=[{'name':'variables_number','url':variables_number},
@@ -394,15 +258,17 @@ def createGraphWithProv():
                      w3c_prov=False,
                      description="provState",
                      workflowName="test_rdwd",
-                     workflowId="xx",
-                     componentsType= {'MaxClique':{'s-prov:type':(SingleInvocationStateful,),
+                     workflowId="!23123",
+                     componentsType= {'MaxClique':{'s-prov:type':(IntermediateStatefulOut,),
                                                    'state_dep_port':'graph',
                                                    's-prov:prov-cluster':'knmi:stockAnalyser'},
-                                      'CorrMatrix':{'s-prov:type':(MultiInvocationGrouped,),
-                                                    's-prov:prov-cluster':'knmi:stockAnalyser'}},
+                                      'CorrMatrix':{'s-prov:type':(ASTGrouped,),
+                                                    's-prov:prov-cluster':'knmi:stockAnalyser'},
+                                      'CorrCoef':{'s-prov:type':(SingleInvocationFlow,),
+                                                    's-prov:prov-cluster':'knmi:Correlator'}},
                                       
-                                      save_mode='service',
-                                      sel_rules=selrule2)
+                                       save_mode='service',
+                                       sel_rules=selrule2)
 
     #
     return graph

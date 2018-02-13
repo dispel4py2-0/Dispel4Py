@@ -912,7 +912,7 @@ class ProvenancePE(GenericPE):
                     streamtransfer["id"] = self.derivationIds[0]["DerivedFromDatasetID"]
                     streamtransfer["TriggeredByProcessIterationID"] = self.derivationIds[0]["TriggeredByProcessIterationID"]
                     streamtransfer["up:assertionType"] = "up:Incomplete"
-                    self.log(streamtransfer)
+                    #self.log(streamtransfer)
                     
             except:
                 #self.log(traceback.format_exc())
@@ -1093,9 +1093,9 @@ class ProvenancePE(GenericPE):
             else:
                 count=0
                 for x in self.derivationIds:
-                    self.log("COUNT: "+str(count)+" WLENTGH: "+str(wlength))
+                    #self.log("COUNT: "+str(count)+" WLENTGH: "+str(wlength))
                     if x!=None and x['port']!='_d4p_state' and count>=wlength-1:
-                        self.log("REMOVE: "+str(x['iterationIndex']))
+                        #self.log("REMOVE: "+str(x['iterationIndex']))
                         del self.derivationIds[0]   
                     count+=1
 
@@ -1132,20 +1132,26 @@ class ProvenancePE(GenericPE):
         kwargs['lookupterm']=lookupterm
         #self.apply_derivation_rule('state', None)
         if self.provon:
-            if 'dep' in kwargs and kwargs['dep']!=None:
+            if data == None:
+                    self._updateState(lookupterm,self.derivationIds[len(self.derivationIds)-1]["DerivedFromDatasetID"])
+
+            else:
+                
+                if 'dep' in kwargs and kwargs['dep']!=None:
                 #self.removeDerivation(port='_d4p_state')
                 
-                for d in kwargs['dep']:
-                    did=self.getProvStateObjectId(d)
+                    for d in kwargs['dep']:
+                        did=self.getProvStateObjectId(d)
                     
-                    if did!=None:
-                        self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
+                        if did!=None:
+                            self.buildDerivation({'id':did,'TriggeredByProcessIterationID':self.iterationId,'prov_cluster':self.prov_cluster, 'lookupterm':d}, port="_d4p_state")
                         #self.ignore_state = False
                         #self.log("DERI "+str(did))
                         #self.log("DERI2 "+str(self.derivationIds))
                         #
 
-            self.extractProvenance(data,
+            
+                self.extractProvenance(data,
                                location,
                                format,
                                metadata,
@@ -1524,9 +1530,9 @@ class Nby1Flow(ProvenancePE):
                     self.ports_lookups[iport]=[]
 
                 self.ports_lookups[iport].append(vv)
-                self.log(self.ports_lookups)
+                #self.log(self.ports_lookups)
                 #self.ignorePastFlow()
-                self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)})
+                self.update_prov_state(vv,None,metadata={"LOOKUP":str(vv)})
                 self.discardInFlow()
 
 
@@ -1556,18 +1562,13 @@ class SlideFlow(ProvenancePE):
              self.discardInFlow(wlength=self.WLENTGH)
 
 
-class MultiInvocationGrouped(ProvenancePE):
+class ASTGrouped(ProvenancePE):
     def __init__(self):
         ProvenancePE.__init__(self)
         
   
     def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
        
-        #if (event=='write'):  
-        #    vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
-        #    self.update_prov_state(vv,data,metadata=metadata,dep=vv)
-
-         
         self.ignore_past_flow=False
         self.ignore_inputs=False
         self.stateful=False
@@ -1577,28 +1578,25 @@ class MultiInvocationGrouped(ProvenancePE):
             iport=i
 
         #self.log("IPORT: "+str(iport))
-
+        #Do Before Writing
         if (event=='write'):
-           
-           
             vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
             self.log("LOOKUP: "+str(vv))
             self.setStateDerivations([vv])
 
-            
+        if (event=='end_invocation_event' and voidInvocation==False):
+             self.discardInFlow()
+             self.discardState()
+
         if (event=='end_invocation_event' and voidInvocation==True):
             
             if data!=None:
                 
                 vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
-               
                 self.ignorePastFlow()
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
                 self.discardState()
-
-        if (event=='end_invocation_event' and voidInvocation==False):
-             self.discardInFlow()
 
             
 
@@ -1617,7 +1615,7 @@ class SingleInvocationFlow(ProvenancePE):
         
           
 
-class SingleInvocationStateful(ProvenancePE):
+class AccumulateStateTrace(ProvenancePE):
      
     def __init__(self):
         ProvenancePE.__init__(self)
@@ -1639,7 +1637,7 @@ class SingleInvocationStateful(ProvenancePE):
             self.discardState()
         
 
-class MultiInvocationStateful(ProvenancePE):
+class IntermediateStatefulOut(ProvenancePE):
      
     def __init__(self):
         ProvenancePE.__init__(self)
@@ -1652,45 +1650,23 @@ class MultiInvocationStateful(ProvenancePE):
         self.stateful=False
         if (event=='write' and port == self.STATEFUL_PORT):
             self.update_prov_state(self.STATEFUL_PORT,data,metadata=metadata)
-            self.discardInFlow()
-            
-            
+            #self.discardInFlow()
+
         if (event=='write' and port != self.STATEFUL_PORT):
-            #ignores old flow-dependencies
             self.ignorePastFlow()
 
-
-class AccumulateStateTrace(ProvenancePE):
-     
-    def __init__(self):
-        ProvenancePE.__init__(self)
-        
-    
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
-         
-        
-        if (event=='write'):
-            self.update_prov_state('avg',data,ignore_state=False, metadata=metadata)
+        if (event=='end_invocation_event' and voidInvocation==False):
+            
             self.discardInFlow()
+            self.discardState()   
             
             
-            
-       # if (event=='end_invocation_event' and value==False):
+        #if (event=='write' and port != self.STATEFUL_PORT):
             #ignores old flow-dependencies
-        #    self.ignoreState();
-
-        
-
-    
-        
-       
-    
+            #self.ignorePastFlow()
 
 
-
-
-
-class OnWriteOnly(ProvenancePE):
+class ForceStateless(ProvenancePE):
     def __init__(self):
         ProvenancePE.__init__(self)
         self.streammeta=[]
@@ -1761,14 +1737,15 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
                     body.update(x().__dict__)
                 object.__class__ = type(str(object.__class__),
                                 componentsType[object.name]['s-prov:type']+(object.__class__,), body)
+            
             else:
-
+                body = {}
                 for x in provType:
-                    body.update(x().__dict__)
+                        body.update(x().__dict__)
                 object.__class__ = type(str(object.__class__),
-                                provType+(object.__class__,), body)
+                                    provType+(object.__class__,), body)
 
-            # if any associates a statful to the provenance type
+            # if any associates a statful port to the provenance type
             if 'state_dep_port' in componentsType[object.name]:
                 object.STATEFUL_PORT= componentsType[object.name]['state_dep_port']
             if 'wlength' in componentsType[object.name]:
@@ -1779,6 +1756,10 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
 
         else:
             body = {}
+            for x in provType:
+                    body.update(x().__dict__)
+            object.__class__ = type(str(object.__class__),
+                                provType+(object.__class__,), body)
             
 
         object.comp_id=object.id
@@ -1817,7 +1798,7 @@ provclusters = {}
 
 prov_save_mode={}
 
-def profile_prov_run(
+def configure_prov_run(
         graph,
         provRecorderClass=None,
         provImpClass=ProvenancePE,

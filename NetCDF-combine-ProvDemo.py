@@ -160,7 +160,7 @@ class Analysis(GenericPE):
         
 
 
-class CombineWorkflow(GenericPE):
+class Combine(GenericPE):
      
     def __init__(self):
         GenericPE.__init__(self)
@@ -186,10 +186,9 @@ class CombineWorkflow(GenericPE):
             self.data2.append(inputs['combine2'][0])
             
         
-        self.log("LEN1_"+str(len(self.data1)))
-        self.log("LEN2_"+str(len(self.data2)))
+        
         if (len(self.data1)>0 and len(self.data2)>0):
-            
+            #self.log("LEN"+str(len(self.data1)))
             nc1 =  self.data1.pop(0)
             nc2 =  self.data2.pop(0)
             
@@ -203,9 +202,11 @@ class CombineWorkflow(GenericPE):
                 else:
                     nc.attrs[k] = v
             
-            self.count+=1
+           
             
             self.write('combo', (nc,self.count))
+            self.count+=1
+
 
 
 
@@ -219,15 +220,11 @@ class CombineWorkflow(GenericPE):
 # In[3]:
 
 
-#Initialise the graph
 def createWorkflowGraph():
     readX  = Read()
     readX.name = 'COLLECTOR1'
     readY  = Read()
     readY.name = 'COLLECTOR2'
-
-    readX.numprocesses=1
-    readY.numprocesses=1
     
     analyse   = Analysis()
     analyse.name    = 'ANALYSIS'
@@ -236,16 +233,13 @@ def createWorkflowGraph():
     analyse2   = Analysis()
     analyse2.name    = 'ANALYSIS'
     analyse2.parameters = { 'filter': 13 }
-
     
-    
-    wf3     = CombineWorkflow()
+    wf3     = Combine()
     wf3.name    = 'COMBINE'
     wf3.parameters = { 'wf':'paramC' }
     
     writeX = Write()
     writeX.name = 'STORE'
-    
     
     
     graph = WorkflowGraph()    
@@ -259,6 +253,10 @@ def createWorkflowGraph():
     graph.connect(wf3    ,'combo'   , writeX , 'input')
 
     return graph
+
+
+
+graph = createWorkflowGraph()
 
  
 
@@ -393,21 +391,7 @@ class netcdfProvType(ProvenancePE):
             return super(netcdfProvType, self).extractItemMetadata(data,output_port);
         
         
-        
-        
-class StatefulProvType(ProvenancePE):
-    def __init__(self):
-        ProvenancePE.__init__(self)
-        
-    def apply_state_reset_policy(self, event,value):
-        #self.log('ALE.apply_state_reset_policy '+str(event)+'_'+str(value))
-        
-        if( event == 'void_iteration' and value == True ):
-            self.log('ALE.apply_state_reset_policy '+str(event)+' '+str(value))
-            self.resetflow = False
-        else:
-            self.resetflow = True
-        
+
 
 
 # 
@@ -434,17 +418,17 @@ sel_rules={"ANALYSIS":{"term":{"$gt":0,"$lt":100}}}
 
 # In[9]:
 
-prov_profile =  {
+prov_config=  {
                     'username': "aspinuso", 
                     'description' : "provdemo combo double",
                     'workflowName': "demo_ecmwf"      ,
                     'workflowId'  : "workflow process",
                     'save_mode'   : 'service'         ,
                     # defines the use of the ProvenancePE with the Workflow element
-                    'componentsType' : {'ANALYSIS':{'type':(netcdfProvType,)}, 
-                                        'COMBINE':{'type':(netcdfProvType, Nby1Flow,)} , 
-                                        'COLLECTOR1':{'type':(netcdfProvType,)},
-                                        'COLLECTOR2':{'type':(netcdfProvType,)}},
+                    'componentsType' : {'ANALYSIS':{'s-prov:type':(netcdfProvType,)}, 
+                                        'COMBINE':  {'s-prov:type':(netcdfProvType, Nby1Flow,), 
+                                        'COLLECTOR1':{'s-prov:type':(netcdfProvType,)},
+                                        'COLLECTOR2':{'s-prov:type':(netcdfProvType,)}}},
                     'sel_rules': None
                 } 
 
@@ -467,7 +451,7 @@ ProvenancePE.PROV_EXPORT_URL='http://127.0.0.1:8082/data/'
 ProvenancePE.PROV_PATH='./prov-files/'
 
 #Size of the provenance bulk before sent to storage or sensor
-ProvenancePE.BULK_SIZE=5
+ProvenancePE.BULK_SIZE=2
 
 #ProvenancePE.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
 
@@ -484,20 +468,20 @@ def createGraphWithProv():
 
     
     # Finally, provenance enhanced graph is prepared:
-    print prov_profile
+    print prov_config
 
      
     #Initialise provenance storage to service:
-    profile_prov_run(graph, 
+    configure_prov_run(graph, 
                      provImpClass=(ProvenancePE,),
-                     username=prov_profile['username'],
+                     username=prov_config['username'],
                      runId=rid,
                      #w3c_prov=prov_profile['w3c_prov'],
-                     description=prov_profile['description'],
-                     workflowName=prov_profile['workflowName'],
-                     workflowId=prov_profile['workflowId'],
-                     save_mode=prov_profile['save_mode'],
-                     componentsType=prov_profile['componentsType']
+                     description=prov_config['description'],
+                     workflowName=prov_config['workflowName'],
+                     workflowId=prov_config['workflowId'],
+                     save_mode=prov_config['save_mode'],
+                     componentsType=prov_config['componentsType']
                       
                     )
                    
