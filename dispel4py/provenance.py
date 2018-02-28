@@ -1716,7 +1716,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
             injectProv(x, provType, componentsType=componentsType, workflow=workflow,**kwargs)
     else:
         print("Assigning Provenance Type to: " + object.name +
-              " Original type: " + str(object.__class__.__bases__))
+              " Original base class: " + str(object.__class__.__bases__))
         parent = object.__class__.__bases__[0]
         localname = object.name
         
