@@ -1486,6 +1486,7 @@ class ProvenancePE(GenericPE):
             traceback.print_exc(file=sys.stderr)
 
 
+'Collection of Provenance Patterns Types'
 
 class AccumulateFlow(ProvenancePE):
     def __init__(self):
@@ -1786,15 +1787,15 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
             namespaces.update(object.ns)
     return workflow
 
-' This methods enriches the graph to enable the production and recording '
-' of run-specific provenance information the provRecorderClass parameter '
-' can be used to attached several implementatin of ProvenanceRecorder '
-' which could dump to files, dbs, external services, enrich '
-' the metadata, etc..'
+
 
 provclusters = {}
 
 prov_save_mode={}
+
+
+' This methods enriches the graph to enable the production and recording '
+' of run-specific provenance information '
 
 def configure_prov_run(
         graph,
@@ -1845,7 +1846,7 @@ def configure_prov_run(
                          "transfer_rules":transfer_rules,
                          "source":workflow,
                          "ns":namespaces,
-                         "prov:type":workflowType,
+                         "workflowType":workflowType,
                          "update":update
                          }
     #newrun.parameters=clean_empty(newrun.parameters)
@@ -2075,6 +2076,7 @@ class NewWorkflowRun(ProvenancePE):
             description=self.parameters["description"],
             system_id=self.parameters["system_id"],
             workflowName=self.parameters["workflowName"],
+            workflowType=self.parameters["workflowType"],
             runId=self.parameters["runId"],
             modules=sorted(["%s==%s" % (i.key, i.version) for i in pip.get_installed_distributions()]),
             subProcesses=self.parameters["source"],
