@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
 import dispel4py.new.processor
 from dispel4py.utils import make_hash
@@ -1702,11 +1703,7 @@ namespaces={}
 ' or subgraph with ProvenancePE type or its specialization'
 
 def injectProv(object, provType, active=True,componentsType=None, workflow={},**kwargs):
-    print('Change grouping implementation ')
-
-    dispel4py.new.processor.GroupByCommunication.getDestination = \
-        getDestination_prov
-    global meta
+    
     
     
     if isinstance(object, WorkflowGraph):
@@ -1715,7 +1712,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
         for x in nodelist:
             injectProv(x, provType, componentsType=componentsType, workflow=workflow,**kwargs)
     else:
-        print("Assigning Provenance Type to: " + object.name +
+        print("Assigning Provenance Type to: \r" + object.name +
               " Original base class: " + str(object.__class__.__bases__))
         parent = object.__class__.__bases__[0]
         localname = object.name
@@ -1825,6 +1822,12 @@ def configure_prov_run(
         raise Exception("Missing values")
     if runId is None:
         runId = getUniqueId()
+
+    print('Change grouping implementation ')
+
+    dispel4py.new.processor.GroupByCommunication.getDestination = \
+        getDestination_prov
+    global meta
     
     workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules,transfer_rules=transfer_rules)
     
