@@ -115,7 +115,7 @@ def _process(self, data):
     results = self.compute_fn(data, **self.params)
     if isinstance(results, dict) and '_d4p_prov' in results:
         #            meta = data['_d4p_prov']
-        if isinstance(self, (ProvenancePE)):
+        if isinstance(self, (ProvenanceType)):
             return results
         else:
             return results['_d4p_data']
@@ -369,7 +369,7 @@ def num(s):
 _d4p_plan_sqn = 0
 
 
-class ProvenancePE(GenericPE):
+class ProvenanceType(GenericPE):
 
     PROV_PATH="./"
     REPOS_URL=""
@@ -422,7 +422,7 @@ class ProvenancePE(GenericPE):
 
 
 
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,oport=None,iport=None,data=None,metadata=None):
         
         if (event=='end_invocation_event') and voidInvocation==True:
             self.discardInFlow(discardState=True)
@@ -431,7 +431,7 @@ class ProvenancePE(GenericPE):
             self.discardInFlow(discardState=True)
 
     def pe_init(self, *args, **kwargs):
-        #ProvenancePE.__init__(self,*args, **kwargs)
+        #ProvenanceType.__init__(self,*args, **kwargs)
 
         global _d4p_plan_sqn
         self._add_input('_d4py_feedback', grouping='all')
@@ -488,7 +488,7 @@ class ProvenancePE(GenericPE):
         
 
         if 'save_mode' not in kwargs:
-            self.save_mode=ProvenancePE.SAVE_MODE_FILE
+            self.save_mode=ProvenanceType.SAVE_MODE_FILE
         else:
             self.save_mode=SAVE_MODE_FILE = kwargs['save_mode']
 
@@ -545,7 +545,7 @@ class ProvenancePE(GenericPE):
         self.instanceId = self.name + "-Instance-" + \
             "-" + self.makeProcessId()
 
-        super(ProvenancePE, self)._preprocess()
+        super(ProvenanceType, self)._preprocess()
 
     'This method must be implemented in the original PE'
     'to handle prov feedback'
@@ -574,9 +574,9 @@ class ProvenancePE(GenericPE):
         for x in inputs:
             data=inputs[x]
             if type(data)==dict and '_d4p' in data:
-                self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=data['_d4p'])   
+                self.apply_derivation_rule('end_invocation_event',self.void_invocation,iport=x,data=data['_d4p'])   
             else:
-                self.apply_derivation_rule('end_invocation_event',self.void_invocation,data=data)  
+                self.apply_derivation_rule('end_invocation_event',self.void_invocation,iport=x,data=data)  
         
 
     def addNamespacePrefix(self,prefix,url):
@@ -589,8 +589,8 @@ class ProvenancePE(GenericPE):
     
      
     def preprocess(self):
-        if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
-            self.provurl = urlparse(ProvenancePE.REPOS_URL)
+        if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
+            self.provurl = urlparse(ProvenanceType.REPOS_URL)
             #self.connection = httplib.HTTPConnection(
             #                                         self.provurl.netloc)
         self._preprocess()
@@ -600,7 +600,7 @@ class ProvenancePE(GenericPE):
         
         if len(self.bulk_prov)>0:
             
-            if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
+            if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
                 #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
                 params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
                 headers = {
@@ -619,12 +619,12 @@ class ProvenancePE(GenericPE):
 #                    response.read())))
                 self.connection.close()
                 self.bulk_prov[:]=[]
-            elif (self.save_mode==ProvenancePE.SAVE_MODE_FILE):
-                filep = open(ProvenancePE.PROV_PATH + "/bulk_" + self.makeProcessId(), "wr")
+            elif (self.save_mode==ProvenanceType.SAVE_MODE_FILE):
+                filep = open(ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "wr")
                 ujson.dump(self.bulk_prov, filep)
-            elif (self.save_mode==ProvenancePE.SAVE_MODE_SENSOR):
+            elif (self.save_mode==ProvenanceType.SAVE_MODE_SENSOR):
                 super(
-                                  ProvenancePE,
+                                  ProvenanceType,
                                   self).write(
                                               OUTPUT_METADATA,
                                               {'prov_cluster':self.prov_cluster,'provenance':deepcopy(self.bulk_prov)})
@@ -639,10 +639,10 @@ class ProvenancePE(GenericPE):
 
         self.bulk_prov.append(deepcopy(prov))
 
-        if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
+        if len(self.bulk_prov) == ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
             super(
-                                  ProvenancePE,
+                                  ProvenanceType,
                                   self).write(
                                               OUTPUT_METADATA,
                                               {'prov_cluster':self.prov_cluster,'provenance':deepcopy(self.bulk_prov)})
@@ -661,7 +661,7 @@ class ProvenancePE(GenericPE):
 
         self.bulk_prov.append(deepcopy(prov))
         
-        if len(self.bulk_prov) > ProvenancePE.BULK_SIZE:
+        if len(self.bulk_prov) > ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
             params = urllib.urlencode({'prov': ujson.dumps(self.bulk_prov)})
             headers = {
@@ -690,9 +690,9 @@ class ProvenancePE(GenericPE):
         self.bulk_prov.append(prov)
         
         
-        if len(self.bulk_prov) == ProvenancePE.BULK_SIZE:
+        if len(self.bulk_prov) == ProvenanceType.BULK_SIZE:
             filep = open(
-                ProvenancePE.PROV_PATH +
+                ProvenanceType.PROV_PATH +
                 "/bulk_" +
                 self.makeProcessId(),
                 "wr")
@@ -720,7 +720,7 @@ class ProvenancePE(GenericPE):
                 if port is not None and port != '_d4p_state' \
                         and port != 'error':
 
-                    super(ProvenancePE, self).write(port, stream)
+                    super(ProvenanceType, self).write(port, stream)
 #stream)
 
             except:
@@ -729,22 +729,22 @@ class ProvenancePE(GenericPE):
                 pass
             try:
                 if self.provon:
-                    if (ProvenancePE.send_prov_to_sensor==True) or (self.save_mode==ProvenancePE.SAVE_MODE_SENSOR):
+                    if (ProvenanceType.send_prov_to_sensor==True) or (self.save_mode==ProvenanceType.SAVE_MODE_SENSOR):
 
                             self.sendProvToSensor(trace['metadata'])
                             
                             
                             #super(
-                            #      ProvenancePE,
+                            #      ProvenanceType,
                             #      self).write(
                             #                  OUTPUT_METADATA,
                             #                  deepcopy(trace['metadata']))
                             
 
-                    if self.save_mode==ProvenancePE.SAVE_MODE_SERVICE:
+                    if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
                         
                         self.sendProvToService(trace['metadata'])
-                    if self.save_mode==ProvenancePE.SAVE_MODE_FILE:
+                    if self.save_mode==ProvenanceType.SAVE_MODE_FILE:
                          self.writeProvToFile(trace['metadata'])
                      
             except:
@@ -826,7 +826,7 @@ class ProvenancePE(GenericPE):
     def writeResults(self, name, result):
 
         #self.resetflow = True
-        self.apply_derivation_rule('write',True,data=result,port=name)
+        self.apply_derivation_rule('write',True,data=result,oport=name)
         self.void_invocation=False
         
         
@@ -1242,10 +1242,15 @@ class ProvenancePE(GenericPE):
         self.void_invocation=False
         dep = []
 
+        iport=None
+
+        for i in self.inputs:
+            iport=i
+
         if 'metadata' in kwargs:
-            dep = self.apply_derivation_rule('write',True,port=name,data=data,metadata=kwargs['metadata'])
+            dep = self.apply_derivation_rule('write',True,oport=name,iport=iport,data=data,metadata=kwargs['metadata'])
         else:
-            dep = self.apply_derivation_rule('write',True,port=name,data=data)
+            dep = self.apply_derivation_rule('write',True,oport=name,iport=iport,data=data)
         
         self.endTime = datetime.datetime.utcnow()
 
@@ -1488,25 +1493,25 @@ class ProvenancePE(GenericPE):
 
 'Collection of Provenance Patterns Types'
 
-class AccumulateFlow(ProvenancePE):
+class AccumulateFlow(ProvenanceType):
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         
     
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,oport=None,iport=None,data=None,metadata=None):
          
             
         if (event=='end_invocation_event' and voidInvocation==False):
             self.discardInFlow()
 
 
-class Nby1Flow(ProvenancePE):
+class Nby1Flow(ProvenanceType):
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         self.ports_lookups={}
         
 
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,oport=None,data=None,iport=None,metadata=None):
     
         for i in self.inputs:
                 iport=i
@@ -1544,12 +1549,12 @@ class Nby1Flow(ProvenancePE):
 
 
 
-class SlideFlow(ProvenancePE):
+class SlideFlow(ProvenanceType):
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
     
     #self.W_LENTGH
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,iport=None,oport=None,data=None,metadata=None):
        
         #if (event=='write'):  
         #    vv=abs(make_hash(tuple([data[x] for x in self.inputconnections['input']['grouping']])))
@@ -1564,16 +1569,16 @@ class SlideFlow(ProvenancePE):
              self.discardInFlow(wlength=self.WLENTGH)
 
 
-class ASTGrouped(ProvenancePE):
+class ASTGrouped(ProvenanceType):
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         
   
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,oport=None,iport=None,data=None,metadata=None):
        
-        self.ignore_past_flow=False
-        self.ignore_inputs=False
-        self.stateful=False
+        #self.ignore_past_flow=False
+        #self.ignore_inputs=False
+        #self.stateful=False
         iport=None
 
         for i in self.inputs:
@@ -1602,12 +1607,12 @@ class ASTGrouped(ProvenancePE):
 
             
 
-class SingleInvocationFlow(ProvenancePE):
+class SingleInvocationFlow(ProvenanceType):
 
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
 
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,iport=None,oport=None,data=None,metadata=None):
         
         if (event=='end_invocation_event') and voidInvocation==True:
             self.discardInFlow(discardState=True)
@@ -1617,10 +1622,10 @@ class SingleInvocationFlow(ProvenancePE):
         
           
 
-class AccumulateStateTrace(ProvenancePE):
+class AccumulateStateTrace(ProvenanceType):
      
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         
     
     def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
@@ -1639,22 +1644,22 @@ class AccumulateStateTrace(ProvenancePE):
             self.discardState()
         
 
-class IntermediateStatefulOut(ProvenancePE):
+class IntermediateStatefulOut(ProvenanceType):
      
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         
     
-    def apply_derivation_rule(self,event,voidInvocation,port=None,data=None,metadata=None):
+    def apply_derivation_rule(self,event,voidInvocation,iport=None,oport=None,data=None,metadata=None):
          
         self.ignore_past_flow=False
         self.ignore_inputs=False
         self.stateful=False
-        if (event=='write' and port == self.STATEFUL_PORT):
+        if (event=='write' and oport == self.STATEFUL_PORT):
             self.update_prov_state(self.STATEFUL_PORT,data,metadata=metadata)
             #self.discardInFlow()
 
-        if (event=='write' and port != self.STATEFUL_PORT):
+        if (event=='write' and oport != self.STATEFUL_PORT):
             self.ignorePastFlow()
 
         if (event=='end_invocation_event' and voidInvocation==False):
@@ -1668,9 +1673,9 @@ class IntermediateStatefulOut(ProvenancePE):
             #self.ignorePastFlow()
 
 
-class ForceStateless(ProvenancePE):
+class ForceStateless(ProvenanceType):
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         self.streammeta=[]
         self.count=1
     
@@ -1701,7 +1706,7 @@ def get_source(object, spacing=10, collapse=1):
 namespaces={}
 
 ' This function dinamically extend the type of each the nodes of the graph '
-' or subgraph with ProvenancePE type or its specialization'
+' or subgraph with ProvenanceType type or its specialization'
 
 def injectProv(object, provType, active=True,componentsType=None, workflow={},**kwargs):
     
@@ -1800,7 +1805,7 @@ prov_save_mode={}
 def configure_prov_run(
         graph,
         provRecorderClass=None,
-        provImpClass=ProvenancePE,
+        provImpClass=ProvenanceType,
         input=None,
         username=None,
         workflowId=None,
@@ -1871,7 +1876,7 @@ def configure_prov_run(
         print("Provenance Recorders Clusters: " + str(clustersRecorders))
         print("PEs processing Recorders feedback: " + str(feedbackPEs))
 
-        ProvenancePE.send_prov_to_sensor=True
+        ProvenanceType.send_prov_to_sensor=True
         attachProvenanceRecorderPE(
                                    graph,
                                    provRecorderClass,
@@ -1920,7 +1925,7 @@ def attachProvenanceRecorderPE(
                 username=username,
                 w3c_prov=w3c_prov)
 
-        if isinstance(x, (ProvenancePE)) and x.provon:
+        if isinstance(x, (ProvenanceType)) and x.provon:
             provrecorder = provRecorderClass(toW3C=w3c_prov)
             if isinstance(x, (SimpleFunctionPE)):
 
@@ -1987,7 +1992,7 @@ def attachProvenanceRecorderPE(
     return graph
 
 
-class ProvenanceSimpleFunctionPE(ProvenancePE):
+class ProvenanceSimpleFunctionPE(ProvenanceType):
 
     def __init__(self, *args, **kwargs):
 
@@ -1995,11 +2000,11 @@ class ProvenanceSimpleFunctionPE(ProvenancePE):
                               (self.__class__, SimpleFunctionPE), {})
         SimpleFunctionPE.__init__(self, *args, **kwargs)
         # name=self.name
-        ProvenancePE.__init__(self, self.name, *args, **kwargs)
+        ProvenanceType.__init__(self, self.name, *args, **kwargs)
         # self.name=type(self).__name__
 
 
-class ProvenanceIterativePE(ProvenancePE):
+class ProvenanceIterativePE(ProvenanceType):
 
     def __init__(self, *args, **kwargs):
         self.__class__ = type(str(self.__class__),
@@ -2007,14 +2012,14 @@ class ProvenanceIterativePE(ProvenancePE):
         IterativePE.__init__(self, *args, **kwargs)
 
         # name=self.name
-        ProvenancePE.__init__(self, self.name, *args, **kwargs)
+        ProvenanceType.__init__(self, self.name, *args, **kwargs)
 
 
-class NewWorkflowRun(ProvenancePE):
+class NewWorkflowRun(ProvenanceType):
 
     def __init__(self,save_mode):
-        ProvenancePE.__init__(self)
-        self.pe_init(pe_class=ProvenancePE,save_mode=save_mode)
+        ProvenanceType.__init__(self)
+        self.pe_init(pe_class=ProvenanceType,save_mode=save_mode)
         self._add_output('output')
 
 
