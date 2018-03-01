@@ -1764,7 +1764,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
         #+"-component-"+getUniqueId()
         object.pe_init(pe_class=parent, **kwargs)
 
-        print(" New type: " + str(object.__class__.__bases__))
+        print(" New type: " + str(object.__class__.__bases__)+"\r")
         object.name = localname
         
         code=""
