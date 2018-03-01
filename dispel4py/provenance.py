@@ -1746,8 +1746,8 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
                                     provType+(object.__class__,), body)
 
             # if any associates a statful port to the provenance type
-            if 'state_dep_port' in componentsType[object.name]:
-                object.STATEFUL_PORT= componentsType[object.name]['state_dep_port']
+            if 's-prov:stateful-port' in componentsType[object.name]:
+                object.STATEFUL_PORT= componentsType[object.name]['s-prov:stateful-port']
             if 'wlength' in componentsType[object.name]:
                 object.WLENTGH= componentsType[object.name]['wlength']
             if 's-prov:prov-cluster' in componentsType[object.name]:
@@ -1756,6 +1756,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
 
         else:
             body = {}
+            print(provType)
             for x in provType:
                     body.update(x().__dict__)
             object.__class__ = type(str(object.__class__),
