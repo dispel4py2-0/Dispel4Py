@@ -296,7 +296,7 @@ def runExampleWorkflow():
 # Once the Provenance types have been defined, these are used to configure, or profile, a workflow execution to comply with the desired provenance collection requirements.  Below we illustrate the framework method and the details of this approach.
 # 
 # <ul>
-# 
+#
 # <li><b><i>profile_prov_run</i></b> With this method, the users of the workflow can profile their run for provenance by indicating which types to apply to each component. Users can also chose where to store the metadata, locally to the file system or to a remote service. These operations can be performed in bulks, with different impacts on the overall overhead and on the experienced rapidity of the access of the lineage information. Finally, also general information about the attribution of the run, such as <i>username, run_id, description, workflow_name, workflow_id</i> are captured and included within the provenance traces.
 # </li>
 # <li><b><i>applyFlowResetPolicy (Advanced)</i></b>
@@ -312,9 +312,9 @@ def runExampleWorkflow():
 
 # In[7]:
 
-class netcdfProvType(ProvenancePE):
+class netcdfProvType(ProvenanceType):
     def __init__(self):
-        ProvenancePE.__init__(self)
+        ProvenanceType.__init__(self)
         self.addNamespacePrefix("clipc","http://clipc.eu/ns/#")
     
     def extractExternalInputDataId(self,data, input_port):
@@ -418,18 +418,24 @@ sel_rules={"ANALYSIS":{"term":{"$gt":0,"$lt":100}}}
 
 # In[9]:
 
-prov_config=  {
-                    'username': "aspinuso", 
-                    'description' : "provdemo combo double",
-                    'workflowName': "demo_ecmwf"      ,
-                    'workflowId'  : "workflow process",
-                    'save_mode'   : 'service'         ,
-                    # defines the use of the ProvenancePE with the Workflow element
-                    'componentsType' : {'ANALYSIS':{'s-prov:type':(netcdfProvType,)}, 
-                                        'COMBINE':  {'s-prov:type':(netcdfProvType, Nby1Flow,), 
-                                        'COLLECTOR1':{'s-prov:type':(netcdfProvType,)},
-                                        'COLLECTOR2':{'s-prov:type':(netcdfProvType,)}}},
-                    'sel_rules': None
+prov_config =  {
+                    'provone:User': "aspinuso", 
+                    's-prov:description' : "provdemo combo double",
+                    's-prov:workflowName': "demo_ecmwf",
+                    's-prov:workflowType': "clipc:combine",
+                    's-prov:workflowId'  : "workflow process",
+                    's-prov:save-mode'   : 'service'         ,
+                    # defines the Provenance Types and Provenance Clusters for the Workflow Components
+                    's-prov:componentsType' : 
+                                       {'ANALYSIS': {'s-prov:type':(netcdfProvType,),
+                                                     's-prov:prov-cluster':'clipc:Combiner'},
+                                        'COMBINE':  {'s-prov:type':(netcdfProvType, Nby1Flow,),
+                                                     's-prov:prov-cluster':'clipc:Combiner'},
+                                        'COLLECTOR1':{'s-prov:prov-cluster':'clipc:DataHandler'},
+                                        'COLLECTOR2':{'s-prov:prov-cluster':'clipc:DataHandler'},
+                                        'STORE':    {'s-prov:prov-cluster':'clipc:DataHandler'}
+                                        },
+                    's-prov:sel-rules': None
                 } 
 
 
@@ -438,22 +444,22 @@ prov_config=  {
 # In[10]:
 
 #Store via service
-ProvenancePE.REPOS_URL='http://127.0.0.1:8082/workflowexecutions/insert'
-#ProvenancePE.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
+ProvenanceType.REPOS_URL='http://127.0.0.1:8082/workflowexecutions/insert'
+#ProvenanceType.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
 
 #Export data lineage via service (REST GET Call on dataid resource)
-#ProvenancePE.PROV_EXPORT_URL='http://127.0.0.1:8082/data/'
-ProvenancePE.PROV_EXPORT_URL='http://127.0.0.1:8082/data/'
-#ProvenancePE.PROV_EXPORT_URL="http://climate4impact.eu/prov/workflow/export/data/" 
+#ProvenanceType.PROV_EXPORT_URL='http://127.0.0.1:8082/data/'
+ProvenanceType.PROV_EXPORT_URL='http://127.0.0.1:8082/data/'
+#ProvenanceType.PROV_EXPORT_URL="http://climate4impact.eu/prov/workflow/export/data/" 
 
 
 #Store to local path
-ProvenancePE.PROV_PATH='./prov-files/'
+ProvenanceType.PROV_PATH='./prov-files/'
 
 #Size of the provenance bulk before sent to storage or sensor
-ProvenancePE.BULK_SIZE=2
+ProvenanceType.BULK_SIZE=2
 
-#ProvenancePE.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
+#ProvenanceType.REPOS_URL='http://climate4impact.eu/prov/workflow/insert'
 
 
 # In[11]:
@@ -473,38 +479,38 @@ def createGraphWithProv():
      
     #Initialise provenance storage to service:
     configure_prov_run(graph, 
-                     provImpClass=(ProvenancePE,),
-                     username=prov_config['username'],
+                     provImpClass=(ProvenanceType,),
+                     username=prov_config['provone:User'],
                      runId=rid,
-                     #w3c_prov=prov_profile['w3c_prov'],
-                     description=prov_config['description'],
-                     workflowName=prov_config['workflowName'],
-                     workflowId=prov_config['workflowId'],
-                     save_mode=prov_config['save_mode'],
-                     componentsType=prov_config['componentsType']
+                     description=prov_config['s-prov:description'],
+                     workflowName=prov_config['s-prov:workflowName'],
+                     workflowType=prov_config['s-prov:workflowType'],
+                     workflowId=prov_config['s-prov:workflowId'],
+                     save_mode=prov_config['s-prov:save-mode'],
+                     componentsType=prov_config['s-prov:componentsType']
                       
                     )
                    
 
     #clustersRecorders={'record0':ProvenanceRecorderToFileBulk,'record1':ProvenanceRecorderToFileBulk,'record2':ProvenanceRecorderToFileBulk,'record6':ProvenanceRecorderToFileBulk,'record3':ProvenanceRecorderToFileBulk,'record4':ProvenanceRecorderToFileBulk,'record5':ProvenanceRecorderToFileBulk}
     #Initialise provenance storage to sensors and Files:
-    #profile_prov_run(graph,ProvenanceRecorderToFile,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
+    #profile_prov_run(graph,ProvenanceRecorderToFile,provImpClass=(ProvenanceType,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
     #clustersRecorders=clustersRecorders)
     
     #Initialise provenance storage to sensors and service:
-    #profile_prov_run(graph,ProvenanceRecorderToService,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
+    #profile_prov_run(graph,ProvenanceRecorderToService,provImpClass=(ProvenanceType,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
    
     #Summary view on each component
-    #profile_prov_run(graph,ProvenanceTimedSensorToService,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
+    #profile_prov_run(graph,ProvenanceTimedSensorToService,provImpClass=(ProvenanceType,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor')
    
    
    
     #Configuring provenance feedback-loop
-    #profile_prov_run(graph,ProvenanceTimedSensorToService,provImpClass=(ProvenancePE,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor',feedbackPEs=['Source','MaxClique'])
+    #profile_prov_run(graph,ProvenanceTimedSensorToService,provImpClass=(ProvenanceType,),username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='sensor',feedbackPEs=['Source','MaxClique'])
    
    
     #Initialise provenance storage end associate a Provenance type with specific components:
-    #profile_prov_run(graph,provImpClass=ProvenancePE,componentsType={'Source':(ProvenanceStock,)},username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='service')
+    #profile_prov_run(graph,provImpClass=ProvenanceType,componentsType={'Source':(ProvenanceStock,)},username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='service')
 
     #
     return graph
