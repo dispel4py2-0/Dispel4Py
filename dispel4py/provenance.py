@@ -29,6 +29,7 @@ import httplib
 import urllib
 import pickle
 from urlparse import urlparse
+from pip._internal.utils.misc import get_installed_distributions
 from dispel4py.new import simple_process
 from subprocess import Popen, PIPE
 import collections
@@ -446,7 +447,7 @@ class ProvenanceType(GenericPE):
         if 'pe_class' in kwargs and kwargs['pe_class'] != GenericPE:
             self.impcls = kwargs['pe_class']
        
-        if 'sel_rules' in kwargs and self.name in kwargs['sel_rules']:
+        if 'sel_rules' in kwargs and kwargs['sel_rules']!=None and self.name in kwargs['sel_rules']:
             print(self.name+" "+str(kwargs['sel_rules'][self.name]))
             self.sel_rules = kwargs['sel_rules'][self.name]
         else:
@@ -1448,6 +1449,7 @@ class ProvenanceType(GenericPE):
             self.derivationIds.append(derivation)
 
         else:
+            
             id=self.extractDataSourceId(data,port)
             #traceback.print_exc(file=sys.stderr)
             derivation = {'port': port, 'DerivedFromDatasetID':
@@ -2083,7 +2085,7 @@ class NewWorkflowRun(ProvenanceType):
             workflowName=self.parameters["workflowName"],
             workflowType=self.parameters["workflowType"],
             runId=self.parameters["runId"],
-            modules=sorted(["%s==%s" % (i.key, i.version) for i in pip.get_installed_distributions()]),
+            modules=sorted(["%s==%s" % (i.key, i.version) for i in get_installed_distributions()]),
             subProcesses=self.parameters["source"],
             ns=self.parameters["ns"])
             

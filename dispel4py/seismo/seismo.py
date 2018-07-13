@@ -17,6 +17,7 @@ class SeismoPE(ProvenancePE):
     
     def __init__(self,*args,**kwargs):
         ProvenancePE.__init__(self,*args,**kwargs)
+        self.addNamespacePrefix("seis","http://seis-prov.eu/ns/#")
         #self.outputconnections[OUTPUT_DATA][TYPE] = ['timestamp', 'location', 'streams']
 
         
