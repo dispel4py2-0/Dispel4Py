@@ -357,11 +357,11 @@ Example, a Processing Element _CorrCoef_ that produces lineage information only 
 ```python
 ProvenanceSimpleFunctionPE(self, *args, **kwargs)
 ```
-A _Pattern type_ for the native  _SimpleFunctionPE_ of dispel4py
+A _Pattern type_ for the native  _SimpleFunctionPE_ processing element of dispel4py
 
 ## ProvenanceIterativePE
 ```python
 ProvenanceIterativePE(self, *args, **kwargs)
 ```
-A _Pattern type_ for the native  _IterativePE_ Element of dispel4py
+A _Pattern type_ for the native  _IterativePE_ processing element of dispel4py
 
