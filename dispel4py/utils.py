@@ -20,6 +20,7 @@ from dispel4py.workflow_graph import WorkflowGraph
 
 from importlib import import_module
 from imp import load_source
+import sys
 import traceback
 
 
@@ -39,8 +40,16 @@ def findWorkflowGraph(mod, attr):
 
 
 def loadGraphFromFile(module_name, path, attr=None):
-    mod = load_source(module_name, path)
-    attr = findWorkflowGraph(mod, attr)
+    if (sys.version_info > (3, 0)):
+        from importlib import util
+        spec = util.spec_from_file_location(module_name, path)
+        module = util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+    else:
+        module = load_source(module_name, path)
+
+    attr = findWorkflowGraph(module, attr)
     return attr
 
 
