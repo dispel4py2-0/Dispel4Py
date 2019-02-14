@@ -6,7 +6,7 @@ dispel4py is a free and open-source Python library for describing abstract strea
 Dependencies
 ------------
 
-dispel4py has been tested with Python *2.7.6*, *2.7.5*, *2.7.2*, *2.6.6* and Python *3.4.3*.
+dispel4py has been tested with Python *2.7.6*, *2.7.5*, *2.7.2*, *2.6.6* and Python *3.4.3*, *3.6*, *3.7*.
 
 The following Python packages are required to run dispel4py:
 
@@ -15,11 +15,6 @@ The following Python packages are required to run dispel4py:
 If using the MPI mapping:
 
 - mpi4py (http://mpi4py.scipy.org/)
-
-If using the Storm mapping:
-
-- Python Storm module, available here: https://github.com/apache/storm/tree/master/storm-multilang/python/src/main/resources/resources, to be placed in directory `resources`.
-- Python Storm thrift generated code, available here: https://github.com/apache/storm/tree/master/storm-core/src/py
 
 Installation
 ------------
