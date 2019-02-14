@@ -1,38 +1,29 @@
 '''
-This is a dispy graph which produces a pipleline workflow with one producer node (prod) and 5 consumer nodes. 
-It can be executed with MPI and STORM. 
+This is a dispel4py graph which produces a pipleline workflow with one producer node (prod) and 5 consumer nodes.
 
 .. image:: /api/images/pipeline_test.png
 
-Execution: 
+Execution:
 
-* MPI: Please, locate yourself into the dispy directory. 
+* MPI: Execute the MPI mapping as follows::
 
-    Execute the MPI mapping as follows::
-
-        mpiexec -n <number mpi_processes> python -m dispel4py.worker_mpi <name_dispy_graph> <-f file containing the input dataset in JSON format>
+        mpiexec -n <number mpi_processes> dispel4py mpi <-f file containing the input dataset in JSON format>
 	<-i number of iterations/runs'> <-s>
-	
-    The argument '-s' forces to run the graph in a simple processing, which means that the first node of the graph will be executed in a process, and the rest of nodes will be        executed in a second process.  
-    When <-i number of interations/runs> is not indicated, the graph is executed once by default. 	
-    
-        
+
+    When <-i number of interations/runs> is not indicated, the graph is executed once by default.
+
     For example::
-    
-        mpiexec -n 6 python -m dispel4py.worker_mpi test.graph_testing.pipeline_test 
-        
+
+        mpiexec -n 6 dispel4py mpi test.graph_testing.pipeline_test
+
     .. note::
-    
-        Each node in the graph is executed as a separate MPI process. 
-        This graph has 6 nodes. For this reason we need at least 6 MPI processes to execute it. 
-        
+
+        Each node in the graph is executed as a separate MPI process.
+        This graph has 6 nodes. For this reason we need at least 6 MPI processes to execute it.
+
     Output::
 
         Processes: {'TestProducer0': [1], 'TestOneInOneOut5': [5], 'TestOneInOneOut4': [4], 'TestOneInOneOut3': [3], 'TestOneInOneOut2': [2], 'TestOneInOneOut1': [0]}
-        TestOneInOneOut1 (rank 0): I'm a bolt
-        TestOneInOneOut2 (rank 2): I'm a bolt
-        TestOneInOneOut4 (rank 4): I'm a bolt
-        TestProducer0 (rank 1): I'm a spout
         Rank 1: Sending terminate message to [0]
         TestProducer0 (rank 1): Processed 1 input block(s)
         TestProducer0 (rank 1): Completed.
@@ -52,27 +43,7 @@ Execution:
         TestOneInOneOut4 (rank 4): Completed.
         TestOneInOneOut5 (rank 5): Processed 1 input block(s)
         TestOneInOneOut5 (rank 5): Completed.
-        
-* STORM:  
 
-    From the dispy directory launch the Storm submission client::
-    
-        python storm_submission.py test.graph_testing.pipeline_test
-        
-    Output::
-    
-        Spec'ing TestOneInOneOut1
-        Spec'ing TestOneInOneOut2
-        Spec'ing TestOneInOneOut3
-        Spec'ing TestOneInOneOut4
-        Spec'ing TestOneInOneOut5
-        Spec'ing TestProducer6
-        spouts {'TestProducer6': ... }
-        bolts  {'TestOneInOneOut5': ... }
-        Created Storm submission package in /var/folders/58/7bjr3s011kgdtm5lx58prc_40000gn/T/tmp5ePEq3
-        Running: java -client -Dstorm.options= -Dstorm.home= ...
-        Submitting topology 'TestTopology' to storm.example.com:6627 ... 
-        
 '''
 
 from test.graph_testing import testing_PEs as t
@@ -81,7 +52,7 @@ from dispel4py.workflow_graph import WorkflowGraph
 def testPipeline(graph):
     '''
     Adds a pipeline to the given graph.
-    
+
     :rtype: the created graph
     '''
     prod = t.TestProducer()
