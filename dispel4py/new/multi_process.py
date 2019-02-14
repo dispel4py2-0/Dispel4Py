@@ -192,7 +192,7 @@ class MultiProcessingWrapper(GenericWrapper):
 
     def _write(self, name, data):
         #self.pe.log('MP Writing %s to %s' % (data, name))
-        
+
         try:
             targets = self.targets[name]
         except KeyError:
@@ -201,12 +201,12 @@ class MultiProcessingWrapper(GenericWrapper):
                 self.result_queue.put((self.pe.id, name, data))
             return
         for (inputName, communication) in targets:
-             
+
             if isinstance(self.pe, SimpleProcessingPE):
                 dest = communication.getDestination({inputName: data[0]})
             else:
                 dest = communication.getDestination({inputName: data})
-                
+
             output = {inputName: data}
             for i in dest:
                 #self.pe.log('Writing out %s' % output)
@@ -220,23 +220,3 @@ class MultiProcessingWrapper(GenericWrapper):
             for (inputName, communication) in targets:
                 for i in communication.destinations:
                     self.output_queues[i].put((None, STATUS_TERMINATED))
-
-import time
-def main():    # pragma: no cover
-    from dispel4py.new.processor \
-        import load_graph_and_inputs, parse_common_args
-
-    args, remaining = parse_common_args()
-    args = parse_args(remaining, args)
-
-    graph, inputs = load_graph_and_inputs(args)
-    if graph is not None:
-        elapsed_time=0
-        start_time = time.time()
-        process(graph, inputs=input_data, args=args)
-        elapsed_time+= time.time() - start_time
-    
-        errormsg = process(graph, inputs, args)
-        if errormsg:
-            print(errormsg)
-        print ("ELAPSED TIME: "+str(elapsed_time/num))
