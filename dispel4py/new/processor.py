@@ -348,7 +348,7 @@ def get_partitions_adv(workflow):
         sourcePartition = []
         otherPartition = []
         graph = workflow.graph
-        for node in graph.nodes():
+        for node in list(graph.nodes()):
             pe = node.getContainedObject()
             if not _getConnectedInputs(node, graph):
                 sourcePartition.append(pe)
