@@ -26,7 +26,7 @@ def read(fname):
 
 setup(
     name="dispel4py",
-    version="1.2.1",
+    version="1.3.0",
     author="The University of Edinburgh",
     author_email="a.krause@epcc.ed.ac.uk",
     description=("dispel4py is a free and open-source Python library for \
@@ -37,7 +37,6 @@ setup(
     url="http://dispel4py.org",
     packages=['dispel4py',
               'dispel4py.new',
-              'dispel4py.storm',
               'dispel4py.examples',
               'dispel4py.examples.graph_testing'],
     long_description=read('README.md'),
