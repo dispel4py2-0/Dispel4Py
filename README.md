@@ -32,7 +32,7 @@ The Dockerfile in the dispel4py root directory builds a Debian Linux distributio
 docker build . -t dare-dispel4py
 ```
 
-Start a Docker container in interactive mode with a bash shell:
+Start a Docker container with the dispel4py image in interactive mode with a bash shell:
 
 ```
 docker run -it dare-dispel4py /bin/bash
