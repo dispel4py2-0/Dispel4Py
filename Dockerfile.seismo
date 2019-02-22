@@ -1,0 +1,4 @@
+FROM dare-dispel4py:latest
+
+# install obspy
+RUN pip install obspy
