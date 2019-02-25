@@ -571,6 +571,7 @@ class ProvenanceType(GenericPE):
         self._process_feedback(feedback)
 
     def process(self, inputs):
+        print(inputs)
         self.feedbackIteration = False
         self.void_invocation = True
         self.iterationIndex += 1
@@ -598,9 +599,8 @@ class ProvenanceType(GenericPE):
 
 
     def extractItemMetadata(self, data, port):
-
         return {}
-    
+       
      
     def preprocess(self):
         if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
@@ -1738,6 +1738,8 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
               " Original base class: " + str(object.__class__.__bases__))
         parent = object.__class__.__bases__[0]
         localname = object.name
+        #print("DADADAD")
+        #print(object._process)
         
         
          
@@ -1749,6 +1751,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
          
         if componentsType!=None and object.name in componentsType:
             body = {}
+            
             
             if 's-prov:type' in componentsType[object.name]:
              
@@ -2043,7 +2046,7 @@ class ProvenanceSimpleFunctionPE(ProvenanceType):
                               (self.__class__, SimpleFunctionPE), {})
         SimpleFunctionPE.__init__(self, *args, **kwargs)
         # name=self.name
-        ProvenanceType.__init__(self, self.name, *args, **kwargs)
+        ProvenanceType.__init__(self, *args, **kwargs)
         # self.name=type(self).__name__
 
 
@@ -2055,7 +2058,7 @@ class ProvenanceIterativePE(ProvenanceType):
         IterativePE.__init__(self, *args, **kwargs)
 
         # name=self.name
-        ProvenanceType.__init__(self, self.name, *args, **kwargs)
+        ProvenanceType.__init__(self, *args, **kwargs)
 
 
 class NewWorkflowRun(ProvenanceType):
