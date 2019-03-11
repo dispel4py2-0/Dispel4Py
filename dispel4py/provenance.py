@@ -571,7 +571,6 @@ class ProvenanceType(GenericPE):
         self._process_feedback(feedback)
 
     def process(self, inputs):
-        print(inputs)
         self.feedbackIteration = False
         self.void_invocation = True
         self.iterationIndex += 1
