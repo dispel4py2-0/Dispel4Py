@@ -22,7 +22,7 @@ class SeismoPE(ProvenanceType):
 
         
     def extractItemMetadata(self,data,port):
-        print("EXTRACTING")
+         
         try:
             
             st=[]
@@ -30,10 +30,11 @@ class SeismoPE(ProvenanceType):
             if type(data) == Trace:
                 st.append(data)
                 
-            elif type(data)==tuple:
+            elif type(data)==tuple or type(data)==list:
                 for x in data:
                     if type(x)==Stream:
                         st=x
+            
             else:
                 st=data
             streammeta=list()
@@ -42,8 +43,7 @@ class SeismoPE(ProvenanceType):
                 metadic={}
                 metadic.update({"prov:type":"waveform"});    
                 metadic.update({"id":str(uuid.uuid1())});
-                print("EXTRACTING")
-                print(tr.stats)
+                
                 for attr, value in tr.stats.__dict__.items():
                     
                     if attr=="mseed":
@@ -81,7 +81,8 @@ class SeismoSimpleFunctionPE(ProvenanceType):
  
     
     def __init__(self,*args,**kwargs):
-        self.__class__ = type(str(self.__class__),(self.__class__,ProvenanceSimpleFunctionPE,SeismoPE),{})
+        
+        self.__class__ = type(str(self.__class__),(self.__class__,ProvenanceSimpleFunctionPE,SeismoPE,),{})
         ProvenanceSimpleFunctionPE.__init__(self,*args,**kwargs)
         #print(self.outputconnections)
         #self.outputconnections[OUTPUT_DATA][TYPE] = ['timestamp', 'location', 'streams']     
@@ -89,55 +90,4 @@ class SeismoSimpleFunctionPE(ProvenanceType):
     
     
     
-    def extractItemMetadata(self,data,port):
-        print("EXTRACTING")
-        try:
-            
-            st=[]
-             
-            if type(data) == Trace:
-                st.append(data)
-                
-            elif type(data)==tuple:
-                for x in data:
-                    if type(x)==Stream:
-                        st=x
-            else:
-                st=data
-            streammeta=list()
-            for tr in st:
-                
-                metadic={}
-                metadic.update({"prov:type":"waveform"});    
-                metadic.update({"id":str(uuid.uuid1())});
-                print("EXTRACTING")
-                print(tr.stats)
-                for attr, value in tr.stats.__dict__.items():
-                    
-                    if attr=="mseed":
-                        mseed={}
-                        for a,v in value.__dict__.items():
-                            try:
-                                if type(v)==UTCDateTime:
-                                    mseed.update({a:str(v)});
-                                else:
-                                    mseed.update({a:float(v)});
-                            except Exception:
-                                mseed.update({a:str(v)});
-                        metadic.update({"mseed":mseed});
-                    else:
-                        try:
-                            if type(value)==UTCDateTime:
-                                metadic.update({attr:str(value)});
-                            else:
-                                metadic.update({attr:float(value)});
-                        except Exception:
-                            metadic.update({attr:str(value)});
-                
-                streammeta.append(metadic);
-            
-            return streammeta   
-        except Exception:
-            self.log("Applying default metadata extraction")
-            #self.error=self.error+"Extract Metadata error: "+str(traceback.format_exc())
-            return super(SeismoPE, self).extractItemMetadata(data);
+    
