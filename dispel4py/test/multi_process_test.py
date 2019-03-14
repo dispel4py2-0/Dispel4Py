@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -26,9 +26,9 @@ Using nose (https://nose.readthedocs.org/en/latest/) run as follows::
 '''
 import argparse
 
-from dispel4py.examples.graph_testing.testing_PEs import TestProducer, TestOneInOneOut, TestTwoInOneOut
+from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
-from multi_process import process
+from dispel4py.new.multi_process import process
 
 
 args = argparse.Namespace
@@ -36,9 +36,9 @@ args.num = 5
 args.simple = False
 
 def testPipeline():
-    prod = TestProducer()
-    cons1 = TestOneInOneOut()
-    cons2 = TestOneInOneOut()
+    prod = t.TestProducer()
+    cons1 = t.TestOneInOneOut()
+    cons2 = t.TestOneInOneOut()
     graph = WorkflowGraph()
     graph.connect(prod, 'output', cons1, 'input')
     graph.connect(cons1, 'output', cons2, 'input')
@@ -46,13 +46,13 @@ def testPipeline():
     args.num = 5
     args.simple = False
     process(graph, inputs={ prod : [ {}, {}, {}  ] }, args=args )
-    
+
 def testSquare():
     graph = WorkflowGraph()
-    prod = TestProducer(2)
-    cons1 = TestOneInOneOut()
-    cons2 = TestOneInOneOut()
-    last = TestTwoInOneOut()
+    prod = t.TestProducer(2)
+    cons1 = t.TestOneInOneOut()
+    cons2 = t.TestOneInOneOut()
+    last = t.TestTwoInOneOut()
     graph.connect(prod, 'output0', cons1, 'input')
     graph.connect(prod, 'output1', cons2, 'input')
     graph.connect(cons1, 'output', last, 'input0')
@@ -62,18 +62,18 @@ def testSquare():
 
 def testTee():
     graph = WorkflowGraph()
-    prod = TestProducer()
+    prod = t.TestProducer()
     prev = prod
-    cons1 = TestOneInOneOut()
-    cons2 = TestOneInOneOut()
+    cons1 = t.TestOneInOneOut()
+    cons2 = t.TestOneInOneOut()
     graph.connect(prod, 'output', cons1, 'input')
     graph.connect(prod, 'output', cons2, 'input')
     args.num = 3
     process(graph, inputs={prod: [{}, {}, {}, {}, {}]}, args=args)
 
-#print '='*20 + 'PIPELINE' + '='*20 
+#print '='*20 + 'PIPELINE' + '='*20
 #testPipeline()
-#print '='*20 + 'SQUARE  ' + '='*20 
+#print '='*20 + 'SQUARE  ' + '='*20
 #testSquare()
-#print '='*20 + 'TEE     ' + '='*20 
+#print '='*20 + 'TEE     ' + '='*20
 #testTee()
