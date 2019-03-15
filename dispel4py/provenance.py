@@ -44,6 +44,9 @@ try:
 except ImportError:
     pass
 
+
+
+
 INPUT_NAME = 'input'
 OUTPUT_DATA = 'output'
 OUTPUT_METADATA = 'provenance'
@@ -62,7 +65,7 @@ More details.
 def clean_empty(d):
     """ 
         Utility function that given a dictionary in input, removes all the properties that are set to None.
-        It workes recursevly through lists and nested documents
+        It workes recursively through lists and nested documents
 
     """
     if not isinstance(d, (dict, list)):
@@ -443,6 +446,8 @@ class ProvenanceType(GenericPE):
     """
 
     PROV_PATH="./"
+        """ PAth ov 
+        """
     REPOS_URL=""
     PROV_EXPORT_URL=""
     
@@ -458,9 +463,8 @@ class ProvenanceType(GenericPE):
 
 
     def getProvStateObjectId(self,name):
-        """Documentation for a function.
-
-        More details.
+        """
+            Return the id of a named object stored in the provenance state
         """
         if name in self.stateCollection:
             return self.stateCollection[name]
