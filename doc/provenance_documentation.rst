@@ -10,7 +10,7 @@ clean_empty
    clean_empty(d)
 
 Utility function that given a dictionary in input, removes all the properties that are set to None.
-It workes recursevly through lists and nested documents
+It workes recursively through lists and nested documents
 
 total_size
 ----------
@@ -115,7 +115,7 @@ getProvStateObjectId
 
    ProvenanceType.getProvStateObjectId(self, name)
 
-Return the id of a named object stored in the provenance state
+Return the id of a named object stored in the provenance state.
 
 apply_derivation_rule
 ^^^^^^^^^^^^^^^^^^^^^
