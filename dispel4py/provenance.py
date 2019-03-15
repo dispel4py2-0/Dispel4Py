@@ -60,7 +60,8 @@ More details.
 
 
 def clean_empty(d):
-    """ Utility function that given a dictionary in input, removes all the properties that are set to None.
+    """ 
+        Utility function that given a dictionary in input, removes all the properties that are set to None.
         It workes recursevly through lists and nested documents
 
     """
@@ -71,11 +72,12 @@ def clean_empty(d):
     return {k: v for k, v in ((k, clean_empty(v)) for k, v in d.items()) if v}
 
 def total_size(o, handlers={}, verbose=False):
-    """ Returns the approximate memory footprint an object and all of its contents.
+    """ 
+        Returns the approximate memory footprint an object and all of its contents.
 
-    Automatically finds the contents of the following builtin containers and
-    their subclasses:  tuple, list, deque, dict, set and frozenset.
-    To search other containers, add handlers to iterate over their contents:
+        Automatically finds the contents of the following builtin containers and
+        their subclasses:  tuple, list, deque, dict, set and frozenset.
+        To search other containers, add handlers to iterate over their contents:
 
         handlers = {SomeContainerClass: iter,
                     OtherContainerClass: OtherContainerClass.get_elements}
@@ -115,7 +117,8 @@ def total_size(o, handlers={}, verbose=False):
 
 
 def write(self, name, data):
-    """ Redefines the native write function of the dispel4py SimpleFunctionPE to take into account 
+    """ 
+        Redefines the native write function of the dispel4py SimpleFunctionPE to take into account 
         provenance payload when transfering data.
     """
     if isinstance(data, dict) and '_d4p_prov' in data:
@@ -125,7 +128,8 @@ def write(self, name, data):
 
 
 def _process(self, data):
-    """ Redefines the native _process function of the dispel4py SimpleFunctionPE to take into account 
+    """ 
+        Redefines the native _process function of the dispel4py SimpleFunctionPE to take into account 
         provenance payload when accessing data for processing.
     """
     results = self.compute_fn(data, **self.params)
@@ -150,7 +154,8 @@ dispel4py.base.SimpleFunctionPE._process = _process
 
 
 def getDestination_prov(self, data):
-    """ When provenance is activated it redefines the native dispel4py.new.process getDestination function to take into account provenance information 
+    """ 
+        When provenance is activated it redefines the native dispel4py.new.process getDestination function to take into account provenance information 
         when redirecting grouped operations.
     """
 #    print ("Enabled Grouping for pe port: " + str(self)]))
@@ -170,7 +175,8 @@ def getDestination_prov(self, data):
 
 
 def commandChain(commands, envhpc, queue=None):
-    """ Utility function to execute a chain of system commands on the hosting oeprating system.
+    """ 
+        Utility function to execute a chain of system commands on the hosting oeprating system.
         The current environment variable can be passed as parameter env.
         The queue parameter is used to store the stdoutdata, stderrdata of each process in message 
     """
@@ -494,7 +500,8 @@ class ProvenanceType(GenericPE):
 
 
     def apply_derivation_rule(self,event,voidInvocation,oport=None,iport=None,data=None,metadata=None):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_. This method is invoked by the _ProvenanceType_ each iteration when a decision has to be made whether to ignore or discard the dependencies on the ingested stream
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_. This method is invoked by the _ProvenanceType_ each iteration when a decision has to be made whether to ignore or discard the dependencies on the ingested stream
             and stateful entities, applying a specific provenance pattern, thereby creating input/output derivations. The framework invokes this method every time the data is written on an output port (_event_: _write_) and every
             time an invocation (_s-prov:Invocation_) ends (_event_: _end_invocation_event_). The latter can be further described by  the boolean parameter _voidInvocation_, indicating whether the invocation terminated with any data produced.
             The default implementation provides a _stateless_ behaviour, where the output depends only from the input data recieved during the invocation.
@@ -612,7 +619,8 @@ class ProvenanceType(GenericPE):
         return streams
 
     def getInputAt(self, port="input", index=None):
-        """ Return input data currently available at a specific _port_. When reading input of a grouped operator, the _gindex_ parameter allows to access exclusively the data related to the group index.
+        """ 
+            Return input data currently available at a specific _port_. When reading input of a grouped operator, the _gindex_ parameter allows to access exclusively the data related to the group index.
         """
         if index==None:
             return self.inputs[port]
@@ -658,7 +666,8 @@ class ProvenanceType(GenericPE):
         
 
     def addNamespacePrefix(self,prefix,url):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage _Contextualisation type_.
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage _Contextualisation type_.
             A Namespace _prefix_ can be declared with its vocabulary _url_ to map the metadata terms to external controlled vocabularies. 
             They can be used to qualify the metadata terms extracted from the _extractItemMetadata_ function, 
             as well as for those terms injected selectively at runtime by the _write_ method. The namespaces will be used 
@@ -668,7 +677,8 @@ class ProvenanceType(GenericPE):
 
 
     def extractItemMetadata(self, data, port):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage _Contextualisation type_. 
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage _Contextualisation type_. 
             Extracts metadata from the domain specific content of the data (s-prov:DataGranules) written on a components output _port_, according to a particular vocabulary. 
         """
         return {}
@@ -1012,14 +1022,16 @@ class ProvenanceType(GenericPE):
             raise
 
     def ignorePastFlow(self):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
             
             It instructs the type to ignore the all the inputs when the method _apply_derivation_rule_ is invoked for a certain event."
         """
         self.ignore_past_flow=True
 
     def ignoreState(self):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
             
             It instructs the type to ignore the content of the provenance state when the method _apply_derivation_rule_ is invoked for a certain event."
         """
@@ -1136,7 +1148,8 @@ class ProvenanceType(GenericPE):
     """
 
     def discardState(self): 
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
             
             It instructs the type to reset the data dependencies in the provenance state when the method _apply_derivation_rule_ is invoked for a certain event.
             These will not be availabe in the following invocations."
@@ -1153,7 +1166,8 @@ class ProvenanceType(GenericPE):
      
 
     def discardInFlow(self,wlength=None,discardState=False): 
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage __Pattern type__. 
             
             It instructs the type to reset the data dependencies related to the component''s inputs when the method _apply_derivation_rule_ is invoked for a certain event.
             These will not be availabe in the following invocations."
@@ -1227,7 +1241,8 @@ class ProvenanceType(GenericPE):
             stateless=False,
             **kwargs
     ):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_ or inn those circumstances where developers require to explicitly manage the provenance information within the component''s logic,. 
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_ or inn those circumstances where developers require to explicitly manage the provenance information within the component''s logic,. 
             
             Updates the provenance state (_s-prov:StateCollection_) with a reference, identified by a _lookupterm_, to a new _data_ entity or to the current input. The _lookupterm_ will allow developers to refer to the entity when this is used to derive new data.
             Developers can specify additional _medatata_ by passing a metadata dictionary. This will enrich the one generated by the _extractItemMetadata_ method.
@@ -1409,7 +1424,8 @@ class ProvenanceType(GenericPE):
         self.stateDerivations=terms
 
     def checkSelectiveRule(self,streammeta):
-        """ In alignement with what was previously specified in the configure_prov_run for the Processing Element, 
+        """ 
+            In alignement with what was previously specified in the configure_prov_run for the Processing Element, 
             check the data granule metadata whether its properies values fall in a selective provenance generation rule. 
         """
         self.log("Checking Selectivity-Rules: "+str(self.sel_rules))
@@ -1443,7 +1459,8 @@ class ProvenanceType(GenericPE):
 
 
     def checkTransferRule(self,streammeta):
-        """ In alignement with what was previously specified in the configure_prov_run for the Processing Element, 
+        """ 
+            In alignement with what was previously specified in the configure_prov_run for the Processing Element, 
             check the data granule metadata whether its properies values fall in a selective data transfer rule. 
         """
         self.log("Checking Transfer-Rules")
@@ -1549,7 +1566,8 @@ class ProvenanceType(GenericPE):
                         del self.derivationIds[self.derivationIds.index(j)]
     
     def extractDataSourceId(self,data,port):
-        """ In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_. Extract the id from the incoming data, if applicable,
+        """ 
+            In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_. Extract the id from the incoming data, if applicable,
             to reuse it to identify the correspondent provenance entity. This functionality is handy especially when a workflow component ingests data represented by
             self-contained and structured file formats. For instance, the NetCDF attributes Convention includes in its internal metadata an id that can be reused to ensure 
             the linkage and therefore the consistent continuation of provenance tracesbetween workflow executions that generate and use the same data.
@@ -1631,7 +1649,8 @@ class ProvenanceType(GenericPE):
 'Collection of Provenance Patterns Types'
 
 class AccumulateFlow(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) whose output depends on a sequence of input data; e.g. computation of periodic average. 
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) whose output depends on a sequence of input data; e.g. computation of periodic average. 
     """
     def __init__(self):
         ProvenanceType.__init__(self)
@@ -1645,7 +1664,8 @@ class AccumulateFlow(ProvenanceType):
 
 
 class Nby1Flow(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) whose output depends
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) whose output depends
         on the data received on all its input ports in lock-step; e.g. combined analysis of multiple
         variables. 
     """
@@ -1693,7 +1713,8 @@ class Nby1Flow(ProvenanceType):
 
 
 class SlideFlow(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) whose output depends
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) whose output depends
         on computations over sliding windows; e.g. computation of rolling sums.
     """
 
@@ -1717,7 +1738,8 @@ class SlideFlow(ProvenanceType):
 
 
 class ASTGrouped(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) that manages a stateful operator
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) that manages a stateful operator
         with grouping rules; e.g. a component that produces a correlation matrix with the incoming
         coefficients associated with the same sampling-iteration index
     """
@@ -1760,7 +1782,8 @@ class ASTGrouped(ProvenanceType):
             
 
 class SingleInvocationFlow(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) that
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) that
         presents stateless input output dependencies; e.g. the Processing Element of a simple I/O
         pipeline.
     """
@@ -1779,7 +1802,8 @@ class SingleInvocationFlow(ProvenanceType):
           
 
 class AccumulateStateTrace(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) that
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) that
         keeps track of the updates on intermediate results written to the output after a sequence
         of inputs; e.g. traceable approximation of frequency counts or of periodic averages.  
     """
@@ -1805,7 +1829,8 @@ class AccumulateStateTrace(ProvenanceType):
         
 
 class IntermediateStatefulOut(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_) stateful component which produces distinct but interdependent
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_) stateful component which produces distinct but interdependent
         output; e.g. detection of events over periodic observations or any component that reuses the data just written to generate a new product
     """
      
@@ -1837,7 +1862,8 @@ class IntermediateStatefulOut(ProvenanceType):
 
 
 class ForceStateless(ProvenanceType):
-    """ A _Pattern type_ for a Processing Element (_s-prov:Component_). It considers the outputs of the component dependent 
+    """ 
+        A _Pattern type_ for a Processing Element (_s-prov:Component_). It considers the outputs of the component dependent 
         only on the current input data, regardless from any explicit state update; e.g. the user wants to reduce the
         amount of lineage produced by a component that presents inline calls to the _update_prov_state_, accepting less accuracy.
     """
@@ -1860,9 +1886,11 @@ class ForceStateless(ProvenanceType):
 meta =True
 
 def get_source(object, spacing=10, collapse=1):
-    """Print methods and doc strings.
-
-    Takes module, class, list, dictionary, or string."""
+    """ 
+        Print methods and doc strings.
+        Takes module, class, list, dictionary, or string.
+    """
+    
     methodList = [e for e in dir(object) if callable(getattr(object, e))]
     processFunc = collapse and (lambda s: " ".join(s.split())) or (lambda s: s)
     source= "\n".join(["%s %s" %
@@ -1873,11 +1901,13 @@ def get_source(object, spacing=10, collapse=1):
 
 namespaces={}
 
-' This function dinamically extend the type of each the nodes of the graph '
-' or subgraph with ProvenanceType type or its specialization'
+
 
 def injectProv(object, provType, active=True,componentsType=None, workflow={},**kwargs):
-    
+    """ 
+        This function dinamically extend the type of each the nodes of the graph 
+        or subgraph with ProvenanceType type or its specialisation
+    """
     
     
     if isinstance(object, WorkflowGraph):
@@ -1996,8 +2026,7 @@ def update_prov_run(runId,save_mode='file',dic=None):
     simple_process.process(_graph, {'UpdateWorkflowRun': [{'input': 'None'}]})
 
 
-' This methods enriches the graph to enable the production and recording '
-' of run-specific provenance information '
+ 
 
 def configure_prov_run(
         graph,
@@ -2020,8 +2049,8 @@ def configure_prov_run(
         transfer_rules={},
         update=False
         ):
-
-    """ In order to enable the user of a data-intensive application to configure the attribution
+    """ 
+        In order to enable the user of a data-intensive application to configure the attribution
         of types, selectivity controls and activation of advanced exploitation mechanisms, we
         introduce in this chapter also the concept of provenance configuration. In Figure 4.1
         we outline the different phases envisaged by framework. In that respect, we propose

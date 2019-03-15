@@ -1,5 +1,66 @@
-dispel4py
-=========
+provenance
+==========
+
+clean\_empty
+------------
+
+.. code:: python
+
+    clean_empty(d)
+
+Utility function that given a dictionary in input, removes all the
+properties that are set to None. It workes recursevly through lists and
+nested documents
+
+total\_size
+-----------
+
+.. code:: python
+
+    total_size(o, handlers={}, verbose=False)
+
+Returns the approximate memory footprint an object and all of its
+contents.
+
+Automatically finds the contents of the following builtin containers and
+their subclasses: tuple, list, deque, dict, set and frozenset. To search
+other containers, add handlers to iterate over their contents:
+
+handlers = {SomeContainerClass: iter, OtherContainerClass:
+OtherContainerClass.get\_elements}
+
+write
+-----
+
+.. code:: python
+
+    write(self, name, data)
+
+Redefines the native write function of the dispel4py SimpleFunctionPE to
+take into account provenance payload when transfering data.
+
+getDestination\_prov
+--------------------
+
+.. code:: python
+
+    getDestination_prov(self, data)
+
+When provenance is activated it redefines the native
+dispel4py.new.process getDestination function to take into account
+provenance information when redirecting grouped operations.
+
+commandChain
+------------
+
+.. code:: python
+
+    commandChain(commands, envhpc, queue=None)
+
+Utility function to execute a chain of system commands on the hosting
+oeprating system. The current environment variable can be passed as
+parameter env. The queue parameter is used to store the stdoutdata,
+stderrdata of each process in message
 
 ProvenanceType
 --------------
@@ -11,7 +72,7 @@ ProvenanceType
 A workflow is a program that combines atomic and independent processing
 elements via a specification language and a library of components. More
 advanced systems adopt abstractions to facilitate re-use of workflows
-across users' contexts and application domains. While methods can be
+across users'' contexts and application domains. While methods can be
 multi-disciplinary, provenance should be meaningful to the domain
 adopting them. Therefore, a portable specification of a workflow
 requires mechanisms allowing the contextualisation of the provenance
@@ -65,244 +126,6 @@ provenance capturing properties
 -  *BULK*\ SIZE\_: Number of lineage documents to be stored in a single
    file or in a single request to the remote service. Helps tuning the
    overhead brough by the latency of accessing storage resources.
-
-getProvStateObjectId
-~~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.getProvStateObjectId(self, name)
-
-Check if a data object with lookupterm *name*, is part of the provenance
-state (*s-prov:StateCollection*) and returns its *id*.
-
-makeProcessId
-~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.makeProcessId(self)
-
-Return the *id* to be attributed to an running instance
-(*s-prov:ComponentInstance*) of a processing element.
-
-makeUniqueId
-~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.makeUniqueId(self, data, output_port)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage **Contextualisation type**. Return the *id* to be attributed to
-a data entity (*s-prov:Data*) produced in output.
-
-apply\_derivation\_rule
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.apply_derivation_rule(self, event, voidInvocation, oport=None, iport=None, data=None, metadata=None)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage *Pattern type*. This method is invoked by the *ProvenanceType*
-each iteration when a decision has to be made whether to ignore or
-discard the dependencies on the ingested stream and stateful entities,
-applying a specific provenance pattern, thereby creating input/output
-derivations. The framework invokes this method every time the data is
-written on an output port (*event*: *write*) and every time an
-invocation (*s-prov:Invocation*) ends (*event*:
-*end*\ invocation\_event\_). The latter can be further described by the
-boolean parameter *voidInvocation*, indicating whether the invocation
-terminated with any data produced. The default implementation provides a
-*stateless* behaviour, where the output depends only from the input data
-recieved during the invocation.
-
-getInputAt
-~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.getInputAt(self, port='input', gindex=None)
-
-Return input data currently available at a specific *port*. When reading
-input of a grouped operator, the *gindex* parameter allows to access
-exclusively the data related to the group index.
-
-addNamespacePrefix
-~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.addNamespacePrefix(self, prefix, url)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage *Contextualisation type*. A Namespace *prefix* can be declared
-with its vocabulary *url* to map the metadata terms to external
-controlled vocabularies. They can be used to qualify the metadata terms
-extracted from the *extractItemMetadata* function, as well as for those
-terms injected selectively at runtime by the *write* method. The
-namespaces will be used consistently when exporting the lineage traces
-to semantic-web formats, such as RDF.
-
-extractItemMetadata
-~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.extractItemMetadata(self, data, port)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage *Contextualisation type*. Extracts metadata from the domain
-specific content of the data (s-prov:DataGranules) written on a
-components output *port*, according to a particular vocabulary.
-
-ignorePastFlow
-~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.ignorePastFlow(self)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage **Pattern type**.
-
-It instructs the type to ignore the all the inputs when the method
-*apply*\ derivation\_rule\_ is invoked for a certain event."
-
-ignoreState
-~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.ignoreState(self)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage **Pattern type**.
-
-It instructs the type to ignore the content of the provenance state when
-the method *apply*\ derivation\_rule\_ is invoked for a certain event."
-
-discardState
-~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.discardState(self)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage **Pattern type**.
-
-It instructs the type to reset the data dependencies in the provenance
-state when the method *apply*\ derivation\_rule\_ is invoked for a
-certain event. These will not be availabe in the following invocations."
-
-discardInFlow
-~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.discardInFlow(self, wlength=None, discardState=False)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage **Pattern type**.
-
-It instructs the type to reset the data dependencies related to the
-component''s inputs when the method *apply*\ derivation\_rule\_ is
-invoked for a certain event. These will not be availabe in the following
-invocations."
-
-update\_prov\_state
-~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.update_prov_state(self, lookupterm, data, location='', format='', metadata={}, ignore_inputs=False, ignore_state=True, **kwargs)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage *Pattern type* or inn those circumstances where developers
-require to explicitly manage the provenance information within the
-component''s logic,.
-
-Updates the provenance state (*s-prov:StateCollection*) with a
-reference, identified by a *lookupterm*, to a new *data* entity or to
-the current input. The *lookupterm* will allow developers to refer to
-the entity when this is used to derive new data. Developers can specify
-additional *medatata* by passing a metadata dictionary. This will enrich
-the one generated by the *extractItemMetadata* method. Optionally the
-can also specify *format* and *location* of the output when this is a
-concrete resource (file, db entry, online url), as well as instructing
-the provenance generation to 'ignore\_input' and 'ignore\_state'
-dependencies.
-
-The *kwargs* parameter allows to pass an argument *dep* where developers
-can specify a list of data *id* to explicitly declare dependencies with
-any data in the provenance state (*s-prov:StateCollection*).
-
-write
-~~~~~
-
-.. code:: python
-
-    ProvenanceType.write(self, name, data, **kwargs)
-
-This is the native write operation of dispel4py triggering the transfer
-of data between adjacent components of a workflow. It is extended by the
-*ProvenanceType* with explicit provenance controls through the *kwargs*
-parameter. We assume these to be ignored when provenance is deactivated.
-Also this method can use the lookup tags to establish dependencies of
-output data on entities in the provenance state.
-
-The *kwargs* parameter allows to pass the following arguments: - *dep* :
-developers can specify a list of data *id* to explicitly declare
-dependencies with any data in the provenance state
-(*s-prov:StateCollection*). - *metadata*: developers can specify
-additional medatata by passing a metadata dictionary. -
-*ignore*\ inputs\_: instructs the provenance generation to ignore the
-dependencies on the current inputs. - *format*: the format of the
-output. - *location*: location of the output when this is a concrete
-resource (file, db entry, online url).
-
-checkSelectiveRule
-~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.checkSelectiveRule(self, streammeta)
-
-In alignement with what was previously specified in the
-configure\_prov\_run for the Processing Element, check the data granule
-metadata whether its properies values fall in a selective provenance
-generation rule.
-
-checkTransferRule
-~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.checkTransferRule(self, streammeta)
-
-In alignement with what was previously specified in the
-configure\_prov\_run for the Processing Element, check the data granule
-metadata whether its properies values fall in a selective data transfer
-rule.
-
-extractDataSourceId
-~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-    ProvenanceType.extractDataSourceId(self, data, port)
-
-In support of the implementation of a *ProvenanceType* realising a
-lineage *Pattern type*. Extract the id from the incoming data, if
-applicable, to reuse it to identify the correspondent provenance entity.
-This functionality is handy especially when a workflow component ingests
-data represented by self-contained and structured file formats. For
-instance, the NetCDF attributes Convention includes in its internal
-metadata an id that can be reused to ensure the linkage and therefore
-the consistent continuation of provenance tracesbetween workflow
-executions that generate and use the same data.
 
 AccumulateFlow
 --------------
@@ -405,30 +228,43 @@ get\_source
 
     get_source(object, spacing=10, collapse=1)
 
-Print methods and doc strings.
+Print methods and doc strings. Takes module, class, list, dictionary, or
+string.
 
-Takes module, class, list, dictionary, or string. ##
-configure\_prov\_run
+injectProv
+----------
 
 .. code:: python
 
-    configure_prov_run(graph, provRecorderClass=None, provImpClass=<class 'dispel4py.provenance_doc.ProvenanceType'>, input=None, username=None, workflowId=None, description=None, system_id=None, workflowName=None, workflowType=None, w3c_prov=False, runId=None, componentsType=None, clustersRecorders={}, feedbackPEs=[], save_mode='file', sel_rules={}, transfer_rules={}, update=False)
+    injectProv(object, provType, active=True, componentsType=None, workflow={}, **kwargs)
 
-To enable the user of a data-intensive application to configure the
-attribution of types, selectivity controls and activation of advanced
-exploitation mechanisms, we introduce the concept of provenance
-configuration. With the configuration users can specify a number of
-properties, such as attribution, provenance types, clusters, sensors,
-selectivity rules, etc. The configuration is used at the time of the
-initialisation of the workflow to prepare its provenance-aware
-execution. We consider that a chosen configuration may be influenced by
-personal and community preferences, as well as by rules introduced by
-institutional policies. For instance, a Research Infrastructure (RI) may
-indicate best practices to reproduce and describe the operations
-performed by the users exploiting its facilities, or even impose
-requirements which may turn into quality assessment metrics. This could
+This function dinamically extend the type of each the nodes of the graph
+or subgraph with ProvenanceType type or its specialisation
+
+configure\_prov\_run
+--------------------
+
+.. code:: python
+
+    configure_prov_run(graph, provRecorderClass=None, provImpClass=<class 'provenance.ProvenanceType'>, input=None, username=None, workflowId=None, description=None, system_id=None, workflowName=None, workflowType=None, w3c_prov=False, runId=None, componentsType=None, clustersRecorders={}, feedbackPEs=[], save_mode='file', sel_rules={}, transfer_rules={}, update=False)
+
+In order to enable the user of a data-intensive application to configure
+the attribution of types, selectivity controls and activation of
+advanced exploitation mechanisms, we introduce in this chapter also the
+concept of provenance configuration. In Figure 4.1 we outline the
+different phases envisaged by framework. In that respect, we propose a
+configuration profile, where users can specify a number of properties,
+such as attribution, provenance types, clusters, sensors, selectivity
+rules, etc. The configuration is used at the time of the initialisation
+of the workflow to prepare its provenance-aware execution. We consider
+that a chosen configuration may be influenced by personal and community
+preferences, as well as by rules introduced by institutional policies.
+For instance, a Research Infrastructure (RI) may indicate best practices
+to reproduce and describe the operations performed by the users
+exploiting its facilities, or even impose requirements which may turn
+into quality assessment metrics. For instance, a certain RI would
 require to choose among a set of contextualisation types, in order to
-adhere to the infrastructure's metadata portfolio. Thus, a provenance
+adhere to the infrastructure’s metadata portfolio. Thus, a provenance
 configuration profile play in favour of more generality, encouraging the
 implementation and the re-use of fundamental methods across disciplines.
 
@@ -483,3 +319,11 @@ ProvenanceIterativePE
     ProvenanceIterativePE(self, *args, **kwargs)
 
 A *Pattern type* for the native *IterativePE* Element of dispel4py
+
+ProvenanceRecorder
+------------------
+
+.. code:: python
+
+    ProvenanceRecorder(self, name='ProvenanceRecorder', toW3C=False)
+
