@@ -446,8 +446,7 @@ class ProvenanceType(GenericPE):
     """
 
     PROV_PATH="./"
-        """ PAth ov 
-        """
+        
     REPOS_URL=""
     PROV_EXPORT_URL=""
     
