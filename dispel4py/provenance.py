@@ -126,7 +126,7 @@ def write(self, name, data):
     """
     if isinstance(data, dict) and '_d4p_prov' in data:
         data = (data['_d4p_data'])
-
+    
     self._write(name, data)
 
 
@@ -586,6 +586,7 @@ class ProvenanceType(GenericPE):
         self.ignore_past_flow = False
         self.derivationIds = list()
         self.iterationIndex = 0
+        self.prov_location = ""
         
         #name + '_' + str(_d4p_plan_sqn)
         _d4p_plan_sqn = _d4p_plan_sqn + 1
@@ -1498,12 +1499,10 @@ class ProvenanceType(GenericPE):
             
     def buildUserMetadata(self, data, **kwargs):
         streamlist = list()
-
         streamItem = {}
         streammeta = []
         settransfer=False
         streammeta = self.extractItemMetadata(data,kwargs['output_port'])
-        
         if not isinstance(streammeta, list):
             streammeta = kwargs['metadata'] if isinstance(
                 kwargs['metadata'], list) else [kwargs['metadata']]
@@ -1538,7 +1537,9 @@ class ProvenanceType(GenericPE):
                           "format": kwargs['format']})
         streamItem.update({"size": total_size(data)})
         #streamItem.update({"size": 0})
-
+        if self.prov_location!=None:
+            streamItem.update({"location": self.prov_location})
+            
         if self.transfer_rules!=None:
             settransfer=self.checkTransferRule(streammeta)
 
