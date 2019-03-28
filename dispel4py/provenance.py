@@ -586,7 +586,7 @@ class ProvenanceType(GenericPE):
         self.ignore_past_flow = False
         self.derivationIds = list()
         self.iterationIndex = 0
-        self.prov_location = ""
+        
         
         #name + '_' + str(_d4p_plan_sqn)
         _d4p_plan_sqn = _d4p_plan_sqn + 1
@@ -1537,8 +1537,7 @@ class ProvenanceType(GenericPE):
                           "format": kwargs['format']})
         streamItem.update({"size": total_size(data)})
         #streamItem.update({"size": 0})
-        if self.prov_location!=None:
-            streamItem.update({"location": self.prov_location})
+        
             
         if self.transfer_rules!=None:
             settransfer=self.checkTransferRule(streammeta)
