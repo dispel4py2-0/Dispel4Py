@@ -2027,6 +2027,7 @@ def update_prov_run(runId,save_mode='file',dic=None):
 
     # newrun.provon=True
     simple_process.process(_graph, {'UpdateWorkflowRun': [{'input': 'None'}]})
+    _graph=None
 
 
  
