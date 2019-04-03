@@ -1662,7 +1662,7 @@ class AccumulateFlow(ProvenanceType):
     
     def apply_derivation_rule(self,event,voidInvocation,oport=None,iport=None,data=None,metadata=None):
          
-            
+           
         if (event=='end_invocation_event' and voidInvocation==False):
             self.discardInFlow()
 
@@ -2051,8 +2051,10 @@ def configure_prov_run(
         save_mode='file',
         sel_rules={},
         transfer_rules={},
-        update=False
-        ):
+        update=False,
+        sprovConfig=None,
+        sessionId=None
+       ):
     """ 
         In order to enable the user of a data-intensive application to configure the attribution
         of types, selectivity controls and activation of advanced exploitation mechanisms, we
@@ -2094,6 +2096,33 @@ def configure_prov_run(
 
     """
 
+    if sprovConfig:
+        if 's-prov:run-id' not in sprovConfig or sprovConfig['s-prov:run-id'] is None:
+            runId = getUniqueId()
+        elif 's-prov:run-id' in sprovConfig:
+            runId = sprovConfig['s-prov:run-id']
+        if 's-prov:session-id' not in sprovConfig or sprovConfig['s-prov:session-id'] is None:
+            if "SPROV_SESSIONID" in os.environ:
+                sessionId = os.environ["SPROV_SESSIONID"]
+                print("Session ID: %s" % sessionId)
+        elif 's-prov:session-id' in sprovConfig:
+            sessionId = sprovConfig['s-prov:session-id']
+        if 's-prov:system-id' in sprovConfig: ## TODO: Check if system-id is the correct name in s-prov config.
+            system_id = sprovConfig['s-prov:system-id']
+        if 's-prov:transfer-rules' in transfer_rules is None: ## TODO: Check if transfer-rules is the correct name in s-prov config.
+            transfer_rules = sprovConfig['s-prov:transfer-rules']
+        input = sprovConfig['s-prov:WFExecutionInputs']
+        username = sprovConfig['provone:User']
+        workflowId = sprovConfig['s-prov:workflowId']
+        description = sprovConfig['s-prov:description']
+        workflowName = sprovConfig['s-prov:workflowName']
+        runId = runId
+        sessionId = sessionId
+        sel_rules = sprovConfig['s-prov:sel-rules']
+        workflowType = sprovConfig['s-prov:workflowType']
+        componentsType = sprovConfig['s-prov:componentsType']
+        save_mode = sprovConfig['s-prov:save-mode']
+            
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
     if runId is None:
@@ -2116,6 +2145,7 @@ def configure_prov_run(
                          "system_id": system_id,
                          "workflowName": workflowName,
                          "runId": runId,
+                         "sessionId": sessionId,
                          "mapping": sys.argv[1],
                          "sel_rules":sel_rules,
                          "transfer_rules":transfer_rules,
@@ -2125,6 +2155,7 @@ def configure_prov_run(
                          "update":update,
                          "status":"active"
                          }
+
     #newrun.parameters=clean_empty(newrun.parameters)
     _graph = WorkflowGraph()
     provrec = None
@@ -2135,7 +2166,6 @@ def configure_prov_run(
     else:
         provrec = IterativePE()
         _graph.connect(d4py_newrun, "output", provrec, "input")
-
 
     # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
 
@@ -2302,7 +2332,7 @@ class NewWorkflowRun(ProvenanceType):
 
         return {'metadata':contentmeta[0]['content'][0]}
 
-    def makeRunMetdataBundle(
+    def makeRunMetadataBundle(
             self,
             input=[],
             username=None,
@@ -2313,6 +2343,7 @@ class NewWorkflowRun(ProvenanceType):
             workflowType=None,
             w3c=False,
             runId=None,
+            sessionId=None,
             modules=None,
             subProcesses=None,
             ns=None,
@@ -2329,6 +2360,7 @@ class NewWorkflowRun(ProvenanceType):
                 bundle["_id"] = runId
 
             bundle["runId"] = bundle["_id"]
+            bundle["sessionId"] = self.parameters["sessionId"]
             bundle["input"] = input
             bundle["startTime"] = str(datetime.datetime.utcnow())
             bundle["username"] = username
@@ -2351,7 +2383,7 @@ class NewWorkflowRun(ProvenanceType):
     def _process(self, inputs):
         self.name = 'NewWorkflowRun'
 
-        bundle = self.makeRunMetdataBundle(
+        bundle = self.makeRunMetadataBundle(
             username=self.parameters["username"],
             input=self.parameters["input"],
             workflowId=self.parameters["workflowId"],
@@ -2360,6 +2392,7 @@ class NewWorkflowRun(ProvenanceType):
             workflowName=self.parameters["workflowName"],
             workflowType=self.parameters["workflowType"],
             runId=self.parameters["runId"],
+            sessionId=self.parameters["sessionId"],
             modules=sorted(["%s==%s" % (i.key, i.version) for i in get_installed_distributions()]),
             subProcesses=self.parameters["source"],
             ns=self.parameters["ns"],
