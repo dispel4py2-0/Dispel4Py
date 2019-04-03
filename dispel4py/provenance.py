@@ -2116,8 +2116,6 @@ def configure_prov_run(
         workflowId = sprovConfig['s-prov:workflowId']
         description = sprovConfig['s-prov:description']
         workflowName = sprovConfig['s-prov:workflowName']
-        runId = runId
-        sessionId = sessionId
         sel_rules = sprovConfig['s-prov:sel-rules']
         workflowType = sprovConfig['s-prov:workflowType']
         componentsType = sprovConfig['s-prov:componentsType']
