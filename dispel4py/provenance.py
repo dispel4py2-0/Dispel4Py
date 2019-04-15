@@ -2109,7 +2109,7 @@ def configure_prov_run(
             sessionId = sprovConfig['s-prov:session-id']
         if 's-prov:system-id' in sprovConfig: ## TODO: Check if system-id is the correct name in s-prov config.
             system_id = sprovConfig['s-prov:system-id']
-        if 's-prov:transfer-rules' in transfer_rules is None: ## TODO: Check if transfer-rules is the correct name in s-prov config.
+        if 's-prov:transfer-rules' in transfer_rules: ## TODO: Check if transfer-rules is the correct name in s-prov config.
             transfer_rules = sprovConfig['s-prov:transfer-rules']
         input = sprovConfig['s-prov:WFExecutionInputs']
         username = sprovConfig['provone:User']
@@ -2358,7 +2358,7 @@ class NewWorkflowRun(ProvenanceType):
                 bundle["_id"] = runId
 
             bundle["runId"] = bundle["_id"]
-            bundle["sessionId"] = self.parameters["sessionId"]
+            bundle["sessionId"] = sessionId
             bundle["input"] = input
             bundle["startTime"] = str(datetime.datetime.utcnow())
             bundle["username"] = username
