@@ -2097,19 +2097,13 @@ def configure_prov_run(
     """
 
     if sprovConfig:
-        if 's-prov:run-id' not in sprovConfig or sprovConfig['s-prov:run-id'] is None:
-            runId = getUniqueId()
-        elif 's-prov:run-id' in sprovConfig:
+        if 's-prov:run-id' in sprovConfig:
             runId = sprovConfig['s-prov:run-id']
-        if 's-prov:session-id' not in sprovConfig or sprovConfig['s-prov:session-id'] is None:
-            if "SPROV_SESSIONID" in os.environ:
-                sessionId = os.environ["SPROV_SESSIONID"]
-                print("Session ID: %s" % sessionId)
-        elif 's-prov:session-id' in sprovConfig:
+        if 's-prov:session-id' in sprovConfig:
             sessionId = sprovConfig['s-prov:session-id']
         if 's-prov:system-id' in sprovConfig: ## TODO: Check if system-id is the correct name in s-prov config.
             system_id = sprovConfig['s-prov:system-id']
-        if 's-prov:transfer-rules' in transfer_rules: ## TODO: Check if transfer-rules is the correct name in s-prov config.
+        if 's-prov:transfer-rules' in sprovConfig: ## TODO: Check if transfer-rules is the correct name in s-prov config.
             transfer_rules = sprovConfig['s-prov:transfer-rules']
         input = sprovConfig['s-prov:WFExecutionInputs']
         username = sprovConfig['provone:User']
@@ -2125,6 +2119,8 @@ def configure_prov_run(
         raise Exception("Missing values")
     if runId is None:
         runId = getUniqueId()
+    if not sessionId and "SPROV_SESSIONID" in os.environ:
+        sessionId = os.environ["SPROV_SESSIONID"]
 
     print('Change grouping implementation ')
 
