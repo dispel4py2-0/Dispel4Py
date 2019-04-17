@@ -660,7 +660,7 @@ class ProvenanceType(GenericPE):
             self.process_feedback(inputs['_d4py_feedback'])
         else:
             self.__processwrapper(inputs)
-
+ 
         for x in inputs:
             data=inputs[x]
             if type(data)==dict and '_d4p' in data:
@@ -957,21 +957,31 @@ class ProvenanceType(GenericPE):
             result = None
 
             self.__markIteration()
-
+            
             if self.impcls is not None and isinstance(self, self.impcls):
                 try:
                     if hasattr(self, 'params'):
                         self.parameters = self.params
+                    
                     result = self._process(inputs[self.impcls.INPUT_NAME])
                     if result is not None:
+                        self.log(self.impcls)
                         self.writeResults(self.impcls.OUTPUT_NAME, result)
+                        result=None
                 except:
+                    traceback.format_exc()
                     result = self._process(inputs)
+
+
             else:
                 result = self._process(inputs)
 
+
             if result is not None:
-                return result
+                self.log(result)
+                for x in result:
+                    self.writeResults(x,result[x])
+#                self.log(result)
 
         except Exception:
             self.log(" Compute Error: %s" % traceback.format_exc())
