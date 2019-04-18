@@ -586,7 +586,7 @@ class ProvenanceType(GenericPE):
         self.ignore_past_flow = False
         self.derivationIds = list()
         self.iterationIndex = 0
-        self.prov_location = ""
+        
         
         #name + '_' + str(_d4p_plan_sqn)
         _d4p_plan_sqn = _d4p_plan_sqn + 1
@@ -660,7 +660,7 @@ class ProvenanceType(GenericPE):
             self.process_feedback(inputs['_d4py_feedback'])
         else:
             self.__processwrapper(inputs)
-
+ 
         for x in inputs:
             data=inputs[x]
             if type(data)==dict and '_d4p' in data:
@@ -957,21 +957,31 @@ class ProvenanceType(GenericPE):
             result = None
 
             self.__markIteration()
-
+            
             if self.impcls is not None and isinstance(self, self.impcls):
                 try:
                     if hasattr(self, 'params'):
                         self.parameters = self.params
+                    
                     result = self._process(inputs[self.impcls.INPUT_NAME])
                     if result is not None:
+                        self.log(self.impcls)
                         self.writeResults(self.impcls.OUTPUT_NAME, result)
+                        result=None
                 except:
+                    traceback.format_exc()
                     result = self._process(inputs)
+
+
             else:
                 result = self._process(inputs)
 
+
             if result is not None:
-                return result
+                self.log(result)
+                for x in result:
+                    self.writeResults(x,result[x])
+#                self.log(result)
 
         except Exception:
             self.log(" Compute Error: %s" % traceback.format_exc())
@@ -1537,8 +1547,7 @@ class ProvenanceType(GenericPE):
                           "format": kwargs['format']})
         streamItem.update({"size": total_size(data)})
         #streamItem.update({"size": 0})
-        if self.prov_location!=None:
-            streamItem.update({"location": self.prov_location})
+        
             
         if self.transfer_rules!=None:
             settransfer=self.checkTransferRule(streammeta)
@@ -2028,6 +2037,7 @@ def update_prov_run(runId,save_mode='file',dic=None):
 
     # newrun.provon=True
     simple_process.process(_graph, {'UpdateWorkflowRun': [{'input': 'None'}]})
+    _graph=None
 
 
  
