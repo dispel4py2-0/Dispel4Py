@@ -2101,9 +2101,9 @@ def configure_prov_run(
             runId = sprovConfig['s-prov:run-id']
         if 's-prov:session-id' in sprovConfig:
             sessionId = sprovConfig['s-prov:session-id']
-        if 's-prov:system-id' in sprovConfig: ## TODO: Check if system-id is the correct name in s-prov config.
+        if 's-prov:system-id' in sprovConfig:
             system_id = sprovConfig['s-prov:system-id']
-        if 's-prov:transfer-rules' in sprovConfig: ## TODO: Check if transfer-rules is the correct name in s-prov config.
+        if 's-prov:transfer-rules' in sprovConfig:
             transfer_rules = sprovConfig['s-prov:transfer-rules']
         input = sprovConfig['s-prov:WFExecutionInputs']
         username = sprovConfig['provone:User']
