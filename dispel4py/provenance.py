@@ -23,6 +23,7 @@ import datetime
 import uuid
 import traceback
 import os
+import argparse
 import socket
 import ujson
 import http as httplib
@@ -438,9 +439,9 @@ class ProvenanceType(GenericPE):
         
         The following variables will be used to configure some general provenance capturing properties
 
-        - _PROV_PATH_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating a file system path wher the lineage will be stored 
+        - _PROV_PATH_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating a file system path wher the lineage will be stored indcating a file system path wher the lineage will be stored 
         - _REPOS_URL_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating the repository endpoint (S-ProvFlow) where the provenance will be sent.
-        - _PROV_DATA_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
+        - _PROV_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
         - _BULK_SIZE_: Number of lineage documents to be stored in a single file or in a single request to the remote service. Helps tuning the overhead brough by the latency of accessing storage resources.
      
     """
@@ -2040,7 +2041,54 @@ def update_prov_run(runId,save_mode='file',dic=None):
     _graph=None
 
 
- 
+def load_provenance_config(configfile):
+    with open(configfile) as cfg_file:
+        config_obj = json.load(cfg_file)
+        return config_obj
+
+def parse_provenance_args():
+     parser = argparse.ArgumentParser(description='Submit provenance parameters.')
+     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=True,
+                         help="Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent.")
+     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=True,
+                         help=("The service endpoint from where the provenance of a workflow execution,"
+                               "after being stored, can be extracted in PROV format."))
+     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, default='./',
+                         help="indicates a file system path where the lineage will be stored.")
+     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1,
+                         help=("Number of lineage documents to be stored in a single file or in a single"
+                               "request to the remote service. Helps tuning the overhead brought by the latency"
+                               "of accessing storage resources."))
+     return parser.parse_known_args()
+    
+def init_provenance_config(args):
+
+    provenance_args, remaining = parse_provenance_args()
+    ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
+    ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
+    ProvenanceType.PROV_PATH = provenance_args.prov_path
+    ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
+
+    ## Figure out the module name of the graph and import it;
+    ## The component types must be resolved through its imports.
+    from importlib import import_module
+    module_name = os.path.splitext(os.path.basename(args.module))[0]
+    module = import_module(module_name)
+
+    prov_config = load_provenance_config(args.provenance)
+    for prov_ct_name in prov_config['s-prov:componentsType'].keys():
+        prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
+        component_type_list = []
+        ## Obtain the list of component types and convert the strings
+        ## to python classes and add them to the s-prov:type list as
+        ## classes, not as the strings they are in the json file.
+        for ct in prov_ct["s-prov:type"].split(','):
+            component_type = module.__dict__[ct]
+            component_type_list.append(component_type)
+            prov_ct["s-prov:type"] = component_type_list
+
+    ## Also return remaining in case any one is ever interested.
+    return prov_config, remaining
 
 def configure_prov_run(
         graph,
@@ -2116,14 +2164,22 @@ def configure_prov_run(
         if 's-prov:transfer-rules' in sprovConfig:
             transfer_rules = sprovConfig['s-prov:transfer-rules']
         input = sprovConfig['s-prov:WFExecutionInputs']
-        username = sprovConfig['provone:User']
-        workflowId = sprovConfig['s-prov:workflowId']
-        description = sprovConfig['s-prov:description']
-        workflowName = sprovConfig['s-prov:workflowName']
-        sel_rules = sprovConfig['s-prov:sel-rules']
-        workflowType = sprovConfig['s-prov:workflowType']
-        componentsType = sprovConfig['s-prov:componentsType']
-        save_mode = sprovConfig['s-prov:save-mode']
+        if 'provone:User' in sprovConfig:
+            username = sprovConfig['provone:User']
+        if 's-prov:workflowId' in sprovConfig:
+            workflowId = sprovConfig['s-prov:workflowId']
+        if 's-prov:description' in sprovConfig:
+            description = sprovConfig['s-prov:description']
+        if 's-prov:workflowName' in sprovConfig:
+            workflowName = sprovConfig['s-prov:workflowName']
+        if 's-prov:sel-rules' in sprovConfig:
+            sel_rules = sprovConfig['s-prov:sel-rules']
+        if 's-prov:workflowType' in sprovConfig:
+            workflowType = sprovConfig['s-prov:workflowType']
+        if 's-prov:componentsType' in sprovConfig:
+            componentsType = sprovConfig['s-prov:componentsType']
+        if 's-prov:save-mode' in sprovConfig:
+            save_mode = sprovConfig['s-prov:save-mode']
             
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")

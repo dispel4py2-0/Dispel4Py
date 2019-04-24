@@ -35,9 +35,11 @@ Other parameters might be required by the target mapping, for example the
 number of processes if running in a parallel environment.
 
 '''
-
+import sys
+sys.path.append('./')
 import argparse
 import os
+import os.path
 import types
 
 from dispel4py.core import GROUPING
@@ -718,6 +720,9 @@ def create_arg_parser():  # pragma: no cover
                         help='input dataset in JSON format')
     parser.add_argument('-i', '--iter', metavar='iterations', type=int,
                         help='number of iterations', default=1)
+    parser.add_argument('--provenance-config', dest='provenance',
+                        metavar='provenance-config-path', type=str,
+                        nargs='?', help='trace provenance with given config (JSON)')
     return parser
 
 
@@ -761,13 +766,21 @@ def create_inputs(args, graph):
 
     return inputs
 
-
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
-
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
+
+    if args.provenance:
+        if not os.path.exists(args.provenance):
+            print("Can't load provenance configuration %s" % args.provenance)
+        else:
+            from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
+            prov_config, remaining = init_provenance_config(args)
+             ## Ignore returned remaining command line arguments. Will be taken care of in main()
+            print(prov_config)
+            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config )
 
     graph.flatten()
     inputs = create_inputs(args, graph)
@@ -781,12 +794,14 @@ def parse_common_args():   # pragma: no cover
 import time
 def main():   # pragma: no cover
     from importlib import import_module
-
+    
     args, remaining = parse_common_args()
+
     graph, inputs = load_graph_and_inputs(args)
+
     if graph is None:
         return
-
+    
     try:
         # see if platform is in the mappings file as a simple name
         target = config[args.target]
