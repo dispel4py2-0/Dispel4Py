@@ -2091,7 +2091,6 @@ def init_provenance_config(args, inputs):
             prov_ct["s-prov:type"] = tuple(component_type_list)
 
     if inputs:
-        print("INPUTS",inputs)
         input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
         if "s-prov:WFExecutionInputs" in prov_config:
             prov_config["s-prov:WFExecutionInputs"].append(input_item)
