@@ -54,6 +54,7 @@ class splitPE(GenericPE):
         self.outputnames = list(self.outputconnections.keys())
 
     def _process(self, inputs):
+
         # split into sublists of about same length
         n = math.ceil(len(self.nos) / self.num_outputs)
         n = int(n)
@@ -100,7 +101,7 @@ class mergePE(GenericPE):
             if inp in inputs:
                 self.result += inputs[inp]
                 self.counter += 1
-        self.log("DADADADAD")
+         
         if self.counter == self.num_inputs:
             return {'output': self.result}
 
