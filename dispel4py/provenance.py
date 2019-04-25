@@ -2050,7 +2050,7 @@ def parse_provenance_args():
      parser = argparse.ArgumentParser(description='Submit provenance parameters.')
      parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=True,
                          help="Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent.")
-     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=True,
+     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
                          help=("The service endpoint from where the provenance of a workflow execution,"
                                "after being stored, can be extracted in PROV format."))
      parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, default='./',
