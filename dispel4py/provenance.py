@@ -2082,10 +2082,12 @@ def init_provenance_config(args):
         ## Obtain the list of component types and convert the strings
         ## to python classes and add them to the s-prov:type list as
         ## classes, not as the strings they are in the json file.
-        for ct in prov_ct["s-prov:type"].split(','):
+        for ct in prov_ct["s-prov:type"]:
             component_type = module.__dict__[ct]
             component_type_list.append(component_type)
-            prov_ct["s-prov:type"] = component_type_list
+        ## Convert to tuple, because injectProv() appends it with tuple
+        ## and you cannot append a tuple to a list.
+        prov_ct["s-prov:type"] = tuple(component_type_list)
 
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
