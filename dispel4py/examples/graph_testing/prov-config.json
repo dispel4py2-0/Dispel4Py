@@ -9,7 +9,7 @@
                 "s-prov:componentsType" : 
                                    {
 
-                                    "mergePE": {"s-prov:type":["AccumulateFlow"],
+                                    "mergePE": {"s-prov:type":["AccumulateFlow","DataInGranuleType"],
                                                  "s-prov:prov-cluster":"dare:DataMerge"},
                                      "splitPE": {"s-prov:type":["DataInGranuleType"],
                                                  "s-prov:prov-cluster":"dare:DataSplit"}
@@ -17,6 +17,8 @@
                                     
               
                 }
+
+
 
 
 
