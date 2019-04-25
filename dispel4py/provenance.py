@@ -1556,9 +1556,7 @@ class ProvenanceType(GenericPE):
         if settransfer:
             streamItem["s-prov:immediateAccess"]=True
             streamItem["s-prov:first-known-destination"]=self.transfer_rules["destination"]
-
-        
-        
+                
         streamlist.append(streamItem)
         return streamlist
 
@@ -1781,11 +1779,10 @@ class ASTGrouped(ProvenanceType):
         if (event=='end_invocation_event' and voidInvocation==False):
              self.discardInFlow()
              self.discardState()
+        
 
-        if (event=='end_invocation_event' and voidInvocation==True):
-            
+        if (event=='end_invocation_event' and voidInvocation==True): 
             if data!=None:
-                
                 vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
                 self.ignorePastFlow()
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
