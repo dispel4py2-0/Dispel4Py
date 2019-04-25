@@ -772,18 +772,19 @@ def load_graph_and_inputs(args):
     if graph is None:
         return None, None
 
+    graph.flatten()
+    inputs = create_inputs(args, graph)
+
     if args.provenance:
         if not os.path.exists(args.provenance):
             print("Can't load provenance configuration %s" % args.provenance)
         else:
             from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
-            prov_config, remaining = init_provenance_config(args)
+            prov_config, remaining = init_provenance_config(args, inputs)
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
             print(prov_config)
             configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config )
 
-    graph.flatten()
-    inputs = create_inputs(args, graph)
     return graph, inputs
 
 

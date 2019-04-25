@@ -2061,7 +2061,7 @@ def parse_provenance_args():
                                "of accessing storage resources."))
      return parser.parse_known_args()
     
-def init_provenance_config(args):
+def init_provenance_config(args, inputs):
 
     provenance_args, remaining = parse_provenance_args()
     ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
@@ -2089,6 +2089,14 @@ def init_provenance_config(args):
             ## Convert to tuple, because injectProv() appends it with tuple
             ## and you cannot append a tuple to a list.
             prov_ct["s-prov:type"] = tuple(component_type_list)
+
+    if inputs:
+        print("INPUTS",inputs)
+        input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
+        if "s-prov:WFExecutionInputs" in prov_config:
+            prov_config["s-prov:WFExecutionInputs"].append(input_item)
+        else:
+            prov_config["s-prov:WFExecutionInputs"] = [input_item,]
 
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
