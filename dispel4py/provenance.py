@@ -2076,18 +2076,19 @@ def init_provenance_config(args):
     module = import_module(module_name)
 
     prov_config = load_provenance_config(args.provenance)
-    for prov_ct_name in prov_config['s-prov:componentsType'].keys():
-        prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
-        component_type_list = []
-        ## Obtain the list of component types and convert the strings
-        ## to python classes and add them to the s-prov:type list as
-        ## classes, not as the strings they are in the json file.
-        for ct in prov_ct["s-prov:type"]:
-            component_type = module.__dict__[ct]
-            component_type_list.append(component_type)
-        ## Convert to tuple, because injectProv() appends it with tuple
-        ## and you cannot append a tuple to a list.
-        prov_ct["s-prov:type"] = tuple(component_type_list)
+    if 's-prov:componentsType' in prov_config:
+        for prov_ct_name in prov_config['s-prov:componentsType'].keys():
+            prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
+            component_type_list = []
+            ## Obtain the list of component types and convert the strings
+            ## to python classes and add them to the s-prov:type list as
+            ## classes, not as the strings they are in the json file.
+            for ct in prov_ct["s-prov:type"]:
+                component_type = module.__dict__[ct]
+                component_type_list.append(component_type)
+            ## Convert to tuple, because injectProv() appends it with tuple
+            ## and you cannot append a tuple to a list.
+            prov_ct["s-prov:type"] = tuple(component_type_list)
 
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
