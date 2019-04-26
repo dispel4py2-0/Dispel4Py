@@ -68,7 +68,8 @@ def parse_args(args, namespace):    # pragma: no cover
                         action='store_true')
     parser.add_argument('-n', '--num', metavar='num_processes', required=True,
                         type=int, help='number of processes to run')
-    result = parser.parse_args(args, namespace)
+
+    result, remaining = parser.parse_known_args(args, namespace)
     return result
 
 
