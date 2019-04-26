@@ -439,8 +439,8 @@ class ProvenanceType(GenericPE):
         
         The following variables will be used to configure some general provenance capturing properties
 
-        - _PROV_PATH_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating a file system path wher the lineage will be stored indcating a file system path wher the lineage will be stored 
-        - _REPOS_URL_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating the repository endpoint (S-ProvFlow) where the provenance will be sent.
+        - _PROV_PATH_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indicating a file system path where the lineage will be stored.
+        - _REPOS_URL_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indicating the repository endpoint (S-ProvFlow) where the provenance will be sent.
         - _PROV_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
         - _BULK_SIZE_: Number of lineage documents to be stored in a single file or in a single request to the remote service. Helps tuning the overhead brough by the latency of accessing storage resources.
      
