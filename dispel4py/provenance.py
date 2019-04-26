@@ -2087,7 +2087,7 @@ def configure_prov_run(
         describe the operations performed by the users exploiting its facilities, or even impose
         requirements which may turn into quality assessment metrics. 
         For instance, a certain RI would require to choose among a set of contextualisation types, in order to adhere to
-        the infrastructure’s metadata portfolio. Thus, a provenance configuration profile play
+        the infrastructure's metadata portfolio. Thus, a provenance configuration profile play
         in favour of more generality, encouraging the implementation and the re-use of fundamental
         methods across disciplines.
 
