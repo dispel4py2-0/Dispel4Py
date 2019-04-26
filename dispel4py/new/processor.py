@@ -727,7 +727,7 @@ def create_arg_parser():  # pragma: no cover
     parser.add_argument('--provenance-config', dest='provenance',
                         metavar='provenance-config-path', type=str,
                         nargs='?', help=("trace provenance with given config (JSON)."
-                                         "''--provenance --help'' for help on additional options."))
+                                         "'--provenance --help' for help on additional options."))
     return parser
 
 
