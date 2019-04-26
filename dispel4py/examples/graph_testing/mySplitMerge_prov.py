@@ -103,7 +103,7 @@ class mergePE(GenericPE):
                 self.counter += 1
          
         if self.counter == self.num_inputs:
-            #self.counter=0
+            self.counter=0
             out=self.result.copy()
             self.result=[]
             return {'output': out}
