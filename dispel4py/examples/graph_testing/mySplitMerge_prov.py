@@ -103,7 +103,10 @@ class mergePE(GenericPE):
                 self.counter += 1
          
         if self.counter == self.num_inputs:
-            return {'output': self.result}
+            #self.counter=0
+            out=self.result.copy()
+            self.result=[]
+            return {'output': out}
 
 
 class fwritePE(GenericPE):
@@ -111,14 +114,17 @@ class fwritePE(GenericPE):
     Write input to file
     '''
     INPUT_NAME = 'input'
+    OUTPUT_NAME = 'output'
 
     def __init__(self):
         GenericPE.__init__(self)
         self._add_input(fwritePE.INPUT_NAME)
+        self._add_output(fwritePE.OUTPUT_NAME)
 
     def _process(self, inputs):
         # write result input to file 'output.txt'
         data = inputs[fwritePE.INPUT_NAME]
+         
         with open('output.txt','w') as f:
             for item in data:
                 f.write("%s " % item)
