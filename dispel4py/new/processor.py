@@ -18,8 +18,10 @@ This module contains methods that are used by different mappings.
 
 From the commandline, run the following command::
 
-    dispel4py <mapping> <module>  [-h] [-a attribute] [-f inputfile]\
-                                  [-i iterations] [...]
+    dispel4py <mapping> <module>  [-h] [-a attribute] [-f inputfile] \
+                                  [-i iterations] \
+                                  [--provenance-config [provenance-config-path]] \
+                                  [...]
 
 with parameters
 
@@ -29,6 +31,8 @@ with parameters
 :-a attr:   name of the graph attribute within the module (optional)
 :-f file:   file containing input data in JSON format (optional)
 :-i iter:   number of iterations to compute (default is 1)
+:--provenance-config:
+            file containing the provenance configuration
 :-h:        print this help page
 
 Other parameters might be required by the target mapping, for example the
