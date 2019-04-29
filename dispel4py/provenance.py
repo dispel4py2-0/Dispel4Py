@@ -2203,7 +2203,7 @@ def configure_prov_run(
         print("\n Auto-generation of runId not supported for MPI targets.\n",
               "Provide a value for the 's-prov:run-id' key in the provenance configuration\n",
               "and run again!\n")
-        sys.it(1)
+        sys.exit(1)
     if not sessionId and "SPROV_SESSIONID" in os.environ:
         sessionId = os.environ["SPROV_SESSIONID"]
 
