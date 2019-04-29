@@ -2235,21 +2235,29 @@ def configure_prov_run(
                          "status":"active"
                          }
 
-    #newrun.parameters=clean_empty(newrun.parameters)
-    _graph = WorkflowGraph()
-    provrec = None
+    mpirank = 0
+    if mapping == 'mpi' and mapping in dispel4py.new.mappings.config:
+        ## Determine the rank
+        from importlib import import_module
+        mpimodule = import_module(dispel4py.new.mappings.config[mapping], mapping)
+        mpirank = mpimodule.rank
 
-    if provRecorderClass!=None:
-        provrec = provRecorderClass(toW3C=w3c_prov)
-        _graph.connect(d4py_newrun, "output", provrec, "metadata")
-    else:
-        provrec = IterativePE()
-        _graph.connect(d4py_newrun, "output", provrec, "input")
+    if mpirank == 0:
+        #newrun.parameters=clean_empty(newrun.parameters)
+        _graph = WorkflowGraph()
+        provrec = None
 
-    # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
+        if provRecorderClass!=None:
+            provrec = provRecorderClass(toW3C=w3c_prov)
+            _graph.connect(d4py_newrun, "output", provrec, "metadata")
+        else:
+            provrec = IterativePE()
+            _graph.connect(d4py_newrun, "output", provrec, "input")
 
-    # newrun.provon=True
-    simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
+        # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
+
+        # newrun.provon=True
+        simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
 
     if (provRecorderClass!=None):
         print("PREPARING PROVENANCE SENSORS:")
