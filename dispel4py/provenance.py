@@ -2056,7 +2056,7 @@ def parse_provenance_args():
                                "after being stored, can be extracted in PROV format."))
      parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, default='./',
                          help="indicates a file system path where the lineage will be stored.")
-     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1,
+     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
                          help=("Number of lineage documents to be stored in a single file or in a single"
                                "request to the remote service. Helps tuning the overhead brought by the latency"
                                "of accessing storage resources."))
