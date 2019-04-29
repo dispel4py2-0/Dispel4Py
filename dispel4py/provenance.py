@@ -32,6 +32,7 @@ import pickle
 from urllib.parse import urlparse
 from pip._internal.utils.misc import get_installed_distributions
 from dispel4py.new import simple_process
+import dispel4py.new.mappings
 from subprocess import Popen, PIPE
 import collections
 from copy import deepcopy
@@ -880,7 +881,7 @@ class ProvenanceType(GenericPE):
         self.inMetaStreams = None
         self.username = None
         self.runId = None
-
+        self.mapping = 'simple'
 
         try:
                 # self.iterationId = self.name + '-' + getUniqueId()
@@ -1119,7 +1120,7 @@ class ProvenanceType(GenericPE):
                 'type': 'lineage',
 
                 'streams': contentmeta,
-                'mapping': sys.argv[1]})
+                'mapping': self.mapping})
                 
                 if hasattr(self, 'prov_cluster'):
                      
@@ -2096,7 +2097,7 @@ def init_provenance_config(args, inputs):
             prov_config["s-prov:WFExecutionInputs"].append(input_item)
         else:
             prov_config["s-prov:WFExecutionInputs"] = [input_item,]
-
+    prov_config['s-prov:mapping'] = args.target
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
 
@@ -2121,7 +2122,8 @@ def configure_prov_run(
         transfer_rules={},
         update=False,
         sprovConfig=None,
-        sessionId=None
+        sessionId=None,
+        mapping='simple'
        ):
     """ 
         In order to enable the user of a data-intensive application to configure the attribution
@@ -2190,11 +2192,18 @@ def configure_prov_run(
             componentsType = sprovConfig['s-prov:componentsType']
         if 's-prov:save-mode' in sprovConfig:
             save_mode = sprovConfig['s-prov:save-mode']
+        if 's-prov:mapping' in sprovConfig:
+            mapping = sprovConfig['s-prov:mapping']
             
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
-    if runId is None:
+    if runId is None and mapping != 'mpi':
         runId = getUniqueId()
+    elif runId is None and mapping == 'mpi':
+        print("\n Auto-generation of runId not supported for MPI targets.\n",
+              "Provide a value for the 's-prov:run-id' key in the provenance configuration\n",
+              "and run again!\n")
+        sys.it(1)
     if not sessionId and "SPROV_SESSIONID" in os.environ:
         sessionId = os.environ["SPROV_SESSIONID"]
 
@@ -2216,7 +2225,7 @@ def configure_prov_run(
                          "workflowName": workflowName,
                          "runId": runId,
                          "sessionId": sessionId,
-                         "mapping": sys.argv[1],
+                         "mapping": mapping,
                          "sel_rules":sel_rules,
                          "transfer_rules":transfer_rules,
                          "source":workflow,
