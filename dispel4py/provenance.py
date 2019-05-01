@@ -2055,15 +2055,18 @@ def load_provenance_config(configfile):
         config_obj = json.load(cfg_file)
         return config_obj
 
-def parse_provenance_args():
+def create_provenance_argparser():
      parser = argparse.ArgumentParser(description='Submit provenance parameters.')
-     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=True,
-                         help="Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent.")
+     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
+                         help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
+                               "if save-mode in provenance config is 'service', in which case this argument is "
+                               "mandatory."))
      parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
                          help=("The service endpoint from where the provenance of a workflow execution,"
                                "after being stored, can be extracted in PROV format."))
-     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, default='./',
-                         help="indicates a file system path where the lineage will be stored.")
+     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
+                         help=("indicates a file system path where the lineage will be stored. Mandatory "
+                               "if save-mode in provenance configuration is 'file'."))
      parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
                          help=("Number of lineage documents to be stored in a single file or in a single"
                                "request to the remote service. Helps tuning the overhead brought by the latency"
@@ -2071,11 +2074,12 @@ def parse_provenance_args():
      parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
                          help=("Run ID of the run. This is mandatory if the target is 'mpi' "
                                "and there is no run-id in the provenance configuration."))
-     return parser.parse_known_args()
+     return parser
     
 def init_provenance_config(args, inputs):
 
-    provenance_args, remaining = parse_provenance_args()
+    provparser = create_provenance_argparser()
+    provenance_args, remaining = provparser.parse_known_args()
     ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
     ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
     ProvenanceType.PROV_PATH = provenance_args.prov_path
@@ -2112,6 +2116,23 @@ def init_provenance_config(args, inputs):
 
     if provenance_args.prov_runid:
         prov_config['s-prov:run-id'] = provenance_args.prov_runid
+
+    if 's-prov:save-mode' in prov_config:
+        if prov_config['s-prov:save-mode'] == 'file' and not provenance_args.prov_path:
+            print("\ns-prov:save-mode is 'file', but no --provenance-path argument supplied!\n")
+            provparser.print_help()
+            sys.exit(1)
+        if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.prov_repo_url:
+            print("\ns-prov:save-mode is 'service', but no --provenance-repository-url argument supplied!\n")
+            provparser.print_help()
+            sys.exit(1)
+    else:
+        if provenance_args.prov_repo_url: prov_config['s-prov:save-mode'] = 'service'
+        elif provenance_args.prov_path: prov_config['s-prov:save-mode'] == 'file'
+        else:
+            print("\nMust supply either --provenance-repository-url or --provenance-path argument.\n")
+            provparser.print_help()
+            sys.exit(1)
     
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
