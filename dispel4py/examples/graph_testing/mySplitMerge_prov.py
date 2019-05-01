@@ -6,7 +6,7 @@ and merges the output of those with another node.
 import math
 import os
 
-
+import copy
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 from dispel4py.core import GenericPE, NAME, TYPE, GROUPING
@@ -104,7 +104,7 @@ class mergePE(GenericPE):
          
         if self.counter == self.num_inputs:
             self.counter=0
-            out=self.result.copy()
+            out=copy.copy(self.result)
             self.result=[]
             return {'output': out}
 
