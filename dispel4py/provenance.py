@@ -730,7 +730,7 @@ class ProvenanceType(GenericPE):
                 self.connection.close()
                 self.bulk_prov[:]=[]
             elif (self.save_mode==ProvenanceType.SAVE_MODE_FILE):
-                filep = open(ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "wr")
+                filep = open(ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "w")
                 ujson.dump(self.bulk_prov, filep)
             elif (self.save_mode==ProvenanceType.SAVE_MODE_SENSOR):
                 super(
