@@ -2060,6 +2060,9 @@ def parse_provenance_args():
                          help=("Number of lineage documents to be stored in a single file or in a single"
                                "request to the remote service. Helps tuning the overhead brought by the latency"
                                "of accessing storage resources."))
+     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
+                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
+                               "and there is no run-id in the provenance configuration."))
      return parser.parse_known_args()
     
 def init_provenance_config(args, inputs):
@@ -2098,6 +2101,10 @@ def init_provenance_config(args, inputs):
         else:
             prov_config["s-prov:WFExecutionInputs"] = [input_item,]
     prov_config['s-prov:mapping'] = args.target
+
+    if provenance_args.prov_runid:
+        prov_config['s-prov:run-id'] = provenance_args.prov_runid
+    
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
 
