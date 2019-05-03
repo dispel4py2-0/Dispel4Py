@@ -18,8 +18,10 @@ This module contains methods that are used by different mappings.
 
 From the commandline, run the following command::
 
-    dispel4py <mapping> <module>  [-h] [-a attribute] [-f inputfile]\
-                                  [-i iterations] [...]
+    dispel4py <mapping> <module>  [-h] [-a attribute] [-f inputfile] \
+                                  [-i iterations] \
+                                  [--provenance-config [provenance-config-path]] \
+                                  [...]
 
 with parameters
 
@@ -29,15 +31,19 @@ with parameters
 :-a attr:   name of the graph attribute within the module (optional)
 :-f file:   file containing input data in JSON format (optional)
 :-i iter:   number of iterations to compute (default is 1)
+:--provenance-config:
+            file containing the provenance configuration
 :-h:        print this help page
 
 Other parameters might be required by the target mapping, for example the
 number of processes if running in a parallel environment.
 
 '''
-
+import sys
+sys.path.append('./')
 import argparse
 import os
+import os.path
 import types
 
 from dispel4py.core import GROUPING
@@ -718,6 +724,10 @@ def create_arg_parser():  # pragma: no cover
                         help='input dataset in JSON format')
     parser.add_argument('-i', '--iter', metavar='iterations', type=int,
                         help='number of iterations', default=1)
+    parser.add_argument('--provenance-config', dest='provenance',
+                        metavar='provenance-config-path', type=str,
+                        nargs='?', help=("trace provenance with given config (JSON)."
+                                         "'--provenance --help' for help on additional options."))
     return parser
 
 
@@ -761,16 +771,25 @@ def create_inputs(args, graph):
 
     return inputs
 
-
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
-
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
 
     graph.flatten()
     inputs = create_inputs(args, graph)
+
+    if args.provenance:
+        if not os.path.exists(args.provenance):
+            print("Can't load provenance configuration %s" % args.provenance)
+        else:
+            from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
+            prov_config, remaining = init_provenance_config(args, inputs)
+             ## Ignore returned remaining command line arguments. Will be taken care of in main()
+            print(prov_config)
+            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config )
+
     return graph, inputs
 
 
@@ -781,12 +800,14 @@ def parse_common_args():   # pragma: no cover
 import time
 def main():   # pragma: no cover
     from importlib import import_module
-
+    
     args, remaining = parse_common_args()
+
     graph, inputs = load_graph_and_inputs(args)
+
     if graph is None:
         return
-
+    
     try:
         # see if platform is in the mappings file as a simple name
         target = config[args.target]
