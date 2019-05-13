@@ -2162,18 +2162,9 @@ def configure_prov_run(
         mapping='simple'
        ):
     """ 
-        In order to enable the user of a data-intensive application to configure the attribution
-        of types, selectivity controls and activation of advanced exploitation mechanisms, we
-        introduce in this chapter also the concept of provenance configuration. In Figure 4.1
-        we outline the different phases envisaged by framework. In that respect, we propose
-        a configuration profile, where users can specify a number of properties, such as attribution,
-        provenance types, clusters, sensors, selectivity rules, etc. The configuration is
-        used at the time of the initialisation of the workflow to prepare its provenance-aware
-        execution. We consider that a chosen configuration may be influenced by personal and
-        community preferences, as well as by rules introduced by institutional policies. For
-        instance, a Research Infrastructure (RI) may indicate best practices to reproduce and
-        describe the operations performed by the users exploiting its facilities, or even impose
-        requirements which may turn into quality assessment metrics. 
+        In order to enable the user of a data-intensive application to configure the lineage metadata extracted from the execution of their
+        worklfows we adopt a provenance configuration profile. The configuration is used at the time of the initialisation of the workflow to prepare its provenance-aware
+        execution. We consider that a chosen configuration may be influenced by personal and community preferences, as well as by rules introduced by institutional policies.
         For instance, a certain RI would require to choose among a set of contextualisation types, in order to adhere to
         the infrastructure's metadata portfolio. Thus, a provenance configuration profile play
         in favour of more generality, encouraging the implementation and the re-use of fundamental
@@ -2184,12 +2175,35 @@ def configure_prov_run(
         and the belonging conceptual provenance cluster. Moreover, users can also choose where to store the lineage (_save_mode_), locally in the file system or in a remote service or database. 
         Lineage storage operations can be performed in bulk, with different impacts on the overall overhead and on the experienced rapidity of access to the lineage information.
     
+        - __Configuration JSON__: We show here an example of the JSON document used to prepare a worklfow for a provenance aware execution. Some properties are described inline. These are defined by terms in the provone and s-prov namespaces.
 
+        ```python
+            {
+                    'provone:User': "aspinuso", 
+                    's-prov:description' : "provdemo demokritos",
+                    's-prov:workflowName': "demo_epos",
+                    # Assign a generic characterisation or aim of the workflow
+                    's-prov:workflowType': "seis:preprocess",
+                    # Specify the unique id of the workflow
+                    's-prov:workflowId'  : "workflow process",
+                    # Specify whether the lineage is saved locally to the file system or remotely to an existing serivce (for location setup check the class prperties or the command line instructions section.)
+                    's-prov:save-mode'   : 'service'         ,
+                    # Assign the Provenance Types and Provenance Clusters to the processing elements of the workflows. These are indicated by the name attributed to their class or function, eg. PE_taper. The 's-prov:type' property accepts a list of class names, corrisponding to the types' implementation. The 's-prov:cluster' is used to group more processing elements to a common functional section of the workflow.
+                    's-prov:componentsType' : 
+                                       {'PE_taper': {'s-prov:type':["SeismoPE"]),
+                                                     's-prov:prov-cluster':'seis:Processor'},
+                                        'PE_plot_stream':    {'s-prov:prov-cluster':'seis:Visualisation',
+                                                           's-prov:type':["SeismoPE"]},
+                                        'StoreStream':    {'s-prov:prov-cluster':'seis:DataHandler',
+                                                           's-prov:type':["SeismoPE,AccumulateFlow"]}
+                                        }} 
+        ```
 
-        - __Selectivity and Transfer rules__: By declaratively indicating a set of Selectivity and Transfer rules for every component (_sel_rules_, _transfer_rules_), users can respectively activate the collection
+        - __Selectivity rules__: By declaratively indicating a set of Selectivity rules for every component ('s-prov:sel_rules'), users can respectively activate the collection
         of the provenance for particular Data elements or trigger transfer operations of the data to external locations. The approach takes advantage of the contextualisation 
         possibilities offered by the provenance _Contextualisation types_. The rules consist of comparison expressions formulated in JSON that indicate the boundary
-        values for a specific metadata term. Such representation is inspired by the query language and selectors adopted by a popular document store, MongoDB.
+        values for a specific metadata term. Such representation is inspired by the query language and selectors adopted by a popular document store, MongoDB. 
+        These can be defined also within the configuration JSON introduced above.
 
         Example, a Processing Element _CorrCoef_ that produces lineage information only when the _rho_ value is greater than 0: 
         ```python
@@ -2198,6 +2212,12 @@ def configure_prov_run(
                     "rho": {
                         "$gt": 0
             }}}}
+        ```
+
+        - __Command Line Activation__: To enable proveance activation through command line dispel4py should be executed with specific command line instructions. The following command will execute a local test for the provenance-aware execution of the MySplitAndMerge workflow.
+
+        ```python
+        dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-repository-url=http://testbed.project-dare.eu/prov/workflowexecutions/insert multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
         ```
 
     """
