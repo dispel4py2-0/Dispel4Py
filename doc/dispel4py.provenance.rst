@@ -447,7 +447,7 @@ Example, a Processing Element *CorrCoef* that produces lineage information only 
 
 .. code-block:: python
 
-   python -m dispel4py.new.processor --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-repository-url=http://testbed.project-dare.eu/prov/workflowexecutions/insert multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
+   dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-repository-url=<url> multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
 
 ProvenanceSimpleFunctionPE
 --------------------------
