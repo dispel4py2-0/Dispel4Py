@@ -23,20 +23,30 @@ import datetime
 import uuid
 import traceback
 import os
+import argparse
 import socket
 import ujson
-import http as httplib
 import urllib
 import pickle
-from urllib.parse import urlparse
 from pip._internal.utils.misc import get_installed_distributions
 from dispel4py.new import simple_process
+import dispel4py.new.mappings
 from subprocess import Popen, PIPE
 import collections
 from copy import deepcopy
 import pip
 import inspect
 
+if sys.version_info[0] < 3:
+    import httplib
+    from urlparse import urlparse
+    urlencode = urllib.urlencode
+    HTTPConnection = httplib.HTTPConnection
+else:
+    import http as httplib
+    from urllib.parse import urlparse
+    urlencode = urllib.parse.urlencode
+    HTTPConnection = httplib.client.HTTPConnection
 
 from itertools import chain
 try:
@@ -438,9 +448,9 @@ class ProvenanceType(GenericPE):
         
         The following variables will be used to configure some general provenance capturing properties
 
-        - _PROV_PATH_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating a file system path wher the lineage will be stored 
-        - _REPOS_URL_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indcating the repository endpoint (S-ProvFlow) where the provenance will be sent.
-        - _PROV_DATA_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
+        - _PROV_PATH_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indicating a file system path where the lineage will be stored.
+        - _REPOS_URL_: When _SAVE_MODE_SERVICE_ is chosen, this variable should be populated with a string indicating the repository endpoint (S-ProvFlow) where the provenance will be sent.
+        - _PROV_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
         - _BULK_SIZE_: Number of lineage documents to be stored in a single file or in a single request to the remote service. Helps tuning the overhead brough by the latency of accessing storage resources.
      
     """
@@ -702,11 +712,11 @@ class ProvenanceType(GenericPE):
             
             if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
                 #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
-                params = urllib.parse.urlencode({'prov': ujson.dumps(self.bulk_prov)})
+                params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
                 headers = {
                        "Content-type": "application/x-www-form-urlencoded",
                        "Accept": "application/json"}
-                self.connection = httplib.client.HTTPConnection(
+                self.connection = HTTPConnection(
                                                      self.provurl.netloc)
                 self.connection.request(
                                     "POST",
@@ -720,7 +730,7 @@ class ProvenanceType(GenericPE):
                 self.connection.close()
                 self.bulk_prov[:]=[]
             elif (self.save_mode==ProvenanceType.SAVE_MODE_FILE):
-                filep = open(ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "wr")
+                filep = open(ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "w")
                 ujson.dump(self.bulk_prov, filep)
             elif (self.save_mode==ProvenanceType.SAVE_MODE_SENSOR):
                 super(
@@ -763,11 +773,11 @@ class ProvenanceType(GenericPE):
         
         if len(self.bulk_prov) > ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
-            params = urllib.parse.urlencode({'prov': ujson.dumps(self.bulk_prov)})
+            params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
             headers = {
                 "Content-type": "application/x-www-form-urlencoded",
                 "Accept": "application/json"}
-            self.connection = httplib.client.HTTPConnection(
+            self.connection = HTTPConnection(
                                                      self.provurl.netloc)
             self.connection.request(
                 "POST", self.provurl.path, params, headers)
@@ -879,7 +889,7 @@ class ProvenanceType(GenericPE):
         self.inMetaStreams = None
         self.username = None
         self.runId = None
-
+        self.mapping = 'simple'
 
         try:
                 # self.iterationId = self.name + '-' + getUniqueId()
@@ -1118,7 +1128,7 @@ class ProvenanceType(GenericPE):
                 'type': 'lineage',
 
                 'streams': contentmeta,
-                'mapping': sys.argv[1]})
+                'mapping': self.mapping})
                 
                 if hasattr(self, 'prov_cluster'):
                      
@@ -1671,7 +1681,7 @@ class AccumulateFlow(ProvenanceType):
     
     def apply_derivation_rule(self,event,voidInvocation,oport=None,iport=None,data=None,metadata=None):
          
-            
+           
         if (event=='end_invocation_event' and voidInvocation==False):
             self.discardInFlow()
 
@@ -2040,7 +2050,92 @@ def update_prov_run(runId,save_mode='file',dic=None):
     _graph=None
 
 
- 
+def load_provenance_config(configfile):
+    with open(configfile) as cfg_file:
+        config_obj = json.load(cfg_file)
+        return config_obj
+
+def create_provenance_argparser():
+     parser = argparse.ArgumentParser(description='Submit provenance parameters.')
+     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
+                         help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
+                               "if save-mode in provenance config is 'service', in which case this argument is "
+                               "mandatory."))
+     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
+                         help=("The service endpoint from where the provenance of a workflow execution,"
+                               "after being stored, can be extracted in PROV format."))
+     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
+                         help=("indicates a file system path where the lineage will be stored. Mandatory "
+                               "if save-mode in provenance configuration is 'file'."))
+     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
+                         help=("Number of lineage documents to be stored in a single file or in a single"
+                               "request to the remote service. Helps tuning the overhead brought by the latency"
+                               "of accessing storage resources."))
+     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
+                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
+                               "and there is no run-id in the provenance configuration."))
+     return parser
+    
+def init_provenance_config(args, inputs):
+
+    provparser = create_provenance_argparser()
+    provenance_args, remaining = provparser.parse_known_args()
+    ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
+    ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
+    ProvenanceType.PROV_PATH = provenance_args.prov_path
+    ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
+
+    ## Figure out the module name of the graph and import it;
+    ## The component types must be resolved through its imports.
+    from importlib import import_module
+    module_name = os.path.splitext(os.path.basename(args.module))[0]
+    module = import_module(module_name)
+
+    prov_config = load_provenance_config(args.provenance)
+    if 's-prov:componentsType' in prov_config:
+        for prov_ct_name in prov_config['s-prov:componentsType'].keys():
+            prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
+            component_type_list = []
+            ## Obtain the list of component types and convert the strings
+            ## to python classes and add them to the s-prov:type list as
+            ## classes, not as the strings they are in the json file.
+            for ct in prov_ct["s-prov:type"]:
+                component_type = module.__dict__[ct]
+                component_type_list.append(component_type)
+            ## Convert to tuple, because injectProv() appends it with tuple
+            ## and you cannot append a tuple to a list.
+            prov_ct["s-prov:type"] = tuple(component_type_list)
+
+    if inputs:
+        input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
+        if "s-prov:WFExecutionInputs" in prov_config:
+            prov_config["s-prov:WFExecutionInputs"].append(input_item)
+        else:
+            prov_config["s-prov:WFExecutionInputs"] = [input_item,]
+    prov_config['s-prov:mapping'] = args.target
+
+    if provenance_args.prov_runid:
+        prov_config['s-prov:run-id'] = provenance_args.prov_runid
+
+    if 's-prov:save-mode' in prov_config:
+        if prov_config['s-prov:save-mode'] == 'file' and not provenance_args.prov_path:
+            print("\ns-prov:save-mode is 'file', but no --provenance-path argument supplied!\n")
+            provparser.print_help()
+            sys.exit(1)
+        if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.prov_repo_url:
+            print("\ns-prov:save-mode is 'service', but no --provenance-repository-url argument supplied!\n")
+            provparser.print_help()
+            sys.exit(1)
+    else:
+        if provenance_args.prov_repo_url: prov_config['s-prov:save-mode'] = 'service'
+        elif provenance_args.prov_path: prov_config['s-prov:save-mode'] == 'file'
+        else:
+            print("\nMust supply either --provenance-repository-url or --provenance-path argument.\n")
+            provparser.print_help()
+            sys.exit(1)
+    
+    ## Also return remaining in case any one is ever interested.
+    return prov_config, remaining
 
 def configure_prov_run(
         graph,
@@ -2061,23 +2156,17 @@ def configure_prov_run(
         save_mode='file',
         sel_rules={},
         transfer_rules={},
-        update=False
-        ):
+        update=False,
+        sprovConfig=None,
+        sessionId=None,
+        mapping='simple'
+       ):
     """ 
-        In order to enable the user of a data-intensive application to configure the attribution
-        of types, selectivity controls and activation of advanced exploitation mechanisms, we
-        introduce in this chapter also the concept of provenance configuration. In Figure 4.1
-        we outline the different phases envisaged by framework. In that respect, we propose
-        a configuration profile, where users can specify a number of properties, such as attribution,
-        provenance types, clusters, sensors, selectivity rules, etc. The configuration is
-        used at the time of the initialisation of the workflow to prepare its provenance-aware
-        execution. We consider that a chosen configuration may be influenced by personal and
-        community preferences, as well as by rules introduced by institutional policies. For
-        instance, a Research Infrastructure (RI) may indicate best practices to reproduce and
-        describe the operations performed by the users exploiting its facilities, or even impose
-        requirements which may turn into quality assessment metrics. 
+        In order to enable the user of a data-intensive application to configure the lineage metadata extracted from the execution of their
+        worklfows we adopt a provenance configuration profile. The configuration is used at the time of the initialisation of the workflow to prepare its provenance-aware
+        execution. We consider that a chosen configuration may be influenced by personal and community preferences, as well as by rules introduced by institutional policies.
         For instance, a certain RI would require to choose among a set of contextualisation types, in order to adhere to
-        the infrastructure’s metadata portfolio. Thus, a provenance configuration profile play
+        the infrastructure's metadata portfolio. Thus, a provenance configuration profile play
         in favour of more generality, encouraging the implementation and the re-use of fundamental
         methods across disciplines.
 
@@ -2086,12 +2175,35 @@ def configure_prov_run(
         and the belonging conceptual provenance cluster. Moreover, users can also choose where to store the lineage (_save_mode_), locally in the file system or in a remote service or database. 
         Lineage storage operations can be performed in bulk, with different impacts on the overall overhead and on the experienced rapidity of access to the lineage information.
     
+        - __Configuration JSON__: We show here an example of the JSON document used to prepare a worklfow for a provenance aware execution. Some properties are described inline. These are defined by terms in the provone and s-prov namespaces.
 
+        ```python
+            {
+                    'provone:User': "aspinuso", 
+                    's-prov:description' : "provdemo demokritos",
+                    's-prov:workflowName': "demo_epos",
+                    # Assign a generic characterisation or aim of the workflow
+                    's-prov:workflowType': "seis:preprocess",
+                    # Specify the unique id of the workflow
+                    's-prov:workflowId'  : "workflow process",
+                    # Specify whether the lineage is saved locally to the file system or remotely to an existing serivce (for location setup check the class prperties or the command line instructions section.)
+                    's-prov:save-mode'   : 'service'         ,
+                    # Assign the Provenance Types and Provenance Clusters to the processing elements of the workflows. These are indicated by the name attributed to their class or function, eg. PE_taper. The 's-prov:type' property accepts a list of class names, corrisponding to the types' implementation. The 's-prov:cluster' is used to group more processing elements to a common functional section of the workflow.
+                    's-prov:componentsType' : 
+                                       {'PE_taper': {'s-prov:type':["SeismoPE"]),
+                                                     's-prov:prov-cluster':'seis:Processor'},
+                                        'PE_plot_stream':    {'s-prov:prov-cluster':'seis:Visualisation',
+                                                           's-prov:type':["SeismoPE"]},
+                                        'StoreStream':    {'s-prov:prov-cluster':'seis:DataHandler',
+                                                           's-prov:type':["SeismoPE,AccumulateFlow"]}
+                                        }} 
+        ```
 
-        - __Selectivity and Transfer rules__: By declaratively indicating a set of Selectivity and Transfer rules for every component (_sel_rules_, _transfer_rules_), users can respectively activate the collection
+        - __Selectivity rules__: By declaratively indicating a set of Selectivity rules for every component ('s-prov:sel_rules'), users can respectively activate the collection
         of the provenance for particular Data elements or trigger transfer operations of the data to external locations. The approach takes advantage of the contextualisation 
         possibilities offered by the provenance _Contextualisation types_. The rules consist of comparison expressions formulated in JSON that indicate the boundary
-        values for a specific metadata term. Such representation is inspired by the query language and selectors adopted by a popular document store, MongoDB.
+        values for a specific metadata term. Such representation is inspired by the query language and selectors adopted by a popular document store, MongoDB. 
+        These can be defined also within the configuration JSON introduced above.
 
         Example, a Processing Element _CorrCoef_ that produces lineage information only when the _rho_ value is greater than 0: 
         ```python
@@ -2102,12 +2214,54 @@ def configure_prov_run(
             }}}}
         ```
 
+        - __Command Line Activation__: To enable proveance activation through command line dispel4py should be executed with specific command line instructions. The following command will execute a local test for the provenance-aware execution of the MySplitAndMerge workflow.
+
+        ```python
+        dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-repository-url=http://testbed.project-dare.eu/prov/workflowexecutions/insert multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
+        ```
+
     """
 
+    if sprovConfig:
+        if 's-prov:run-id' in sprovConfig:
+            runId = sprovConfig['s-prov:run-id']
+        if 's-prov:session-id' in sprovConfig:
+            sessionId = sprovConfig['s-prov:session-id']
+        if 's-prov:system-id' in sprovConfig:
+            system_id = sprovConfig['s-prov:system-id']
+        if 's-prov:transfer-rules' in sprovConfig:
+            transfer_rules = sprovConfig['s-prov:transfer-rules']
+        input = sprovConfig['s-prov:WFExecutionInputs']
+        if 'provone:User' in sprovConfig:
+            username = sprovConfig['provone:User']
+        if 's-prov:workflowId' in sprovConfig:
+            workflowId = sprovConfig['s-prov:workflowId']
+        if 's-prov:description' in sprovConfig:
+            description = sprovConfig['s-prov:description']
+        if 's-prov:workflowName' in sprovConfig:
+            workflowName = sprovConfig['s-prov:workflowName']
+        if 's-prov:sel-rules' in sprovConfig:
+            sel_rules = sprovConfig['s-prov:sel-rules']
+        if 's-prov:workflowType' in sprovConfig:
+            workflowType = sprovConfig['s-prov:workflowType']
+        if 's-prov:componentsType' in sprovConfig:
+            componentsType = sprovConfig['s-prov:componentsType']
+        if 's-prov:save-mode' in sprovConfig:
+            save_mode = sprovConfig['s-prov:save-mode']
+        if 's-prov:mapping' in sprovConfig:
+            mapping = sprovConfig['s-prov:mapping']
+            
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
-    if runId is None:
+    if runId is None and mapping != 'mpi':
         runId = getUniqueId()
+    elif runId is None and mapping == 'mpi':
+        print("\n Auto-generation of runId not supported for MPI targets.\n",
+              "Provide a value for the 's-prov:run-id' key in the provenance configuration\n",
+              "and run again!\n")
+        sys.exit(1)
+    if not sessionId and "SPROV_SESSIONID" in os.environ:
+        sessionId = os.environ["SPROV_SESSIONID"]
 
     print('Change grouping implementation ')
 
@@ -2126,7 +2280,8 @@ def configure_prov_run(
                          "system_id": system_id,
                          "workflowName": workflowName,
                          "runId": runId,
-                         "mapping": sys.argv[1],
+                         "sessionId": sessionId,
+                         "mapping": mapping,
                          "sel_rules":sel_rules,
                          "transfer_rules":transfer_rules,
                          "source":workflow,
@@ -2135,22 +2290,30 @@ def configure_prov_run(
                          "update":update,
                          "status":"active"
                          }
-    #newrun.parameters=clean_empty(newrun.parameters)
-    _graph = WorkflowGraph()
-    provrec = None
 
-    if provRecorderClass!=None:
-        provrec = provRecorderClass(toW3C=w3c_prov)
-        _graph.connect(d4py_newrun, "output", provrec, "metadata")
-    else:
-        provrec = IterativePE()
-        _graph.connect(d4py_newrun, "output", provrec, "input")
+    mpirank = 0
+    if mapping == 'mpi' and mapping in dispel4py.new.mappings.config:
+        ## Determine the rank
+        from importlib import import_module
+        mpimodule = import_module(dispel4py.new.mappings.config[mapping], mapping)
+        mpirank = mpimodule.rank
 
+    if mpirank == 0:
+        #newrun.parameters=clean_empty(newrun.parameters)
+        _graph = WorkflowGraph()
+        provrec = None
 
-    # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
+        if provRecorderClass!=None:
+            provrec = provRecorderClass(toW3C=w3c_prov)
+            _graph.connect(d4py_newrun, "output", provrec, "metadata")
+        else:
+            provrec = IterativePE()
+            _graph.connect(d4py_newrun, "output", provrec, "input")
 
-    # newrun.provon=True
-    simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
+        # attachProvenanceRecorderPE(_graph,provRecorderClass,runId,username,w3c_prov)
+
+        # newrun.provon=True
+        simple_process.process(_graph, {'NewWorkflowRun': [{'input': 'None'}]})
 
     if (provRecorderClass!=None):
         print("PREPARING PROVENANCE SENSORS:")
@@ -2312,7 +2475,7 @@ class NewWorkflowRun(ProvenanceType):
 
         return {'metadata':contentmeta[0]['content'][0]}
 
-    def makeRunMetdataBundle(
+    def makeRunMetadataBundle(
             self,
             input=[],
             username=None,
@@ -2323,6 +2486,7 @@ class NewWorkflowRun(ProvenanceType):
             workflowType=None,
             w3c=False,
             runId=None,
+            sessionId=None,
             modules=None,
             subProcesses=None,
             ns=None,
@@ -2339,6 +2503,7 @@ class NewWorkflowRun(ProvenanceType):
                 bundle["_id"] = runId
 
             bundle["runId"] = bundle["_id"]
+            bundle["sessionId"] = sessionId
             bundle["input"] = input
             bundle["startTime"] = str(datetime.datetime.utcnow())
             bundle["username"] = username
@@ -2361,7 +2526,7 @@ class NewWorkflowRun(ProvenanceType):
     def _process(self, inputs):
         self.name = 'NewWorkflowRun'
 
-        bundle = self.makeRunMetdataBundle(
+        bundle = self.makeRunMetadataBundle(
             username=self.parameters["username"],
             input=self.parameters["input"],
             workflowId=self.parameters["workflowId"],
@@ -2370,6 +2535,7 @@ class NewWorkflowRun(ProvenanceType):
             workflowName=self.parameters["workflowName"],
             workflowType=self.parameters["workflowType"],
             runId=self.parameters["runId"],
+            sessionId=self.parameters["sessionId"],
             modules=sorted(["%s==%s" % (i.key, i.version) for i in get_installed_distributions()]),
             subProcesses=self.parameters["source"],
             ns=self.parameters["ns"],
@@ -2464,7 +2630,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
 
     def _preprocess(self):
         self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
-        self.connection = httplib.client.HTTPConnection(
+        self.connection = HTTPConnection(
             self.provurl.netloc)
 
     def _process(self, inputs):
@@ -2482,7 +2648,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
         else:
             out = prov
 
-        params = urllib.parse.urlencode({'prov': json.dumps(out)})
+        params = urlencode({'prov': json.dumps(out)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
             "Accept": "application/json"}
@@ -2515,14 +2681,14 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
     def _preprocess(self):
         self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
 
-        self.connection = httplib.client.HTTPConnection(
+        self.connection = HTTPConnection(
             self.provurl.netloc)
 
     def postprocess(self):
         if len(self.bulk)>0:
             
         #self.log("TO SERVICE POSTP________________ID: "+str(self.bulk))
-            params = urllib.parse.urlencode({'prov': json.dumps(self.bulk)})
+            params = urlencode({'prov': json.dumps(self.bulk)})
             headers = {
                        "Content-type": "application/x-www-form-urlencoded",
                        "Accept": "application/json"}
@@ -2558,7 +2724,7 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
 
         if len(self.bulk) == 100:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk))
-            params = urllib.parse.urlencode({'prov': json.dumps(self.bulk)})
+            params = urlencode({'prov': json.dumps(self.bulk)})
             headers = {
                 "Content-type": "application/x-www-form-urlencoded",
                 "Accept": "application/json"}
@@ -2646,7 +2812,7 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
     def _preprocess(self):
         self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
 
-        self.connection = httplib.client.HTTPConnection(
+        self.connection = HTTPConnection(
             self.provurl.netloc)
 
     def postprocess(self):
@@ -2670,7 +2836,7 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
         self.write(self.porttopemap[prov['name']], "FEEDBACK MESSAGGE FROM RECORDER")
 
         self.bulk.append(out)
-        params = urllib.parse.urlencode({'prov': json.dumps(self.bulk)})
+        params = urlencode({'prov': json.dumps(self.bulk)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
             "Accept": "application/json"}

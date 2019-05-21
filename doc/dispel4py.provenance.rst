@@ -1,6 +1,5 @@
-
-provenance
-==========
+dispel4py.provenance
+====================
 
 clean_empty
 -----------
@@ -103,10 +102,11 @@ repository, a local file system or a *ProvenanceSensor* (experimental).
 The following variables will be used to configure some general provenance capturing properties
 
 
-* _PROV\ *PATH*\ : When _SAVE_MODE\ *SERVICE* is chosen, this variable should be populated with a string indcating a file system path wher the lineage will be stored
-* _REPOS\ *URL*\ : When _SAVE_MODE\ *SERVICE* is chosen, this variable should be populated with a string indcating the repository endpoint (S-ProvFlow) where the provenance will be sent.
-* _PROV_DATA_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
+* _PROV\ *PATH*\ : When _SAVE_MODE\ *SERVICE* is chosen, this variable should be populated with a string indicating a file system path where the lineage will be stored.
+* _REPOS\ *URL*\ : When _SAVE_MODE\ *SERVICE* is chosen, this variable should be populated with a string indicating the repository endpoint (S-ProvFlow) where the provenance will be sent.
+* _PROV_EXPORT_URL: The service endpoint from where the provenance of a workflow execution, after being stored, can be extracted in PROV format.
 * _BULK\ *SIZE*\ : Number of lineage documents to be stored in a single file or in a single request to the remote service. Helps tuning the overhead brough by the latency of accessing storage resources.
+
 
 getProvStateObjectId
 ^^^^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ getProvStateObjectId
 
    ProvenanceType.getProvStateObjectId(self, name)
 
-Return the id of a named object stored in the provenance state.
+Return the id of a named object stored in the provenance state
 
 apply_derivation_rule
 ^^^^^^^^^^^^^^^^^^^^^
@@ -378,29 +378,20 @@ injectProv
    injectProv(object, provType, active=True, componentsType=None, workflow={}, **kwargs)
 
 This function dinamically extend the type of each the nodes of the graph
-or subgraph with ProvenanceType type or its specialisation
+or subgraph with ProvenanceType type or its specialisation.
 
 configure_prov_run
 ------------------
 
 .. code-block:: python
 
-   configure_prov_run(graph, provRecorderClass=None, provImpClass=<class 'provenance.ProvenanceType'>, input=None, username=None, workflowId=None, description=None, system_id=None, workflowName=None, workflowType=None, w3c_prov=False, runId=None, componentsType=None, clustersRecorders={}, feedbackPEs=[], save_mode='file', sel_rules={}, transfer_rules={}, update=False)
+   configure_prov_run(graph, provRecorderClass=None, provImpClass=<class 'dispel4py.provenance.ProvenanceType'>, input=None, username=None, workflowId=None, description=None, system_id=None, workflowName=None, workflowType=None, w3c_prov=False, runId=None, componentsType=None, clustersRecorders={}, feedbackPEs=[], save_mode='file', sel_rules={}, transfer_rules={}, update=False, sprovConfig=None, sessionId=None, mapping='simple')
 
-In order to enable the user of a data-intensive application to configure the attribution
-of types, selectivity controls and activation of advanced exploitation mechanisms, we
-introduce in this chapter also the concept of provenance configuration. In Figure 4.1
-we outline the different phases envisaged by framework. In that respect, we propose
-a configuration profile, where users can specify a number of properties, such as attribution,
-provenance types, clusters, sensors, selectivity rules, etc. The configuration is
-used at the time of the initialisation of the workflow to prepare its provenance-aware
-execution. We consider that a chosen configuration may be influenced by personal and
-community preferences, as well as by rules introduced by institutional policies. For
-instance, a Research Infrastructure (RI) may indicate best practices to reproduce and
-describe the operations performed by the users exploiting its facilities, or even impose
-requirements which may turn into quality assessment metrics.
+In order to enable the user of a data-intensive application to configure the lineage metadata extracted from the execution of their
+worklfows we adopt a provenance configuration profile. The configuration is used at the time of the initialisation of the workflow to prepare its provenance-aware
+execution. We consider that a chosen configuration may be influenced by personal and community preferences, as well as by rules introduced by institutional policies.
 For instance, a certain RI would require to choose among a set of contextualisation types, in order to adhere to
-the infrastructure’s metadata portfolio. Thus, a provenance configuration profile play
+the infrastructure's metadata portfolio. Thus, a provenance configuration profile play
 in favour of more generality, encouraging the implementation and the re-use of fundamental
 methods across disciplines.
 
@@ -410,10 +401,36 @@ and the belonging conceptual provenance cluster. Moreover, users can also choose
 Lineage storage operations can be performed in bulk, with different impacts on the overall overhead and on the experienced rapidity of access to the lineage information.
 
 
-* **Selectivity and Transfer rules**\ : By declaratively indicating a set of Selectivity and Transfer rules for every component (_sel\ *rules*\ , _transfer\ *rules*\ ), users can respectively activate the collection
+* **Configuration JSON**\ : We show here an example of the JSON document used to prepare a worklfow for a provenance aware execution. Some properties are described inline. These are defined by terms in the provone and s-prov namespaces.
+
+.. code-block:: python
+
+       {
+               'provone:User': "aspinuso",
+               's-prov:description' : "provdemo demokritos",
+               's-prov:workflowName': "demo_epos",
+               # Assign a generic characterisation or aim of the workflow
+               's-prov:workflowType': "seis:preprocess",
+               # Specify the unique id of the workflow
+               's-prov:workflowId'  : "workflow process",
+               # Specify whether the lineage is saved locally to the file system or remotely to an existing serivce (for location setup check the class prperties or the command line instructions section.)
+               's-prov:save-mode'   : 'service'         ,
+               # Assign the Provenance Types and Provenance Clusters to the processing elements of the workflows. These are indicated by the name attributed to their class or function, eg. PE_taper. The 's-prov:type' property accepts a list of class names, corrisponding to the types' implementation. The 's-prov:cluster' is used to group more processing elements to a common functional section of the workflow.
+               's-prov:componentsType' :
+                                  {'PE_taper': {'s-prov:type':["SeismoPE"]),
+                                                's-prov:prov-cluster':'seis:Processor'},
+                                   'PE_plot_stream':    {'s-prov:prov-cluster':'seis:Visualisation',
+                                                      's-prov:type':["SeismoPE"]},
+                                   'StoreStream':    {'s-prov:prov-cluster':'seis:DataHandler',
+                                                      's-prov:type':["SeismoPE,AccumulateFlow"]}
+                                   }}
+
+
+* **Selectivity rules**\ : By declaratively indicating a set of Selectivity rules for every component ('s-prov:sel_rules'), users can respectively activate the collection
   of the provenance for particular Data elements or trigger transfer operations of the data to external locations. The approach takes advantage of the contextualisation
   possibilities offered by the provenance *Contextualisation types*. The rules consist of comparison expressions formulated in JSON that indicate the boundary
   values for a specific metadata term. Such representation is inspired by the query language and selectors adopted by a popular document store, MongoDB.
+  These can be defined also within the configuration JSON introduced above.
 
 Example, a Processing Element *CorrCoef* that produces lineage information only when the *rho* value is greater than 0:
 
@@ -425,6 +442,20 @@ Example, a Processing Element *CorrCoef* that produces lineage information only 
                    "$gt": 0
        }}}}
 
+
+* ** Command Line Activation**\ : To enable proveance activation through command line dispel4py should be executed with specific command line instructions. The following command will execute a local test for the provenance-aware execution of the MySplitAndMerge workflow.
+
+.. code-block:: python
+
+   dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-repository-url=<url> multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
+
+* The following command instead stores the provenance files to the local filesystem in a given directory. To activate this mode, the property *s-prov:save_mode* of the configuration file needs to be set to 'file'.
+
+.. code-block:: python
+
+    dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-path=/path/to/prov multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
+    
+    
 ProvenanceSimpleFunctionPE
 --------------------------
 
@@ -442,38 +473,3 @@ ProvenanceIterativePE
    ProvenanceIterativePE(self, *args, **kwargs)
 
 A *Pattern type* for the native  *IterativePE* Element of dispel4py
-
-ProvenanceRecorder
-------------------
-
-.. code-block:: python
-
-   ProvenanceRecorder(self, name='ProvenanceRecorder', toW3C=False)
-
-INPUT_NAME
-^^^^^^^^^^
-
-str(object='') -> str
-str(bytes_or_buffer[, encoding[, errors]]) -> str
-
-Create a new string object from the given object. If encoding or
-errors is specified, then the object must expose a data buffer
-that will be decoded using the given encoding and error handler.
-Otherwise, returns the result of object.\ **str**\ () (if defined)
-or repr(object).
-encoding defaults to sys.getdefaultencoding().
-errors defaults to 'strict'.
-
-REPOS_URL
-^^^^^^^^^
-
-str(object='') -> str
-str(bytes_or_buffer[, encoding[, errors]]) -> str
-
-Create a new string object from the given object. If encoding or
-errors is specified, then the object must expose a data buffer
-that will be decoded using the given encoding and error handler.
-Otherwise, returns the result of object.\ **str**\ () (if defined)
-or repr(object).
-encoding defaults to sys.getdefaultencoding().
-errors defaults to 'strict'.
