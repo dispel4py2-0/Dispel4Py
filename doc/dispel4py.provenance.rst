@@ -449,6 +449,13 @@ Example, a Processing Element *CorrCoef* that produces lineage information only 
 
    dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-repository-url=<url> multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
 
+* The following command instead stores the provenance files to the local filesystem in a given directory. To activate this mode, the property *s-prov:save_mode* of the configuration file needs to be set to 'file'.
+
+.. code-block:: python
+
+    dispel4py --provenance-config=dispel4py/examples/prov_testing/prov-config-mysplitmerge.json --provenance-path=/path/to/prov multi dispel4py/examples/prov_testing/mySplitMerge_prov.py -n 10
+    
+    
 ProvenanceSimpleFunctionPE
 --------------------------
 
