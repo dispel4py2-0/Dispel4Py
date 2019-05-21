@@ -185,14 +185,6 @@ ProvenanceType.BULK_SIZE=5
 # Finally, provenance enhanced graph is prepared:
 configure_prov_run(graph, 
                     provImpClass=(ProvenanceType,),
-                    input=prov_config['s-prov:WFExecutionInputs'],
-                    username=prov_config['provone:User'],
                     runId=os.getenv("RUN_ID"),
-                    description=prov_config['s-prov:description'],
-                    workflowName=prov_config['s-prov:workflowName'],
-                    workflowType=prov_config['s-prov:workflowType'],
-                    workflowId=prov_config['s-prov:workflowId'],
-                    save_mode=prov_config['s-prov:save-mode'],
-                    componentsType=prov_config['s-prov:componentsType'],
-                    sel_rules=prov_config['s-prov:sel-rules']
+                    sprovConfig=prov_config
                     )

@@ -40,7 +40,6 @@ number of processes if running in a parallel environment.
 
 '''
 import sys
-sys.path.append('./')
 import argparse
 import os
 import os.path
