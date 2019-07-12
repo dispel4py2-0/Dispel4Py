@@ -1283,7 +1283,7 @@ class ProvenanceType(GenericPE):
         #self.apply_derivation_rule('state', None)
         if self.provon:
             self.log(type(data))
-            if data is not None:
+            if data is None:
                     self._updateState(lookupterm,self.derivationIds[len(self.derivationIds)-1]["DerivedFromDatasetID"])
 
             else:
@@ -1795,6 +1795,7 @@ class ASTGrouped(ProvenanceType):
             if data!=None:
                 vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
                 self.ignorePastFlow()
+                print("DADADADSSSSSSSSSSSSSS")
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
                 self.discardState()
