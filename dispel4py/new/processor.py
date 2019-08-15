@@ -382,7 +382,7 @@ def create_partitioned(workflow_all):
         component_ids = [pe.id for pe in part]
         workflow = copy.deepcopy(workflow_all)
         graph = workflow.graph
-        for node in graph.nodes():
+        for node in list(graph.nodes()): 
             if node.getContainedObject().id not in component_ids:
                 graph.remove_node(node)
         processes, inputmappings, outputmappings = \
