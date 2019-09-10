@@ -307,6 +307,7 @@ def toW3Cprov(prov, format='w3c-prov-json'):
 
     'adding parameters to the document as input entities'
     dic = {}
+    #self.logs(prov["parameters"])
     for x in prov["parameters"]:
         if ':' in x["key"]:
             dic.update({x["key"]: x["val"]})
@@ -805,7 +806,7 @@ class ProvenanceType(GenericPE):
                 ProvenanceType.PROV_PATH +
                 "/bulk_" +
                 self.makeProcessId(),
-                "wr")
+                "w")
             #self.log('PROCESS: '+str(filep))
             ujson.dump(self.bulk_prov, filep)
             #filep.write(json.dumps(self.bulk_prov))
@@ -971,8 +972,7 @@ class ProvenanceType(GenericPE):
             if self.impcls is not None and isinstance(self, self.impcls):
                 try:
                     if hasattr(self, 'params'):
-                        self.parameters = self.params
-                    
+                        self.parameters = deepcopy(self.params)
                     result = self._process(inputs[self.impcls.INPUT_NAME])
                     if result is not None:
                         self.log(self.impcls)
@@ -988,7 +988,6 @@ class ProvenanceType(GenericPE):
 
 
             if result is not None:
-                self.log(result)
                 for x in result:
                     self.writeResults(x,result[x])
 #                self.log(result)
@@ -1094,7 +1093,6 @@ class ProvenanceType(GenericPE):
                 'parameters': self.parameters,
                 'errors': self.error,
                 'pid': '%s' % os.getpid()})
-
 
                  
                 if self.ignore_inputs==True:
