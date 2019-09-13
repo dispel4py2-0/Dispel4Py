@@ -1793,7 +1793,6 @@ class ASTGrouped(ProvenanceType):
             if data!=None:
                 vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
                 self.ignorePastFlow()
-                print("DADADADSSSSSSSSSSSSSS")
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
                 self.discardState()
@@ -1994,10 +1993,20 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
         object.name = localname
         
         code=""
-        for x in inspect.getmembers(object.__class__, predicate=inspect.ismethod):
-            code+=inspect.getsource(x[len(x)-1])+'\n'
+        import pprint
+        # check if the PE is defined as a SimpleFunction and capture its defining function
+        #if isinstance(object, (SimpleFunctionPE)):
+        for x in inspect.getmembers(object, predicate=inspect.isfunction):
+            code+=pprint.pformat(inspect.getsource(x[1]), indent=1,  compact=False)
 
+        # else it captures the code of the _process method
+        else: 
+        if len(code)==0:   
+            for x in inspect.getmembers(object, predicate=inspect.ismethod):
+                if x[1].__name__=="_process":
+                    code+=pprint.pformat(inspect.getsource(x[1]), indent=1, compact=False)
 
+       
         #workflow.append({"@type":"s-prov:Implementation",
         #                 "prov:wasPlanOf":{
         #                    "@type":"s-prov:Component", 
