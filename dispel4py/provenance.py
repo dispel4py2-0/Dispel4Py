@@ -307,6 +307,7 @@ def toW3Cprov(prov, format='w3c-prov-json'):
 
     'adding parameters to the document as input entities'
     dic = {}
+    #self.logs(prov["parameters"])
     for x in prov["parameters"]:
         if ':' in x["key"]:
             dic.update({x["key"]: x["val"]})
@@ -805,7 +806,7 @@ class ProvenanceType(GenericPE):
                 ProvenanceType.PROV_PATH +
                 "/bulk_" +
                 self.makeProcessId(),
-                "wr")
+                "w")
             #self.log('PROCESS: '+str(filep))
             ujson.dump(self.bulk_prov, filep)
             #filep.write(json.dumps(self.bulk_prov))
@@ -971,8 +972,7 @@ class ProvenanceType(GenericPE):
             if self.impcls is not None and isinstance(self, self.impcls):
                 try:
                     if hasattr(self, 'params'):
-                        self.parameters = self.params
-                    
+                        self.parameters = deepcopy(self.params)
                     result = self._process(inputs[self.impcls.INPUT_NAME])
                     if result is not None:
                         self.log(self.impcls)
@@ -988,7 +988,6 @@ class ProvenanceType(GenericPE):
 
 
             if result is not None:
-                self.log(result)
                 for x in result:
                     self.writeResults(x,result[x])
 #                self.log(result)
@@ -1094,7 +1093,6 @@ class ProvenanceType(GenericPE):
                 'parameters': self.parameters,
                 'errors': self.error,
                 'pid': '%s' % os.getpid()})
-
 
                  
                 if self.ignore_inputs==True:
@@ -1795,7 +1793,6 @@ class ASTGrouped(ProvenanceType):
             if data!=None:
                 vv=str(abs(make_hash(tuple([self.getInputAt(port=iport,index=x) for x in self.inputconnections[iport]['grouping']]))))
                 self.ignorePastFlow()
-                print("DADADADSSSSSSSSSSSSSS")
                 self.update_prov_state(vv,data,metadata={"LOOKUP":str(vv)},dep=[vv])
                 self.discardInFlow()
                 self.discardState()
@@ -1996,10 +1993,20 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
         object.name = localname
         
         code=""
-        for x in inspect.getmembers(object.__class__, predicate=inspect.ismethod):
-            code+=inspect.getsource(x[len(x)-1])+'\n'
+        import pprint
+        # check if the PE is defined as a SimpleFunction and capture its defining function
+        #if isinstance(object, (SimpleFunctionPE)):
+        for x in inspect.getmembers(object, predicate=inspect.isfunction):
+            code+=pprint.pformat(inspect.getsource(x[1]), indent=1,  compact=False)
 
+        # else it captures the code of the _process method
+        else: 
+            if len(code)==0:   
+                for x in inspect.getmembers(object, predicate=inspect.ismethod):
+                    if x[1].__name__=="_process":
+                        code+=pprint.pformat(inspect.getsource(x[1]), indent=1, compact=False)
 
+       
         #workflow.append({"@type":"s-prov:Implementation",
         #                 "prov:wasPlanOf":{
         #                    "@type":"s-prov:Component", 
