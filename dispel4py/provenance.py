@@ -2001,10 +2001,10 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
 
         # else it captures the code of the _process method
         else: 
-        if len(code)==0:   
-            for x in inspect.getmembers(object, predicate=inspect.ismethod):
-                if x[1].__name__=="_process":
-                    code+=pprint.pformat(inspect.getsource(x[1]), indent=1, compact=False)
+            if len(code)==0:   
+                for x in inspect.getmembers(object, predicate=inspect.ismethod):
+                    if x[1].__name__=="_process":
+                        code+=pprint.pformat(inspect.getsource(x[1]), indent=1, compact=False)
 
        
         #workflow.append({"@type":"s-prov:Implementation",
