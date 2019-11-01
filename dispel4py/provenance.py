@@ -1930,7 +1930,9 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
     
     if isinstance(object, WorkflowGraph):
         object.flatten()
+        workflow={}
         nodelist = object.getContainedObjects()
+        
         for x in nodelist:
             injectProv(x, provType, componentsType=componentsType, workflow=workflow,**kwargs)
     else:
@@ -2000,7 +2002,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
             code+=pprint.pformat(inspect.getsource(x[1]), indent=1,  compact=False)
 
         # else it captures the code of the _process method
-        else: 
+        else:
             if len(code)==0:   
                 for x in inspect.getmembers(object, predicate=inspect.ismethod):
                     if x[1].__name__=="_process":
