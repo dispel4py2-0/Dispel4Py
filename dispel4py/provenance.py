@@ -2063,25 +2063,25 @@ def load_provenance_config(configfile):
         return config_obj
 
 def create_provenance_argparser():
-     parser = argparse.ArgumentParser(description='Submit provenance parameters.')
-     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
-                         help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
-                               "if save-mode in provenance config is 'service', in which case this argument is "
-                               "mandatory."))
-     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
-                         help=("The service endpoint from where the provenance of a workflow execution,"
-                               "after being stored, can be extracted in PROV format."))
-     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
-                         help=("indicates a file system path where the lineage will be stored. Mandatory "
-                               "if save-mode in provenance configuration is 'file'."))
-     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
-                         help=("Number of lineage documents to be stored in a single file or in a single"
-                               "request to the remote service. Helps tuning the overhead brought by the latency"
-                               "of accessing storage resources."))
-     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
-                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
-                               "and there is no run-id in the provenance configuration."))
-     return parser
+    parser = argparse.ArgumentParser(description='Submit provenance parameters.')
+    parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
+                        help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
+                            "if save-mode in provenance config is 'service', in which case this argument is "
+                            "mandatory."))
+    parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
+                        help=("The service endpoint from where the provenance of a workflow execution,"
+                            "after being stored, can be extracted in PROV format."))
+    parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
+                        help=("indicates a file system path where the lineage will be stored. Mandatory "
+                            "if save-mode in provenance configuration is 'file'."))
+    parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
+                        help=("Number of lineage documents to be stored in a single file or in a single"
+                            "request to the remote service. Helps tuning the overhead brought by the latency"
+                            "of accessing storage resources."))
+    parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
+                        help=("Run ID of the run. This is mandatory if the target is 'mpi' "
+                            "and there is no run-id in the provenance configuration."))
+    return parser
     
 def init_provenance_config(args, inputs):
 
