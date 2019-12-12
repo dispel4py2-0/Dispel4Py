@@ -2110,7 +2110,7 @@ def extract_user_from_token(token):
 
         (header, payload, signature) = token_fields
         payload_object = json.loads(payload)
-        return payload_object['email']
+        return '@'.join((payload_object['sub'],payload_object['iss']))
     except:
         return None
     
