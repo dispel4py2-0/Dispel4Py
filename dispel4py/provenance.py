@@ -774,7 +774,6 @@ class ProvenanceType(GenericPE):
     def sendProvToService(self, prov):
 
         #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
-        self.log("OTHER PLACE TO SEND!")
 
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
@@ -785,7 +784,7 @@ class ProvenanceType(GenericPE):
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
 
             response = self.sendProvRequestToService()
-#             self.log("progress: " + str((response.status, response.reason,response.read())))
+            self.log("progress: " + str((response.status, response.reason,response.read())))
             self.bulk_prov[:]=[]
 
         return None
@@ -2105,6 +2104,15 @@ def create_provenance_argparser():
     parser.add_argument('--sprov-user-token', dest='sprov_user_token', nargs='?', required=False, type=str,
                         help=("OpenID token to authenticate against the sprov service to store provenance. "
                             "This needs to be supplied as a base64 encoded string."))
+    parser.add_argument('--sprov-client-id', dest='sprov_client_id', nargs='?', required=False, type=str,
+                        help=("OpenID client-id used to authenticate with the sprov API. Only required when save-mode"
+                            "in provenance configuration equals 'service' and authentication is activated on sprov."))
+    parser.add_argument('--sprov-client-secret', dest='sprov_client_secret', nargs='?', required=False, type=str,
+                            help=("OpenID client-secret used to authenticate with the sprov API. Only required when save-mode"
+                                "in provenance configuration equals 'service' and authentication is activated on sprov."))
+    parser.add_argument('--sprov-token-endpoint', dest='sprov_token_endpoint', nargs='?', required=False, type=str,
+                            help=("OpenID provider url from which the authentication token for the sprov API can be retrieved. Only required when save-mode"
+                                "in provenance configuration equals 'service' and authentication is activated on sprov."))
     return parser
 
 def extract_user_from_token(token):
@@ -2142,9 +2150,9 @@ def init_provenance_config(args, inputs):
     ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
     ProvenanceType.PROV_PATH = provenance_args.prov_path
     ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
-    ProvenanceType.TOKEN_ENDPOINT = "http://keycloak.localhost:8080/auth/realms/sprov/protocol/openid-connect/token" # TODO: provenance_args.prov_repo_token_endpoint
-    ProvenanceType.CLIENT_ID = "dispel4py" # TODO: provenance_args.prov_client_id
-    ProvenanceType.CLIENT_SECRET = "b4f8c98a-0604-465c-b9e9-942644885a76" # TODO: provenance_args.prov_client_secret
+    ProvenanceType.TOKEN_ENDPOINT = provenance_args.sprov_token_endpoint
+    ProvenanceType.CLIENT_ID = provenance_args.sprov_client_id
+    ProvenanceType.CLIENT_SECRET = provenance_args.sprov_client_secret
 
     ## Figure out t2he module name of the graph and import it;
     ## The component types must be resolved through its imports.
@@ -2196,7 +2204,16 @@ def init_provenance_config(args, inputs):
             print("\nMust supply either --provenance-repository-url or --provenance-path argument.\n")
             provparser.print_help()
             sys.exit(1)
-    
+
+    if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.sprov_client_id and not provenance_args.sprov_client_secret and not provenance_args.sprov_token_endpoint:
+        print("\ns-prov:save-mode is 'service', but no sprov authentication information is supplied, is this correct?\n")
+        provparser.print_help()
+    if (provenance_args.sprov_client_secret or provenance_args.sprov_client_id or provenance_args.sprov_token_endpoint) \
+            and (not provenance_args.sprov_client_secret or not provenance_args.sprov_client_id or not provenance_args.sprov_token_endpoint ) :
+        print("\nNot all sprov authentication information is supplied, please add --sprov-client-id, --sprov-client-secret and --sprov-token-endpoint!\n")
+        provparser.print_help()
+        sys.exit(1)
+
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
 
@@ -2332,8 +2349,11 @@ def configure_prov_run(
         getDestination_prov
     global meta
 
-    # Request an access token
-    initial_sprov_access_token=get_sprov_access_token(ProvenanceType.TOKEN_ENDPOINT, ProvenanceType.CLIENT_ID, ProvenanceType.CLIENT_SECRET)
+    # Request an access token if necessary.
+    if ProvenanceType.TOKEN_ENDPOINT:
+        initial_sprov_access_token=get_sprov_access_token(ProvenanceType.TOKEN_ENDPOINT, ProvenanceType.CLIENT_ID, ProvenanceType.CLIENT_SECRET)
+    else:
+        initial_sprov_access_token=None
     
     workflow=injectProv(graph,
         provImpClass,
