@@ -37,6 +37,8 @@ from copy import deepcopy
 import pip
 import inspect
 import base64
+import requests
+import jwt
 
 if sys.version_info[0] < 3:
     import httplib
@@ -71,6 +73,16 @@ More details.
 
 # def write(self, name, data, **kwargs):
 #    self._write(name, data)
+
+
+def get_sprov_access_token(token_endpoint, client_id, client_secret):
+    data = {'client_id': client_id, 'client_secret': client_secret, 'grant_type': 'client_credentials'}
+    r = requests.post(token_endpoint, data)
+
+    if r.status_code != 200:
+        raise Exception("Not able to retrieve access token for sprov")
+
+    return r.json()['access_token']
 
 
 def clean_empty(d):
@@ -556,6 +568,11 @@ class ProvenanceType(GenericPE):
         else:
             self.transfer_rules=None
 
+        if 'sprov_access_token' in kwargs:
+            self.sprov_access_token=kwargs['sprov_access_token']
+        else:
+            self.sprov_access_token=None
+
 
         if 'creator' not in kwargs:
             self.creator = None
@@ -709,23 +726,13 @@ class ProvenanceType(GenericPE):
 
     def postprocess(self):
 
-        
+
         if len(self.bulk_prov)>0:
-            
+
             if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
+
                 #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
-                params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-                headers = {
-                       "Content-type": "application/x-www-form-urlencoded",
-                       "Accept": "application/json"}
-                self.connection = HTTPConnection(
-                                                     self.provurl.netloc)
-                self.connection.request(
-                                    "POST",
-                                    self.provurl.path,
-                                    params,
-                                    headers)
-                response = self.connection.getresponse()
+                response = self.sendProvRequestToService()
                 self.log("Postprocess: " +
                      str((response.status, response.reason, response.read())))
 #                    response.read())))
@@ -767,29 +774,42 @@ class ProvenanceType(GenericPE):
     def sendProvToService(self, prov):
 
         #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
+        self.log("OTHER PLACE TO SEND!")
 
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
 
         self.bulk_prov.append(deepcopy(prov))
-        
+
         if len(self.bulk_prov) > ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
-            params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-            headers = {
-                "Content-type": "application/x-www-form-urlencoded",
-                "Accept": "application/json"}
-            self.connection = HTTPConnection(
-                                                     self.provurl.netloc)
-            self.connection.request(
-                "POST", self.provurl.path, params, headers)
-            response = self.connection.getresponse()
-            #self.log("progress: " + str((response.status, response.reason,response.read())))
-            #                             response, response.read())))
 
+            response = self.sendProvRequestToService()
+#             self.log("progress: " + str((response.status, response.reason,response.read())))
             self.bulk_prov[:]=[]
 
         return None
+
+    def sendProvRequestToService(self):
+        params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"}
+        if self.sprov_access_token:
+            # Check if token is expired
+            try:
+                jwt.decode(self.sprov_access_token, options={"verify_signature": False, "verify_aud": False}, verify_expiration=True)
+            except jwt.exceptions.ExpiredSignatureError:
+                self.log("Token expired, refreshing.")
+                self.access_token = get_sprov_access_token(ProvenanceType.TOKEN_ENDPOINT, ProvenanceType.CLIENT_ID, ProvenanceType.CLIENT_SECRET)
+
+            headers['Authorization'] = "Bearer " + self.sprov_access_token
+
+        self.connection = HTTPConnection(self.provurl.netloc)
+        self.connection.request(
+            "POST", self.provurl.path, params, headers)
+        response = self.connection.getresponse()
+        return response
 
 
     def writeProvToFile(self, prov):
@@ -2122,6 +2142,9 @@ def init_provenance_config(args, inputs):
     ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
     ProvenanceType.PROV_PATH = provenance_args.prov_path
     ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
+    ProvenanceType.TOKEN_ENDPOINT = "http://keycloak.localhost:8080/auth/realms/sprov/protocol/openid-connect/token" # TODO: provenance_args.prov_repo_token_endpoint
+    ProvenanceType.CLIENT_ID = "dispel4py" # TODO: provenance_args.prov_client_id
+    ProvenanceType.CLIENT_SECRET = "b4f8c98a-0604-465c-b9e9-942644885a76" # TODO: provenance_args.prov_client_secret
 
     ## Figure out t2he module name of the graph and import it;
     ## The component types must be resolved through its imports.
@@ -2308,10 +2331,20 @@ def configure_prov_run(
     dispel4py.new.processor.GroupByCommunication.getDestination = \
         getDestination_prov
     global meta
+
+    # Request an access token
+    initial_sprov_access_token=get_sprov_access_token(ProvenanceType.TOKEN_ENDPOINT, ProvenanceType.CLIENT_ID, ProvenanceType.CLIENT_SECRET)
     
-    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules,transfer_rules=transfer_rules)
+    workflow=injectProv(graph,
+        provImpClass,
+        componentsType=componentsType,
+        save_mode=save_mode,
+        controlParameters={'username':username,'runId':runId},
+        sel_rules=sel_rules,
+        transfer_rules=transfer_rules,
+        sprov_access_token=initial_sprov_access_token)
     
-    d4py_newrun = NewWorkflowRun(save_mode)
+    d4py_newrun = NewWorkflowRun(save_mode, initial_sprov_access_token)
 
     d4py_newrun.parameters = {"input": input,
                          "username": username,
@@ -2328,7 +2361,8 @@ def configure_prov_run(
                          "ns":namespaces,
                          "workflowType":workflowType,
                          "update":update,
-                         "status":"active"
+                         "status":"active",
+                         "sprov_access_token": initial_sprov_access_token
                          }
 
     mpirank = 0
@@ -2505,9 +2539,9 @@ class ProvenanceIterativePE(ProvenanceType):
 
 class NewWorkflowRun(ProvenanceType):
 
-    def __init__(self,save_mode):
+    def __init__(self,save_mode, initial_sprov_access_token):
         ProvenanceType.__init__(self)
-        self.pe_init(pe_class=ProvenanceType,save_mode=save_mode)
+        self.pe_init(pe_class=ProvenanceType,save_mode=save_mode, sprov_access_token=initial_sprov_access_token)
         self._add_output('output')
 
 
