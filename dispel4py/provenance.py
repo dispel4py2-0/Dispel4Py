@@ -2102,7 +2102,7 @@ def create_provenance_argparser():
                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
                             "and there is no run-id in the provenance configuration."))
     parser.add_argument('--sprov-user-token', dest='sprov_user_token', nargs='?', required=False, type=str,
-                        help=("OpenID token to authenticate against the sprov service to store provenance. "
+                        help=("OpenID token to extract the user name which will be used to submit workflows to sprov."
                             "This needs to be supplied as a base64 encoded string."))
     parser.add_argument('--sprov-client-id', dest='sprov_client_id', nargs='?', required=False, type=str,
                         help=("OpenID client-id used to authenticate with the sprov API. Only required when save-mode"
@@ -2120,26 +2120,12 @@ def extract_user_from_token(token):
     Extract the username from the access_token field of the supplied token.
     The access token is a JSON Web Token (JWT) which is three base64 encoded
     strings separated by a period.
-    The token can be supplied as a string or as an object.
     """
     try:
-        if isinstance(token, str):
-            ## Pad token so its length is divisible by 4.
-            token_bytes = base64.b64decode(''.join((token, "="*(len(token)%4))))
-            token_obj = json.loads(token_bytes)
-        else: token_obj = token
-
-        token_fields = []
-        for token in token_obj['access_token'].split('.'):
-            ## We need to pad the base64 encoded token so its length is a multiple of 4
-            npads = len(token) % 4
-            padded_token = ''.join((token, "="*npads))
-            token_fields.append(base64.b64decode(padded_token))
-
-        (header, payload, signature) = token_fields
-        payload_object = json.loads(payload)
-        return '@'.join((payload_object['sub'],payload_object['iss']))
+        token_obj = jwt.decode(token, verify=False)
+        return '@'.join((token_obj['sub'],token_obj['iss']))
     except:
+        print(traceback.format_exc())
         return None
     
 def init_provenance_config(args, inputs):
