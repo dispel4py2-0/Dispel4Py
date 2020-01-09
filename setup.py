@@ -40,7 +40,7 @@ setup(
               'dispel4py.examples',
               'dispel4py.examples.graph_testing'],
     long_description=read('README.md'),
-    install_requires=['networkx', 'flake8'],
+    install_requires=['networkx', 'flake8', 'numpy', 'ujson', 'requests', 'pyjwt'],
     entry_points={
         'console_scripts': [
             'dispel4py = dispel4py.new.processor:main',
