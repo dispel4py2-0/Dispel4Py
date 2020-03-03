@@ -473,8 +473,8 @@ class ProvenanceType(GenericPE):
         
     REPOS_URL=""
     PROV_EXPORT_URL=""
-    
-    
+
+    TOKEN_ENDPOINT=""
     
     SAVE_MODE_SERVICE='service'
     SAVE_MODE_FILE='file'
