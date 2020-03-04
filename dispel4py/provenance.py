@@ -2203,6 +2203,11 @@ def init_provenance_config(args, inputs):
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
 
+
+class CommandLineInputs():
+    inputs = {}
+
+
 def configure_prov_run(
         graph,
         provRecorderClass=None,
@@ -2297,6 +2302,7 @@ def configure_prov_run(
             system_id = sprovConfig['s-prov:system-id']
         if 's-prov:transfer-rules' in sprovConfig:
             transfer_rules = sprovConfig['s-prov:transfer-rules']
+        # if 's-prov:WFExecutionInputs' in sprovConfig:
         input = sprovConfig['s-prov:WFExecutionInputs']
         if 'provone:User' in sprovConfig:
             username = sprovConfig['provone:User']
@@ -2328,6 +2334,12 @@ def configure_prov_run(
         sys.exit(1)
     if not sessionId and "SPROV_SESSIONID" in os.environ:
         sessionId = os.environ["SPROV_SESSIONID"]
+
+    print("====================== HV: configure_prov_run: input = %s, inputs = %s" % (input, CommandLineInputs.inputs ))
+    if CommandLineInputs.inputs:
+        # inputs given as arguments on the command line (-f & -d) prevail over 
+        # inputs defined in the configuration in workflow dispel4py code and in configuration file (--provenance-config)
+        input = CommandLineInputs.inputs
 
     print('Change grouping implementation ')
 

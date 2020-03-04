@@ -772,12 +772,14 @@ def create_inputs(args, graph):
 
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
+    print("================== HV: lgai 1")
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
-
+    print("================== HV: lgai 2")
     graph.flatten()
     inputs = create_inputs(args, graph)
+    print("================== HV: lgai 3")
 
     if args.provenance:
         if not os.path.exists(args.provenance):
@@ -788,6 +790,12 @@ def load_graph_and_inputs(args):
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
             print(prov_config)
             configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config )
+    else:
+        ## The inputs are not put in the workflow document yet. 
+        ## Set global variable to be used if provenance is configured in the workflow script.
+        from dispel4py.provenance import CommandLineInputs
+        CommandLineInputs.inputs = inputs
+        print("====================== HV:  Putting inputs (%s) into commandlineinputs" % inputs)
 
     return graph, inputs
 
@@ -798,12 +806,13 @@ def parse_common_args():   # pragma: no cover
 
 import time
 def main():   # pragma: no cover
+    print("============================ HV: 1")
     from importlib import import_module
-    
+    print("============================ HV: 2")
     args, remaining = parse_common_args()
-
+    print("============================ HV: 3")
     graph, inputs = load_graph_and_inputs(args)
-
+    print("============================ HV: 4")
     if graph is None:
         return
     
