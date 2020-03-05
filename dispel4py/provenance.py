@@ -2191,14 +2191,15 @@ def init_provenance_config(args, inputs):
             provparser.print_help()
             sys.exit(1)
 
-    if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.sprov_client_id and not provenance_args.sprov_client_secret and not provenance_args.sprov_token_endpoint:
-        print("\ns-prov:save-mode is 'service', but no sprov authentication information is supplied, is this correct?\n")
-        provparser.print_help()
-    if (provenance_args.sprov_client_secret or provenance_args.sprov_client_id or provenance_args.sprov_token_endpoint) \
-            and (not provenance_args.sprov_client_secret or not provenance_args.sprov_client_id or not provenance_args.sprov_token_endpoint ) :
-        print("\nNot all sprov authentication information is supplied, please add --sprov-client-id, --sprov-client-secret and --sprov-token-endpoint!\n")
-        provparser.print_help()
-        sys.exit(1)
+    # If s-ProvFlow is running in no-auth mode, uncomment tests below
+    # if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.sprov_client_id and not provenance_args.sprov_client_secret and not provenance_args.sprov_token_endpoint:
+    #     print("\ns-prov:save-mode is 'service', but no sprov authentication information is supplied, is this correct?\n")
+    #     provparser.print_help()
+    # if (provenance_args.sprov_client_secret or provenance_args.sprov_client_id or provenance_args.sprov_token_endpoint) \
+    #         and (not provenance_args.sprov_client_secret or not provenance_args.sprov_client_id or not provenance_args.sprov_token_endpoint ) :
+    #     print("\nNot all sprov authentication information is supplied, please add --sprov-client-id, --sprov-client-secret and --sprov-token-endpoint!\n")
+    #     provparser.print_help()
+    #     sys.exit(1)
 
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
@@ -2206,6 +2207,7 @@ def init_provenance_config(args, inputs):
 
 class CommandLineInputs():
     inputs = {}
+    provenanceCommandLineConfigPresent = False
 
 
 def configure_prov_run(
@@ -2230,7 +2232,9 @@ def configure_prov_run(
         update=False,
         sprovConfig=None,
         sessionId=None,
-        mapping='simple'
+        mapping='simple',
+        force=False                 # For internal use: force execution even if provenanceConfig is set.
+                                    #    This ensures the command line procenance configuration has got higher priority over the inline configurtion
        ):
     """ 
         In order to enable the user of a data-intensive application to configure the lineage metadata extracted from the execution of their
@@ -2292,6 +2296,11 @@ def configure_prov_run(
         ```
 
     """
+
+    # When configuration is set using command line argument "provenance-config", only run if forced.
+    if CommandLineInputs.provenanceCommandLineConfig and not force:
+        print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
+        return None
 
     if sprovConfig:
         if 's-prov:run-id' in sprovConfig:

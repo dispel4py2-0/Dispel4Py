@@ -729,8 +729,7 @@ def create_arg_parser():  # pragma: no cover
                                          "'--provenance --help' for help on additional options."))
     return parser
 
-
-def create_inputs(args, graph):
+def get_inputs_from_arguments(args):
     import json
     inputs = {}
 
@@ -745,7 +744,16 @@ def create_inputs(args, graph):
             raise e
     elif args.data:
         inputs = json.loads(args.data)
-    else:
+    return inputs
+
+
+def create_inputs(args, graph):
+    import json
+    inputs = {}
+
+    inputs = get_inputs_from_arguments(args)
+
+    if not inputs:
         if args.iter == 1:
             print('Processing 1 iteration.')
         else:
@@ -772,7 +780,11 @@ def create_inputs(args, graph):
 
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
+    from dispel4py.provenance import CommandLineInputs
     print("================== HV: lgai 1")
+    if args.provenance:
+        CommandLineInputs.provenanceCommandLineConfig = True
+    CommandLineInputs.inputs = get_inputs_from_arguments(args)
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
@@ -789,13 +801,13 @@ def load_graph_and_inputs(args):
             prov_config, remaining = init_provenance_config(args, inputs)
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
             print(prov_config)
-            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config )
-    else:
-        ## The inputs are not put in the workflow document yet. 
-        ## Set global variable to be used if provenance is configured in the workflow script.
-        from dispel4py.provenance import CommandLineInputs
-        CommandLineInputs.inputs = inputs
-        print("====================== HV:  Putting inputs (%s) into commandlineinputs" % inputs)
+            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True )
+    # else:
+    #     ## The inputs are not put in the workflow document yet. 
+    #     ## Set global variable to be used if provenance is configured in the workflow script.
+    #     from dispel4py.provenance import CommandLineInputs
+    #     CommandLineInputs.inputs = inputs
+    #     print("====================== HV:  Putting inputs (%s) into commandlineinputs" % inputs)
 
     return graph, inputs
 
