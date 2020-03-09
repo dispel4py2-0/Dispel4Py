@@ -718,14 +718,17 @@ def create_arg_parser():  # pragma: no cover
     parser.add_argument('-a', '--attr', metavar='attribute',
                         help='name of graph variable in the module')
     parser.add_argument('-f', '--file', metavar='inputfile',
-                        help='file containing input dataset in JSON format')
+                        help="file containing input dataset in JSON format "
+                        "(has priority over -d and over inline specified 's-prov:WFExecutionInputs')")
     parser.add_argument('-d', '--data', metavar='inputdata',
-                        help='input dataset in JSON format')
+                        help="input dataset in JSON format "
+                        "(has priority over inline specified 's-prov:WFExecutionInputs')")
     parser.add_argument('-i', '--iter', metavar='iterations', type=int,
                         help='number of iterations', default=1)
     parser.add_argument('--provenance-config', dest='provenance',
                         metavar='provenance-config-path', type=str,
                         nargs='?', help=("trace provenance with given config (JSON)."
+                                         "(has priority over inline specified provenance configuration) "
                                          "'--provenance --help' for help on additional options."))
     return parser
 
