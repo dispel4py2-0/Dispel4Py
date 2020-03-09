@@ -783,7 +783,7 @@ def load_graph_and_inputs(args):
     from dispel4py.provenance import CommandLineInputs
     print("================== HV: lgai 1")
     if args.provenance:
-        CommandLineInputs.provenanceCommandLineConfig = True
+        CommandLineInputs.provenanceCommandLineConfigPresent = True
     CommandLineInputs.inputs = get_inputs_from_arguments(args)
     graph = load_graph(args.module, args.attr)
     if graph is None:

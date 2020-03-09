@@ -2206,6 +2206,11 @@ def init_provenance_config(args, inputs):
 
 
 class CommandLineInputs():
+    """
+    Holds the "global" variables.
+    - inputs: Inputs as specified on command line as -d
+    - provenanceCommandLineConfigPresent: Is set when procenance config is specified using --provenance-config
+    """
     inputs = {}
     provenanceCommandLineConfigPresent = False
 
@@ -2234,7 +2239,7 @@ def configure_prov_run(
         sessionId=None,
         mapping='simple',
         force=False                 # For internal use: force execution even if provenanceConfig is set.
-                                    #    This ensures the command line procenance configuration has got higher priority over the inline configurtion
+                                    #    This ensures the command line provenance configuration has got higher priority over the inline configuration
        ):
     """ 
         In order to enable the user of a data-intensive application to configure the lineage metadata extracted from the execution of their
@@ -2298,7 +2303,8 @@ def configure_prov_run(
     """
 
     # When configuration is set using command line argument "provenance-config", only run if forced.
-    if CommandLineInputs.provenanceCommandLineConfig and not force:
+    print("=============================== HV: provenanceCommandLineConfigPresent: %s, force: %s =====================" % (CommandLineInputs.provenanceCommandLineConfigPresent, force))
+    if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
         print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
         return None
 
