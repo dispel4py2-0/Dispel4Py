@@ -2192,14 +2192,14 @@ def init_provenance_config(args, inputs):
             sys.exit(1)
 
     # If s-ProvFlow is running in no-auth mode, uncomment tests below
-    # if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.sprov_client_id and not provenance_args.sprov_client_secret and not provenance_args.sprov_token_endpoint:
-    #     print("\ns-prov:save-mode is 'service', but no sprov authentication information is supplied, is this correct?\n")
-    #     provparser.print_help()
-    # if (provenance_args.sprov_client_secret or provenance_args.sprov_client_id or provenance_args.sprov_token_endpoint) \
-    #         and (not provenance_args.sprov_client_secret or not provenance_args.sprov_client_id or not provenance_args.sprov_token_endpoint ) :
-    #     print("\nNot all sprov authentication information is supplied, please add --sprov-client-id, --sprov-client-secret and --sprov-token-endpoint!\n")
-    #     provparser.print_help()
-    #     sys.exit(1)
+    if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.sprov_client_id and not provenance_args.sprov_client_secret and not provenance_args.sprov_token_endpoint:
+        print("\ns-prov:save-mode is 'service', but no sprov authentication information is supplied, is this correct?\n")
+        provparser.print_help()
+    if (provenance_args.sprov_client_secret or provenance_args.sprov_client_id or provenance_args.sprov_token_endpoint) \
+            and (not provenance_args.sprov_client_secret or not provenance_args.sprov_client_id or not provenance_args.sprov_token_endpoint ) :
+        print("\nNot all sprov authentication information is supplied, please add --sprov-client-id, --sprov-client-secret and --sprov-token-endpoint!\n")
+        provparser.print_help()
+        sys.exit(1)
 
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
