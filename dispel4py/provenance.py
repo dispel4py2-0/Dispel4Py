@@ -2303,7 +2303,6 @@ def configure_prov_run(
     """
 
     # When configuration is set using command line argument "provenance-config", only run if forced.
-    print("=============================== HV: provenanceCommandLineConfigPresent: %s, force: %s =====================" % (CommandLineInputs.provenanceCommandLineConfigPresent, force))
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
         print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
         return None
@@ -2350,7 +2349,6 @@ def configure_prov_run(
     if not sessionId and "SPROV_SESSIONID" in os.environ:
         sessionId = os.environ["SPROV_SESSIONID"]
 
-    print("====================== HV: configure_prov_run: input = %s, inputs = %s" % (input, CommandLineInputs.inputs ))
     if CommandLineInputs.inputs:
         # inputs given as arguments on the command line (-f & -d) prevail over 
         # inputs defined in the configuration in workflow dispel4py code and in configuration file (--provenance-config)
