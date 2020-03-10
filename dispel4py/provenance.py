@@ -2302,7 +2302,9 @@ def configure_prov_run(
 
     """
 
-    # When configuration is set using command line argument "provenance-config", only run if forced.
+    # When a configuration is set using command line argument "provenance-config", this method should only run when force argument is set to True.
+    # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
+    # the inline provenance configuration in the workflow is ignored.
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
         print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
         return None
