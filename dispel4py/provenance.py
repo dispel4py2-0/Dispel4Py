@@ -36,6 +36,9 @@ import collections
 from copy import deepcopy
 import pip
 import inspect
+import base64
+import requests
+import jwt
 
 if sys.version_info[0] < 3:
     import httplib
@@ -460,8 +463,7 @@ class ProvenanceType(GenericPE):
         
     REPOS_URL=""
     PROV_EXPORT_URL=""
-
-    TOKEN_ENDPOINT=""
+    PROV_BEARER_TOKEN=""
     
     SAVE_MODE_SERVICE='service'
     SAVE_MODE_FILE='file'
@@ -708,23 +710,13 @@ class ProvenanceType(GenericPE):
 
     def postprocess(self):
 
-        
+
         if len(self.bulk_prov)>0:
-            
+
             if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
+
                 #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
-                params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-                headers = {
-                       "Content-type": "application/x-www-form-urlencoded",
-                       "Accept": "application/json"}
-                self.connection = HTTPConnection(
-                                                     self.provurl.netloc)
-                self.connection.request(
-                                    "POST",
-                                    self.provurl.path,
-                                    params,
-                                    headers)
-                response = self.connection.getresponse()
+                response = self.sendProvRequestToService()
                 self.log("Postprocess: " +
                      str((response.status, response.reason, response.read())))
 #                    response.read())))
@@ -771,24 +763,35 @@ class ProvenanceType(GenericPE):
             prov = prov[0]["data"]
 
         self.bulk_prov.append(deepcopy(prov))
-        
+
         if len(self.bulk_prov) > ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
-            params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-            headers = {
-                "Content-type": "application/x-www-form-urlencoded",
-                "Accept": "application/json"}
-            self.connection = HTTPConnection(
-                                                     self.provurl.netloc)
-            self.connection.request(
-                "POST", self.provurl.path, params, headers)
-            response = self.connection.getresponse()
-            #self.log("progress: " + str((response.status, response.reason,response.read())))
-            #                             response, response.read())))
 
+            response = self.sendProvRequestToService()
+#             self.log("progress: " + str((response.status, response.reason,response.read())))
             self.bulk_prov[:]=[]
 
         return None
+
+    def sendProvRequestToService(self):
+        params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"}
+        if self.PROV_BEARER_TOKEN:
+            # Check if token is expired and add to the HTTP headers if it isn't.
+            try:
+                jwt.decode(self.PROV_BEARER_TOKEN, options={"verify_signature": False, "verify_aud": False}, verify_expiration=True)
+            except jwt.exceptions.ExpiredSignatureError:
+                self.log("Token expired. We can only refresh if we talk directly to sprov-api.")
+
+            headers['Authorization'] = "Bearer " + self.PROV_BEARER_TOKEN
+
+        self.connection = HTTPConnection(self.provurl.netloc)
+        self.connection.request(
+            "POST", self.provurl.path, params, headers)
+        response = self.connection.getresponse()
+        return response
 
 
     def writeProvToFile(self, prov):
@@ -2081,6 +2084,10 @@ def create_provenance_argparser():
     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
                             "and there is no run-id in the provenance configuration."))
+    parser.add_argument('--provenance-userid', dest='prov_userid', nargs='?', required=True,
+                        help=("User ID the user will be identified with in the provenance documents."))
+    parser.add_argument('--provenance-bearer-token', dest='prov_bearer_token', nargs='?', required=False,
+                        help=("Token that will be used to authenticate agains the sprov-api"))
     return parser
     
 def init_provenance_config(args, inputs):
@@ -2089,6 +2096,7 @@ def init_provenance_config(args, inputs):
     provenance_args, remaining = provparser.parse_known_args()
     ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
     ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
+    ProvenanceType.PROV_BEARER_TOKEN = provenance_args.prov_bearer_token
     ProvenanceType.PROV_PATH = provenance_args.prov_path
     ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
 
@@ -2123,6 +2131,8 @@ def init_provenance_config(args, inputs):
 
     if provenance_args.prov_runid:
         prov_config['s-prov:run-id'] = provenance_args.prov_runid
+    if provenance_args.prov_userid and not 'provone:User' in prov_config:
+        prov_config['provone:User'] = provenance_args.prov_userid
 
     if 's-prov:save-mode' in prov_config:
         if prov_config['s-prov:save-mode'] == 'file' and not provenance_args.prov_path:
@@ -2302,7 +2312,9 @@ def configure_prov_run(
         getDestination_prov
     global meta
     
-    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules,transfer_rules=transfer_rules)
+    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,
+                        controlParameters={'username':username,'runId':runId},
+                        sel_rules=sel_rules,transfer_rules=transfer_rules)
     
     d4py_newrun = NewWorkflowRun(save_mode)
 
