@@ -711,26 +711,29 @@ class SimpleWriter(object):
 
 def create_arg_parser():  # pragma: no cover
     parser = argparse.ArgumentParser(
-        description='Submit a dispel4py graph for processing.')
+        description='Submit a dispel4py graph for processing.',
+        formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('target', help='target execution platform')
     parser.add_argument('module', help='module that creates a dispel4py graph '
                         '(python module or file name)')
     parser.add_argument('-a', '--attr', metavar='attribute',
                         help='name of graph variable in the module')
     parser.add_argument('-f', '--file', metavar='inputfile',
-                        help='file containing input dataset in JSON format')
+                        help="file containing input dataset in JSON format \n"
+                        "(has priority over -d)")
     parser.add_argument('-d', '--data', metavar='inputdata',
-                        help='input dataset in JSON format')
+                        help="input dataset in JSON format")
     parser.add_argument('-i', '--iter', metavar='iterations', type=int,
                         help='number of iterations', default=1)
     parser.add_argument('--provenance-config', dest='provenance',
                         metavar='provenance-config-path', type=str,
-                        nargs='?', help=("trace provenance with given config (JSON)."
-                                         "'--provenance --help' for help on additional options."))
+                        nargs='?', help='trace provenance with given config (JSON).\n'
+                                         '(has priority over inline specified provenance configuration)\n'
+                                         'Attention: "s-prov:WFExecutionInputs" is deprecated. \n'
+                                         '"--provenance --help" for help on additional options.' )
     return parser
 
-
-def create_inputs(args, graph):
+def get_inputs_from_arguments(args):
     import json
     inputs = {}
 
@@ -745,7 +748,16 @@ def create_inputs(args, graph):
             raise e
     elif args.data:
         inputs = json.loads(args.data)
-    else:
+    return inputs
+
+
+def create_inputs(args, graph):
+    import json
+    inputs = {}
+
+    inputs = get_inputs_from_arguments(args)
+
+    if not inputs:
         if args.iter == 1:
             print('Processing 1 iteration.')
         else:
@@ -772,6 +784,11 @@ def create_inputs(args, graph):
 
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
+    from dispel4py.provenance import CommandLineInputs
+
+    if args.provenance:
+        CommandLineInputs.provenanceCommandLineConfigPresent = True
+    CommandLineInputs.inputs = get_inputs_from_arguments(args)
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
@@ -787,7 +804,7 @@ def load_graph_and_inputs(args):
             prov_config, remaining = init_provenance_config(args, inputs)
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
             print(prov_config)
-            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config )
+            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True )
 
     return graph, inputs
 
@@ -799,11 +816,9 @@ def parse_common_args():   # pragma: no cover
 import time
 def main():   # pragma: no cover
     from importlib import import_module
-    
+
     args, remaining = parse_common_args()
-
     graph, inputs = load_graph_and_inputs(args)
-
     if graph is None:
         return
     

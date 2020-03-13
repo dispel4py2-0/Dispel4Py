@@ -460,8 +460,8 @@ class ProvenanceType(GenericPE):
         
     REPOS_URL=""
     PROV_EXPORT_URL=""
-    
-    
+
+    TOKEN_ENDPOINT=""
     
     SAVE_MODE_SERVICE='service'
     SAVE_MODE_FILE='file'
@@ -1930,7 +1930,9 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
     
     if isinstance(object, WorkflowGraph):
         object.flatten()
+        workflow={}
         nodelist = object.getContainedObjects()
+        
         for x in nodelist:
             injectProv(x, provType, componentsType=componentsType, workflow=workflow,**kwargs)
     else:
@@ -2000,7 +2002,7 @@ def injectProv(object, provType, active=True,componentsType=None, workflow={},**
             code+=pprint.pformat(inspect.getsource(x[1]), indent=1,  compact=False)
 
         # else it captures the code of the _process method
-        else: 
+        else:
             if len(code)==0:   
                 for x in inspect.getmembers(object, predicate=inspect.ismethod):
                     if x[1].__name__=="_process":
@@ -2142,6 +2144,17 @@ def init_provenance_config(args, inputs):
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
 
+
+class CommandLineInputs():
+    """
+    Holds the "global" variables.
+    - inputs: Inputs as specified on command line as -d
+    - provenanceCommandLineConfigPresent: Is set when procenance config is specified using --provenance-config
+    """
+    inputs = {}
+    provenanceCommandLineConfigPresent = False
+
+
 def configure_prov_run(
         graph,
         provRecorderClass=None,
@@ -2164,7 +2177,9 @@ def configure_prov_run(
         update=False,
         sprovConfig=None,
         sessionId=None,
-        mapping='simple'
+        mapping='simple',
+        force=False                 # For internal use: force execution even if provenanceConfig is set.
+                                    #    This ensures the command line provenance configuration has got higher priority over the inline configuration
        ):
     """ 
         In order to enable the user of a data-intensive application to configure the lineage metadata extracted from the execution of their
@@ -2227,6 +2242,13 @@ def configure_prov_run(
 
     """
 
+    # When a configuration is set using command line argument "provenance-config", this method should only run when force argument is set to True.
+    # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
+    # the inline provenance configuration in the workflow is ignored.
+    if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
+        print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
+        return None
+
     if sprovConfig:
         if 's-prov:run-id' in sprovConfig:
             runId = sprovConfig['s-prov:run-id']
@@ -2236,6 +2258,7 @@ def configure_prov_run(
             system_id = sprovConfig['s-prov:system-id']
         if 's-prov:transfer-rules' in sprovConfig:
             transfer_rules = sprovConfig['s-prov:transfer-rules']
+        # if 's-prov:WFExecutionInputs' in sprovConfig:
         input = sprovConfig['s-prov:WFExecutionInputs']
         if 'provone:User' in sprovConfig:
             username = sprovConfig['provone:User']
@@ -2267,6 +2290,11 @@ def configure_prov_run(
         sys.exit(1)
     if not sessionId and "SPROV_SESSIONID" in os.environ:
         sessionId = os.environ["SPROV_SESSIONID"]
+
+    if CommandLineInputs.inputs:
+        # inputs given as arguments on the command line (-f & -d) prevail over 
+        # inputs defined in the configuration in workflow dispel4py code and in configuration file (--provenance-config)
+        input = CommandLineInputs.inputs
 
     print('Change grouping implementation ')
 
