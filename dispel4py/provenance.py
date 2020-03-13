@@ -36,9 +36,6 @@ import collections
 from copy import deepcopy
 import pip
 import inspect
-import base64
-import requests
-import jwt
 
 if sys.version_info[0] < 3:
     import httplib
@@ -73,16 +70,6 @@ More details.
 
 # def write(self, name, data, **kwargs):
 #    self._write(name, data)
-
-
-def get_sprov_access_token(token_endpoint, client_id, client_secret):
-    data = {'client_id': client_id, 'client_secret': client_secret, 'grant_type': 'client_credentials'}
-    r = requests.post(token_endpoint, data)
-
-    if r.status_code != 200:
-        raise Exception("Not able to retrieve access token for sprov")
-
-    return r.json()['access_token']
 
 
 def clean_empty(d):
@@ -568,11 +555,6 @@ class ProvenanceType(GenericPE):
         else:
             self.transfer_rules=None
 
-        if 'sprov_access_token' in kwargs:
-            self.sprov_access_token=kwargs['sprov_access_token']
-        else:
-            self.sprov_access_token=None
-
 
         if 'creator' not in kwargs:
             self.creator = None
@@ -726,13 +708,23 @@ class ProvenanceType(GenericPE):
 
     def postprocess(self):
 
-
+        
         if len(self.bulk_prov)>0:
-
+            
             if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
-
                 #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
-                response = self.sendProvRequestToService()
+                params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
+                headers = {
+                       "Content-type": "application/x-www-form-urlencoded",
+                       "Accept": "application/json"}
+                self.connection = HTTPConnection(
+                                                     self.provurl.netloc)
+                self.connection.request(
+                                    "POST",
+                                    self.provurl.path,
+                                    params,
+                                    headers)
+                response = self.connection.getresponse()
                 self.log("Postprocess: " +
                      str((response.status, response.reason, response.read())))
 #                    response.read())))
@@ -779,36 +771,24 @@ class ProvenanceType(GenericPE):
             prov = prov[0]["data"]
 
         self.bulk_prov.append(deepcopy(prov))
-
+        
         if len(self.bulk_prov) > ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
+            params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
+            headers = {
+                "Content-type": "application/x-www-form-urlencoded",
+                "Accept": "application/json"}
+            self.connection = HTTPConnection(
+                                                     self.provurl.netloc)
+            self.connection.request(
+                "POST", self.provurl.path, params, headers)
+            response = self.connection.getresponse()
+            #self.log("progress: " + str((response.status, response.reason,response.read())))
+            #                             response, response.read())))
 
-            response = self.sendProvRequestToService()
-            self.log("progress: " + str((response.status, response.reason,response.read())))
             self.bulk_prov[:]=[]
 
         return None
-
-    def sendProvRequestToService(self):
-        params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-        headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"}
-        if self.sprov_access_token:
-            # Check if token is expired
-            try:
-                jwt.decode(self.sprov_access_token, options={"verify_signature": False, "verify_aud": False}, verify_expiration=True)
-            except jwt.exceptions.ExpiredSignatureError:
-                self.log("Token expired, refreshing.")
-                self.access_token = get_sprov_access_token(ProvenanceType.TOKEN_ENDPOINT, ProvenanceType.CLIENT_ID, ProvenanceType.CLIENT_SECRET)
-
-            headers['Authorization'] = "Bearer " + self.sprov_access_token
-
-        self.connection = HTTPConnection(self.provurl.netloc)
-        self.connection.request(
-            "POST", self.provurl.path, params, headers)
-        response = self.connection.getresponse()
-        return response
 
 
     def writeProvToFile(self, prov):
@@ -2083,50 +2063,25 @@ def load_provenance_config(configfile):
         return config_obj
 
 def create_provenance_argparser():
-    parser = argparse.ArgumentParser(description='Submit provenance parameters.')
-    parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
-                        help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
-                            "if save-mode in provenance config is 'service', in which case this argument is "
-                            "mandatory."))
-    parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
-                        help=("The service endpoint from where the provenance of a workflow execution,"
-                            "after being stored, can be extracted in PROV format."))
-    parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
-                        help=("indicates a file system path where the lineage will be stored. Mandatory "
-                            "if save-mode in provenance configuration is 'file'."))
-    parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
-                        help=("Number of lineage documents to be stored in a single file or in a single"
-                            "request to the remote service. Helps tuning the overhead brought by the latency"
-                            "of accessing storage resources."))
-    parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
-                        help=("Run ID of the run. This is mandatory if the target is 'mpi' "
-                            "and there is no run-id in the provenance configuration."))
-    parser.add_argument('--sprov-user-token', dest='sprov_user_token', nargs='?', required=False, type=str,
-                        help=("OpenID token to extract the user name which will be used to submit workflows to sprov."
-                            "This needs to be supplied as a base64 encoded string."))
-    parser.add_argument('--sprov-client-id', dest='sprov_client_id', nargs='?', required=False, type=str,
-                        help=("OpenID client-id used to authenticate with the sprov API. Only required when save-mode"
-                            "in provenance configuration equals 'service' and authentication is activated on sprov."))
-    parser.add_argument('--sprov-client-secret', dest='sprov_client_secret', nargs='?', required=False, type=str,
-                            help=("OpenID client-secret used to authenticate with the sprov API. Only required when save-mode"
-                                "in provenance configuration equals 'service' and authentication is activated on sprov."))
-    parser.add_argument('--sprov-token-endpoint', dest='sprov_token_endpoint', nargs='?', required=False, type=str,
-                            help=("OpenID provider url from which the authentication token for the sprov API can be retrieved. Only required when save-mode"
-                                "in provenance configuration equals 'service' and authentication is activated on sprov."))
-    return parser
-
-def extract_user_from_token(token):
-    """
-    Extract the username from the access_token field of the supplied token.
-    The access token is a JSON Web Token (JWT) which is three base64 encoded
-    strings separated by a period.
-    """
-    try:
-        token_obj = jwt.decode(token, verify=False)
-        return '@'.join((token_obj['sub'],token_obj['iss']))
-    except:
-        print(traceback.format_exc())
-        return None
+     parser = argparse.ArgumentParser(description='Submit provenance parameters.')
+     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
+                         help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
+                               "if save-mode in provenance config is 'service', in which case this argument is "
+                               "mandatory."))
+     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
+                         help=("The service endpoint from where the provenance of a workflow execution,"
+                               "after being stored, can be extracted in PROV format."))
+     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
+                         help=("indicates a file system path where the lineage will be stored. Mandatory "
+                               "if save-mode in provenance configuration is 'file'."))
+     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
+                         help=("Number of lineage documents to be stored in a single file or in a single"
+                               "request to the remote service. Helps tuning the overhead brought by the latency"
+                               "of accessing storage resources."))
+     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
+                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
+                               "and there is no run-id in the provenance configuration."))
+     return parser
     
 def init_provenance_config(args, inputs):
 
@@ -2136,11 +2091,8 @@ def init_provenance_config(args, inputs):
     ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
     ProvenanceType.PROV_PATH = provenance_args.prov_path
     ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
-    ProvenanceType.TOKEN_ENDPOINT = provenance_args.sprov_token_endpoint
-    ProvenanceType.CLIENT_ID = provenance_args.sprov_client_id
-    ProvenanceType.CLIENT_SECRET = provenance_args.sprov_client_secret
 
-    ## Figure out t2he module name of the graph and import it;
+    ## Figure out the module name of the graph and import it;
     ## The component types must be resolved through its imports.
     from importlib import import_module
     module_name = os.path.splitext(os.path.basename(args.module))[0]
@@ -2171,8 +2123,6 @@ def init_provenance_config(args, inputs):
 
     if provenance_args.prov_runid:
         prov_config['s-prov:run-id'] = provenance_args.prov_runid
-    if provenance_args.sprov_user_token and not 'provone:User' in prov_config:
-        prov_config['provone:User'] = extract_user_from_token(provenance_args.sprov_user_token)
 
     if 's-prov:save-mode' in prov_config:
         if prov_config['s-prov:save-mode'] == 'file' and not provenance_args.prov_path:
@@ -2190,17 +2140,7 @@ def init_provenance_config(args, inputs):
             print("\nMust supply either --provenance-repository-url or --provenance-path argument.\n")
             provparser.print_help()
             sys.exit(1)
-
-    # If s-ProvFlow is running in no-auth mode, uncomment tests below
-    if prov_config['s-prov:save-mode'] == 'service' and not provenance_args.sprov_client_id and not provenance_args.sprov_client_secret and not provenance_args.sprov_token_endpoint:
-        print("\ns-prov:save-mode is 'service', but no sprov authentication information is supplied, is this correct?\n")
-        provparser.print_help()
-    if (provenance_args.sprov_client_secret or provenance_args.sprov_client_id or provenance_args.sprov_token_endpoint) \
-            and (not provenance_args.sprov_client_secret or not provenance_args.sprov_client_id or not provenance_args.sprov_token_endpoint ) :
-        print("\nNot all sprov authentication information is supplied, please add --sprov-client-id, --sprov-client-secret and --sprov-token-endpoint!\n")
-        provparser.print_help()
-        sys.exit(1)
-
+    
     ## Also return remaining in case any one is ever interested.
     return prov_config, remaining
 
@@ -2361,23 +2301,10 @@ def configure_prov_run(
     dispel4py.new.processor.GroupByCommunication.getDestination = \
         getDestination_prov
     global meta
-
-    # Request an access token if necessary.
-    if ProvenanceType.TOKEN_ENDPOINT:
-        initial_sprov_access_token=get_sprov_access_token(ProvenanceType.TOKEN_ENDPOINT, ProvenanceType.CLIENT_ID, ProvenanceType.CLIENT_SECRET)
-    else:
-        initial_sprov_access_token=None
     
-    workflow=injectProv(graph,
-        provImpClass,
-        componentsType=componentsType,
-        save_mode=save_mode,
-        controlParameters={'username':username,'runId':runId},
-        sel_rules=sel_rules,
-        transfer_rules=transfer_rules,
-        sprov_access_token=initial_sprov_access_token)
+    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules,transfer_rules=transfer_rules)
     
-    d4py_newrun = NewWorkflowRun(save_mode, initial_sprov_access_token)
+    d4py_newrun = NewWorkflowRun(save_mode)
 
     d4py_newrun.parameters = {"input": input,
                          "username": username,
@@ -2394,8 +2321,7 @@ def configure_prov_run(
                          "ns":namespaces,
                          "workflowType":workflowType,
                          "update":update,
-                         "status":"active",
-                         "sprov_access_token": initial_sprov_access_token
+                         "status":"active"
                          }
 
     mpirank = 0
@@ -2572,9 +2498,9 @@ class ProvenanceIterativePE(ProvenanceType):
 
 class NewWorkflowRun(ProvenanceType):
 
-    def __init__(self,save_mode, initial_sprov_access_token):
+    def __init__(self,save_mode):
         ProvenanceType.__init__(self)
-        self.pe_init(pe_class=ProvenanceType,save_mode=save_mode, sprov_access_token=initial_sprov_access_token)
+        self.pe_init(pe_class=ProvenanceType,save_mode=save_mode)
         self._add_output('output')
 
 
