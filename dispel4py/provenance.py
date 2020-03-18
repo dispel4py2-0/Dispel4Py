@@ -784,6 +784,8 @@ class ProvenanceType(GenericPE):
                 jwt.decode(self.PROV_BEARER_TOKEN, options={"verify_signature": False, "verify_aud": False}, verify_expiration=True)
             except jwt.exceptions.ExpiredSignatureError:
                 self.log("Token expired. We can only refresh if we talk directly to sprov-api.")
+            except jwt.exceptions.DecodeError:
+                self.log("Malformed token supplied. It must be a properly formatted JWT!")
 
             headers['Authorization'] = "Bearer " + self.PROV_BEARER_TOKEN
 
