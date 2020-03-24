@@ -46,10 +46,10 @@ if sys.version_info[0] < 3:
     urlencode = urllib.urlencode
     HTTPConnection = httplib.HTTPConnection
 else:
-    import http as httplib
+    import http.client as httplib
     from urllib.parse import urlparse
     urlencode = urllib.parse.urlencode
-    HTTPConnection = httplib.client.HTTPConnection
+    HTTPConnection = httplib.HTTPConnection
 
 from itertools import chain
 try:
