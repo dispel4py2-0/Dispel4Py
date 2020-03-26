@@ -18,6 +18,7 @@ from dispel4py.core import GenericPE
 from dispel4py.base import IterativePE, NAME, SimpleFunctionPE
 from dispel4py.workflow_graph import WorkflowGraph
 import json
+import base64
 import sys
 import datetime
 import uuid
@@ -66,6 +67,13 @@ Documentation for the dispe4py provenance module.
 
 More details.
 """
+
+SPROV_CL_D4PY_INPUT = {
+    "mime-type": "text/json",
+    "name": "dispel4py_input",
+    "prov:type": "provone:Data",
+    "value": "encoded_json"
+}
 
 
 # def write(self, name, data, **kwargs):
@@ -2113,12 +2121,13 @@ def init_provenance_config(args, inputs):
             ## and you cannot append a tuple to a list.
             prov_ct["s-prov:type"] = tuple(component_type_list)
 
-    if inputs:
-        input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
-        if "s-prov:WFExecutionInputs" in prov_config:
-            prov_config["s-prov:WFExecutionInputs"].append(input_item)
-        else:
-            prov_config["s-prov:WFExecutionInputs"] = [input_item,]
+    # Skip, because handled in processor.py. (Handling -f -d)
+    # if inputs:
+    #     input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
+    #     if "s-prov:WFExecutionInputs" in prov_config:
+    #         prov_config["s-prov:WFExecutionInputs"].append(input_item)
+    #     else:
+    #         prov_config["s-prov:WFExecutionInputs"] = [input_item,]
     prov_config['s-prov:mapping'] = args.target
 
     if provenance_args.prov_runid:
@@ -2159,7 +2168,7 @@ def configure_prov_run(
         graph,
         provRecorderClass=None,
         provImpClass=ProvenanceType,
-        input=None,
+        input=[],
         username=None,
         workflowId=None,
         description=None,
@@ -2258,8 +2267,8 @@ def configure_prov_run(
             system_id = sprovConfig['s-prov:system-id']
         if 's-prov:transfer-rules' in sprovConfig:
             transfer_rules = sprovConfig['s-prov:transfer-rules']
-        # if 's-prov:WFExecutionInputs' in sprovConfig:
-        input = sprovConfig['s-prov:WFExecutionInputs']
+        if 's-prov:WFExecutionInputs' in sprovConfig:
+            input = sprovConfig['s-prov:WFExecutionInputs']
         if 'provone:User' in sprovConfig:
             username = sprovConfig['provone:User']
         if 's-prov:workflowId' in sprovConfig:
@@ -2292,9 +2301,15 @@ def configure_prov_run(
         sessionId = os.environ["SPROV_SESSIONID"]
 
     if CommandLineInputs.inputs:
-        # inputs given as arguments on the command line (-f & -d) prevail over 
-        # inputs defined in the configuration in workflow dispel4py code and in configuration file (--provenance-config)
-        input = CommandLineInputs.inputs
+        # If inputs are given in the command line, using -d or -f, these inputs should be to the inputs defined as 
+        # WFExecutionInputs in the workflow configuration. 
+        cl_input = SPROV_CL_D4PY_INPUT
+        #cl_input['value'] = base64.b64encode(json.dumps(CommandLineInputs.inputs).encode())
+        cl_input['value'] = json.dumps(CommandLineInputs.inputs).encode()
+
+        
+        input.append(cl_input)
+
 
     print('Change grouping implementation ')
 
