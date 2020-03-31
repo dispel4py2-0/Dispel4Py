@@ -2104,11 +2104,14 @@ def init_provenance_config(args, inputs):
 
     provparser = create_provenance_argparser()
     provenance_args, remaining = provparser.parse_known_args()
-    ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
-    ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
-    ProvenanceType.PROV_BEARER_TOKEN = provenance_args.prov_bearer_token
-    ProvenanceType.PROV_PATH = provenance_args.prov_path
-    ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
+
+    # init_provenance_config is also called when inline provenance config is used.
+    # Overwrite class variables only if present in commandline
+    if provenance_args.prov_repo_url: ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
+    if provenance_args.prov_export_url: ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
+    if provenance_args.prov_bearer_token: ProvenanceType.PROV_BEARER_TOKEN = provenance_args.prov_bearer_token
+    if provenance_args.prov_path: ProvenanceType.PROV_PATH = provenance_args.prov_path
+    if provenance_args.prov_bulk_size: ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
 
     ## Figure out the module name of the graph and import it;
     ## The component types must be resolved through its imports.
@@ -2116,7 +2119,14 @@ def init_provenance_config(args, inputs):
     module_name = os.path.splitext(os.path.basename(args.module))[0]
     module = import_module(module_name)
 
-    prov_config = load_provenance_config(args.provenance)
+    if args.provenance:
+        prov_config = load_provenance_config(args.provenance)
+    elif CommandLineInputs.inline_prov_config:
+        prov_config = CommandLineInputs.inline_prov_config
+    else:
+        print("\nMust supply either inline provenance config in dispel4py workflow or --provenance-config argument.\n")
+        sys.exit(1)
+
     if 's-prov:componentsType' in prov_config:
         for prov_ct_name in prov_config['s-prov:componentsType'].keys():
             prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
@@ -2131,13 +2141,6 @@ def init_provenance_config(args, inputs):
             ## and you cannot append a tuple to a list.
             prov_ct["s-prov:type"] = tuple(component_type_list)
 
-    # Skip, because handled in processor.py. (Handling -f -d)
-    # if inputs:
-    #     input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
-    #     if "s-prov:WFExecutionInputs" in prov_config:
-    #         prov_config["s-prov:WFExecutionInputs"].append(input_item)
-    #     else:
-    #         prov_config["s-prov:WFExecutionInputs"] = [input_item,]
     prov_config['s-prov:mapping'] = args.target
 
     if provenance_args.prov_runid:
@@ -2174,6 +2177,8 @@ class CommandLineInputs():
     """
     inputs = {}
     provenanceCommandLineConfigPresent = False
+    inline_prov_config = {}
+    inline_graph = None
 
 
 def configure_prov_run(
@@ -2267,8 +2272,25 @@ def configure_prov_run(
     # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
     # the inline provenance configuration in the workflow is ignored.
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
-        print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
+        CommandLineInputs.inline_graph = graph
+        CommandLineInputs.inline_prov_config = sprovConfig
+        CommandLineInputs.inline_prov_config['s-prov:run-id']
+        # TODO check if we can skip saving  provImpClass (ProvenanceType). Asume classvariables are set inline.
+        print("provenance.configure_prov_run: Command line configuration available. So Inline provenance configuration saved, but not used yet.")
         return None
+
+    print("================ provenance.configure_prov_run: Called with force, or inline with no command line provenance available. ")
+    print("Using the provenance config:")
+    print(sprovConfig)
+    print("Using the following class variables: ")
+
+    print("                     PROV_PATH:  %s" % ProvenanceType.PROV_PATH)
+    print("                     REPOS_URL:  %s" % ProvenanceType.REPOS_URL)
+    print("             PROV_BEARER_TOKEN:  %s" % ProvenanceType.PROV_BEARER_TOKEN)
+    print("             SAVE_MODE_SERVICE:  %s" % ProvenanceType.SAVE_MODE_SERVICE)
+    print("                SAVE_MODE_FILE:  %s" % ProvenanceType.SAVE_MODE_FILE)
+    print("              SAVE_MODE_SENSOR:  %s" % ProvenanceType.SAVE_MODE_SENSOR)
+    print("                     BULK_SIZE:  %s" % ProvenanceType.BULK_SIZE)
 
     if sprovConfig:
         if 's-prov:run-id' in sprovConfig:
@@ -2319,7 +2341,6 @@ def configure_prov_run(
         #cl_input['value'] = base64.b64encode(json.dumps(CommandLineInputs.inputs).encode())
         cl_input['value'] = json.dumps(CommandLineInputs.inputs).encode()
 
-        
         input.append(cl_input)
 
 

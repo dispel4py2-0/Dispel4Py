@@ -782,12 +782,28 @@ def create_inputs(args, graph):
 
     return inputs
 
+
+def check_commandline_argument(argument):
+    argument_present=False
+    for arg in sys.argv:
+        if argument == arg[:len(argument)]:
+            argument_present=True
+            break
+    return argument_present
+
+
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
     from dispel4py.provenance import CommandLineInputs
 
-    if args.provenance:
+    # Checking if --provenance-config is part of arguments in commandline,
+    # to set the flag to process all present commandline provenance config arguments.
+    # So, in order to process commandline provenance, the user should give a (empty) --provenance-config argument.
+    # It is not possible to use provenance.create_provenance_argparser, because this will
+    # fail if the required argument prov_userid is not present.
+    if check_commandline_argument("--provenance-config"):
         CommandLineInputs.provenanceCommandLineConfigPresent = True
+
     CommandLineInputs.inputs = get_inputs_from_arguments(args)
     graph = load_graph(args.module, args.attr)
     if graph is None:
@@ -796,7 +812,7 @@ def load_graph_and_inputs(args):
     graph.flatten()
     inputs = create_inputs(args, graph)
 
-    if args.provenance:
+    if CommandLineInputs.provenanceCommandLineConfigPresent:
         if not os.path.exists(args.provenance):
             print("Can't load provenance configuration %s" % args.provenance)
         else:
@@ -818,7 +834,12 @@ def main():   # pragma: no cover
     from importlib import import_module
 
     args, remaining = parse_common_args()
-    graph, inputs = load_graph_and_inputs(args)
+    print("HV ======================================================= main: start load_graph_and_inputs")
+    print (args)
+    print(remaining)
+    print("HV ======================================================= main: start load_graph_and_inputs") 
+
+    graph, inputs = load_graph_and_inputs(args, )
     if graph is None:
         return
     
