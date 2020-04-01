@@ -795,6 +795,8 @@ def check_commandline_argument(argument):
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
     from dispel4py.provenance import CommandLineInputs
+    print("HV ================= load_graph_and_inputs:")
+    print(args)
 
     # Checking if --provenance-config is part of arguments in commandline,
     # to set the flag to process all present commandline provenance config arguments.
@@ -803,6 +805,7 @@ def load_graph_and_inputs(args):
     # fail if the required argument prov_userid is not present.
     if check_commandline_argument("--provenance-config"):
         CommandLineInputs.provenanceCommandLineConfigPresent = True
+        print("HV ================= load_graph_and_inputs: provenanceCommandLineConfigPresent!")
 
     CommandLineInputs.inputs = get_inputs_from_arguments(args)
     graph = load_graph(args.module, args.attr)
@@ -813,13 +816,16 @@ def load_graph_and_inputs(args):
     inputs = create_inputs(args, graph)
 
     if CommandLineInputs.provenanceCommandLineConfigPresent:
-        if not os.path.exists(args.provenance):
+        print("HV --------------- args.provenance: ..%s.." % args.provenance)
+        if args.provenance and not os.path.exists(args.provenance):             # args.provenance can be none to indicate commandline config is present.
             print("Can't load provenance configuration %s" % args.provenance)
         else:
             from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
+            print("HV ================= load_graph_and_inputs: Starting init_provenance_config")
             prov_config, remaining = init_provenance_config(args, inputs)
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
             print(prov_config)
+            print("HV ================= load_graph_and_inputs: Starting configure_prov_run")
             configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True )
 
     return graph, inputs
@@ -836,6 +842,7 @@ def main():   # pragma: no cover
     args, remaining = parse_common_args()
     print("HV ======================================================= main: start load_graph_and_inputs")
     print (args)
+    print("\n")
     print(remaining)
     print("HV ======================================================= main: start load_graph_and_inputs") 
 
