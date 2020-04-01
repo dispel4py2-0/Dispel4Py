@@ -2101,12 +2101,14 @@ def create_provenance_argparser():
     return parser
     
 def init_provenance_config(args, inputs):
-
+    print("================ provenance.init_provenance_config")
     provparser = create_provenance_argparser()
     provenance_args, remaining = provparser.parse_known_args()
 
     # init_provenance_config is also called when inline provenance config is used.
     # Overwrite class variables only if present in commandline
+    print("================ provenance.init_provenance_config: Setting the class variables")
+
     if provenance_args.prov_repo_url: ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
     if provenance_args.prov_export_url: ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
     if provenance_args.prov_bearer_token: ProvenanceType.PROV_BEARER_TOKEN = provenance_args.prov_bearer_token
@@ -2124,7 +2126,7 @@ def init_provenance_config(args, inputs):
     elif CommandLineInputs.inline_prov_config:
         prov_config = CommandLineInputs.inline_prov_config
     else:
-        print("\nMust supply either inline provenance config in dispel4py workflow or --provenance-config argument.\n")
+        print("\nMust supply either inline provenance config in dispel4py workflow or with --provenance-config argument.\n")
         sys.exit(1)
 
     if 's-prov:componentsType' in prov_config:
@@ -2272,10 +2274,9 @@ def configure_prov_run(
     # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
     # the inline provenance configuration in the workflow is ignored.
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
-        CommandLineInputs.inline_graph = graph
-        CommandLineInputs.inline_prov_config = sprovConfig
-        CommandLineInputs.inline_prov_config['s-prov:run-id']
-        # TODO check if we can skip saving  provImpClass (ProvenanceType). Asume classvariables are set inline.
+        if graph: CommandLineInputs.inline_graph = graph
+        if sprovConfig: CommandLineInputs.inline_prov_config = sprovConfig
+        if runId: CommandLineInputs.inline_prov_config['s-prov:run-id'] = runId
         print("provenance.configure_prov_run: Command line configuration available. So Inline provenance configuration saved, but not used yet.")
         return None
 
