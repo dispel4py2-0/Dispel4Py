@@ -2099,7 +2099,31 @@ def create_provenance_argparser():
     parser.add_argument('--provenance-bearer-token', dest='prov_bearer_token', nargs='?', required=False,
                         help=("Token that will be used to authenticate agains the sprov-api"))
     return parser
-    
+
+def components_type_str_list_2_class_tuple(prov_config):
+
+    ## Figure out the module name of the graph and import it;
+    ## The component types must be resolved through its imports.
+    from importlib import import_module
+    module_name = os.path.splitext(os.path.basename(CommandLineInputs.module))[0]
+    module = import_module(module_name)
+
+    if 's-prov:componentsType' in prov_config:
+        for prov_ct_name in prov_config['s-prov:componentsType'].keys():
+            prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
+            component_type_list = []
+            if isinstance(prov_ct["s-prov:type"], list):            # Inline config may contain list of classnames or tuple with clases 
+                ## Obtain the list of component types and convert the strings
+                ## to python classes and add them to the s-prov:type list as
+                ## classes, not as the strings they are in the json file.
+                for ct in prov_ct["s-prov:type"]:
+                    component_type = module.__dict__[ct]
+                    component_type_list.append(component_type)
+                ## Convert to tuple, because injectProv() appends it with tuple
+                ## and you cannot append a tuple to a list.
+                prov_ct["s-prov:type"] = tuple(component_type_list)    
+
+
 def init_provenance_config(args, inputs):
     print("================ provenance.init_provenance_config")
     provparser = create_provenance_argparser()
@@ -2115,12 +2139,6 @@ def init_provenance_config(args, inputs):
     if provenance_args.prov_path: ProvenanceType.PROV_PATH = provenance_args.prov_path
     if provenance_args.prov_bulk_size: ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
 
-    ## Figure out the module name of the graph and import it;
-    ## The component types must be resolved through its imports.
-    from importlib import import_module
-    module_name = os.path.splitext(os.path.basename(args.module))[0]
-    module = import_module(module_name)
-
     if args.provenance:
         prov_config = load_provenance_config(args.provenance)
     elif CommandLineInputs.inline_prov_config:
@@ -2129,19 +2147,15 @@ def init_provenance_config(args, inputs):
         print("\nMust supply either inline provenance config in dispel4py workflow or with --provenance-config argument.\n")
         sys.exit(1)
 
-    if 's-prov:componentsType' in prov_config:
-        for prov_ct_name in prov_config['s-prov:componentsType'].keys():
-            prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
-            component_type_list = []
-            ## Obtain the list of component types and convert the strings
-            ## to python classes and add them to the s-prov:type list as
-            ## classes, not as the strings they are in the json file.
-            for ct in prov_ct["s-prov:type"]:
-                component_type = module.__dict__[ct]
-                component_type_list.append(component_type)
-            ## Convert to tuple, because injectProv() appends it with tuple
-            ## and you cannot append a tuple to a list.
-            prov_ct["s-prov:type"] = tuple(component_type_list)
+    from pprint import pprint
+    print("\n\n\nHV ==================== init_provenance_config: componentsType:")
+    pprint(prov_config['s-prov:componentsType'])
+
+    # components_type_str_list_2_class_tuple(prov_config)
+    
+    # print("\n\n\nHV ==================== init_provenance_config: After componentsType:")
+    # pprint(prov_config['s-prov:componentsType'])
+    # print("\n\n\n")
 
     prov_config['s-prov:mapping'] = args.target
 
@@ -2181,6 +2195,7 @@ class CommandLineInputs():
     provenanceCommandLineConfigPresent = False
     inline_prov_config = {}
     inline_graph = None
+    module = None
 
 
 def configure_prov_run(
@@ -2293,7 +2308,14 @@ def configure_prov_run(
     print("              SAVE_MODE_SENSOR:  %s" % ProvenanceType.SAVE_MODE_SENSOR)
     print("                     BULK_SIZE:  %s" % ProvenanceType.BULK_SIZE)
 
+    # TODO check type of s-prov:componentsType. If it is list, make tuple. See code in init_prov.
+    print("\n\n\nHV ==================== configure_prov_run: BEFORE componentsType:")
+    from pprint import pprint
+    pprint(sprovConfig['s-prov:componentsType'])
+    print("\n\n\n")
+
     if sprovConfig:
+        components_type_str_list_2_class_tuple(sprovConfig)
         if 's-prov:run-id' in sprovConfig:
             runId = sprovConfig['s-prov:run-id']
         if 's-prov:session-id' in sprovConfig:
@@ -2322,6 +2344,11 @@ def configure_prov_run(
             save_mode = sprovConfig['s-prov:save-mode']
         if 's-prov:mapping' in sprovConfig:
             mapping = sprovConfig['s-prov:mapping']
+
+    print("\n\n\nHV ==================== configure_prov_run: AFTER componentsType:")
+    from pprint import pprint
+    pprint(sprovConfig['s-prov:componentsType'])
+    print("\n\n\n")
             
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
@@ -2351,6 +2378,19 @@ def configure_prov_run(
         getDestination_prov
     global meta
     
+    print("---HV calling injectProv: runId: %s " % runId)
+    print("       runId : %s" % runId)
+    print("       graph : %s" % graph)
+    print("       provImpClass : %s" % provImpClass)
+    print("       componentsType : %s" % componentsType)
+    print("       save_mode : %s" % save_mode)    
+    print("       username : %s" % username)
+    print("       sel_rules : %s" % sel_rules)
+    print("       transfer_rules : %s" % transfer_rules)
+
+
+
+
     workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,
                         controlParameters={'username':username,'runId':runId},
                         sel_rules=sel_rules,transfer_rules=transfer_rules)

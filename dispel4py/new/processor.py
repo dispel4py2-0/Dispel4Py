@@ -808,6 +808,7 @@ def load_graph_and_inputs(args):
         print("HV ================= load_graph_and_inputs: provenanceCommandLineConfigPresent!")
 
     CommandLineInputs.inputs = get_inputs_from_arguments(args)
+    CommandLineInputs.module = args.module
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
