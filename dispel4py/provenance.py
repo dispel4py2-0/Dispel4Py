@@ -2087,7 +2087,7 @@ def create_provenance_argparser():
     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
                         help=("indicates a file system path where the lineage will be stored. Mandatory "
                             "if save-mode in provenance configuration is 'file'."))
-    parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
+    parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, type=int,
                         help=("Number of lineage documents to be stored in a single file or in a single"
                             "request to the remote service. Helps tuning the overhead brought by the latency"
                             "of accessing storage resources."))
