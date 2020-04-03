@@ -727,7 +727,8 @@ def create_arg_parser():  # pragma: no cover
                         help='number of iterations', default=1)
     parser.add_argument('--provenance-config', dest='provenance',
                         metavar='provenance-config-path', type=str,
-                        nargs='?', help='trace provenance with given config (JSON).\n'
+                        nargs='?', help='This argument is MANDATORY to process commandline provenance config!\n'
+                                         'optional give a path to file with given config (JSON).\n'
                                          '(has priority over inline specified provenance configuration)\n'
                                          'Attention: "s-prov:WFExecutionInputs" is deprecated. \n'
                                          '"--provenance --help" for help on additional options.' )
