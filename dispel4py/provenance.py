@@ -2125,14 +2125,11 @@ def components_type_str_list_2_class_tuple(prov_config):
 
 
 def init_provenance_config(args, inputs):
-    print("================ provenance.init_provenance_config")
     provparser = create_provenance_argparser()
     provenance_args, remaining = provparser.parse_known_args()
 
     # init_provenance_config is also called when inline provenance config is used.
     # Overwrite class variables only if present in commandline
-    print("================ provenance.init_provenance_config: Setting the class variables")
-
     if provenance_args.prov_repo_url: ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
     if provenance_args.prov_export_url: ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
     if provenance_args.prov_bearer_token: ProvenanceType.PROV_BEARER_TOKEN = provenance_args.prov_bearer_token
@@ -2146,16 +2143,6 @@ def init_provenance_config(args, inputs):
     else:
         print("\nMust supply either inline provenance config in dispel4py workflow or with --provenance-config argument.\n")
         sys.exit(1)
-
-    from pprint import pprint
-    print("\n\n\nHV ==================== init_provenance_config: componentsType:")
-    pprint(prov_config['s-prov:componentsType'])
-
-    # components_type_str_list_2_class_tuple(prov_config)
-    
-    # print("\n\n\nHV ==================== init_provenance_config: After componentsType:")
-    # pprint(prov_config['s-prov:componentsType'])
-    # print("\n\n\n")
 
     prov_config['s-prov:mapping'] = args.target
 
@@ -2285,7 +2272,7 @@ def configure_prov_run(
 
     """
 
-    # When a configuration is set using command line argument "provenance-config", this method should only run when force argument is set to True.
+    # When a configuration is set using command line argument "provenance-config", configure_prov_run should only run when force argument is set to True.
     # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
     # the inline provenance configuration in the workflow is ignored.
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
@@ -2294,25 +2281,6 @@ def configure_prov_run(
         if runId: CommandLineInputs.inline_prov_config['s-prov:run-id'] = runId
         print("provenance.configure_prov_run: Command line configuration available. So Inline provenance configuration saved, but not used yet.")
         return None
-
-    print("================ provenance.configure_prov_run: Called with force, or inline with no command line provenance available. ")
-    print("Using the provenance config:")
-    print(sprovConfig)
-    print("Using the following class variables: ")
-
-    print("                     PROV_PATH:  %s" % ProvenanceType.PROV_PATH)
-    print("                     REPOS_URL:  %s" % ProvenanceType.REPOS_URL)
-    print("             PROV_BEARER_TOKEN:  %s" % ProvenanceType.PROV_BEARER_TOKEN)
-    print("             SAVE_MODE_SERVICE:  %s" % ProvenanceType.SAVE_MODE_SERVICE)
-    print("                SAVE_MODE_FILE:  %s" % ProvenanceType.SAVE_MODE_FILE)
-    print("              SAVE_MODE_SENSOR:  %s" % ProvenanceType.SAVE_MODE_SENSOR)
-    print("                     BULK_SIZE:  %s" % ProvenanceType.BULK_SIZE)
-
-    # TODO check type of s-prov:componentsType. If it is list, make tuple. See code in init_prov.
-    print("\n\n\nHV ==================== configure_prov_run: BEFORE componentsType:")
-    from pprint import pprint
-    pprint(sprovConfig['s-prov:componentsType'])
-    print("\n\n\n")
 
     if sprovConfig:
         components_type_str_list_2_class_tuple(sprovConfig)
@@ -2345,11 +2313,6 @@ def configure_prov_run(
         if 's-prov:mapping' in sprovConfig:
             mapping = sprovConfig['s-prov:mapping']
 
-    print("\n\n\nHV ==================== configure_prov_run: AFTER componentsType:")
-    from pprint import pprint
-    pprint(sprovConfig['s-prov:componentsType'])
-    print("\n\n\n")
-            
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
     if runId is None and mapping != 'mpi':
@@ -2363,10 +2326,9 @@ def configure_prov_run(
         sessionId = os.environ["SPROV_SESSIONID"]
 
     if CommandLineInputs.inputs:
-        # If inputs are given in the command line, using -d or -f, these inputs should be to the inputs defined as 
-        # WFExecutionInputs in the workflow configuration. 
+        # If inputs are given in the command line, using -d or -f, these inputs should be added  
+        # to the inputs defined as WFExecutionInputs in the workflow configuration. 
         cl_input = SPROV_CL_D4PY_INPUT
-        #cl_input['value'] = base64.b64encode(json.dumps(CommandLineInputs.inputs).encode())
         cl_input['value'] = json.dumps(CommandLineInputs.inputs).encode()
 
         input.append(cl_input)
@@ -2378,19 +2340,6 @@ def configure_prov_run(
         getDestination_prov
     global meta
     
-    print("---HV calling injectProv: runId: %s " % runId)
-    print("       runId : %s" % runId)
-    print("       graph : %s" % graph)
-    print("       provImpClass : %s" % provImpClass)
-    print("       componentsType : %s" % componentsType)
-    print("       save_mode : %s" % save_mode)    
-    print("       username : %s" % username)
-    print("       sel_rules : %s" % sel_rules)
-    print("       transfer_rules : %s" % transfer_rules)
-
-
-
-
     workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,
                         controlParameters={'username':username,'runId':runId},
                         sel_rules=sel_rules,transfer_rules=transfer_rules)
