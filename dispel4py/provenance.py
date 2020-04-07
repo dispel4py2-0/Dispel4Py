@@ -2094,7 +2094,7 @@ def create_provenance_argparser():
     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
                             "and there is no run-id in the provenance configuration."))
-    parser.add_argument('--provenance-userid', dest='prov_userid', nargs='?', required=True,
+    parser.add_argument('--provenance-userid', dest='prov_userid', nargs='?', required=False,
                         help=("User ID the user will be identified with in the provenance documents."))
     parser.add_argument('--provenance-bearer-token', dest='prov_bearer_token', nargs='?', required=False,
                         help=("Token that will be used to authenticate agains the sprov-api"))
@@ -2148,8 +2148,12 @@ def init_provenance_config(args, inputs):
 
     if provenance_args.prov_runid:
         prov_config['s-prov:run-id'] = provenance_args.prov_runid
-    if provenance_args.prov_userid and not 'provone:User' in prov_config:
+    if provenance_args.prov_userid: 
         prov_config['provone:User'] = provenance_args.prov_userid
+
+    if not 'provone:User' in prov_config:
+        print("\nWARNING: No username is supplied, neither inline or via the command line. Assuming user anonymous")
+        prov_config['provone:User'] = "anonymous"
 
     if 's-prov:save-mode' in prov_config:
         if prov_config['s-prov:save-mode'] == 'file' and not provenance_args.prov_path:
