@@ -1,5 +1,4 @@
 {
-                "provone:User": "aspinuso", 
                 "s-prov:description" : "API demo",
                 "s-prov:workflowName": "splitMerge",
                 "s-prov:workflowType": "dare:Thing",

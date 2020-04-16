@@ -161,24 +161,21 @@ graph = testSplitMerge()
 
 
 #provenance configuration:
-#prov_config =  {
-#                'provone:User': "aspinuso", 
-#                's-prov:description' : "API demo",
-#                's-prov:workflowName': "splitMerge",
-#                's-prov:workflowType': "dare:Thing",
-#                's-prov:workflowId'  : "splitmerge",
-#                's-prov:save-mode'   : 'service',         
-#                's-prov:WFExecutionInputs':  [],
-#                # defines the Provenance Types and Provenance Clusters for the Workflow Components
-#                's-prov:componentsType' : 
-#                                   {'mergePE': {'s-prov:type':(AccumulateFlow,)},
-                #                                 's-prov:prov-cluster':'seis:Processor'},
-#                                    'splitPE': {'s-prov:type':(DataInGranuleType,)}},
-                #                                 's-prov:prov-cluster':'seis:Processor'},
-                #                    'StoreStream':    {'s-prov:prov-cluster':'seis:DataHandler',
-                #                                       's-prov:type':(SeismoPE,)},
-#                's-prov:sel-rules': None
-#                }
+prov_config =  {
+                's-prov:description' : "API demo",
+                's-prov:workflowName': "splitMerge",
+                's-prov:workflowType': "dare:Thing",
+                's-prov:workflowId'  : "splitmerge",
+                's-prov:save-mode'   : 'service',         
+                's-prov:WFExecutionInputs':  [],
+                # defines the Provenance Types and Provenance Clusters for the Workflow Components
+                's-prov:componentsType' : {
+                                    'mergePE': {'s-prov:type':(AccumulateFlow,),
+                                                's-prov:prov-cluster':'seis:Processor'},
+                                    'splitPE': {'s-prov:type':(DataInGranuleType,),
+                                                's-prov:prov-cluster':'seis:Processor'}},
+                's-prov:sel-rules': None
+                }
 
 #rid='DARE_SPLITMERGE_'+getUniqueId()
 
@@ -187,16 +184,10 @@ graph = testSplitMerge()
 #ProvenanceType.BULK_SIZE=5
 
 # Finally, provenance enhanced graph is prepared:
-#configure_prov_run(graph, 
-#                    provImpClass=(ProvenanceType,),
-#                    input=prov_config['s-prov:WFExecutionInputs'],
-#                    username=prov_config['provone:User'],
-#                    runId=rid,
-#                    description=prov_config['s-prov:description'],
- #                   workflowName=prov_config['s-prov:workflowName'],
- #                   workflowType=prov_config['s-prov:workflowType'],
- #                   workflowId=prov_config['s-prov:workflowId'],
- #                   save_mode=prov_config['s-prov:save-mode'],
- #                   componentsType=prov_config['s-prov:componentsType'],
- #                   sel_rules=prov_config['s-prov:sel-rules']
- #                   )
+configure_prov_run(graph,sprovConfig=prov_config, provImpClass=(ProvenanceType,))
+
+
+
+
+
+
