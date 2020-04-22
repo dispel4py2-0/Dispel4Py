@@ -2136,12 +2136,13 @@ def init_provenance_config(args, inputs):
     if provenance_args.prov_path: ProvenanceType.PROV_PATH = provenance_args.prov_path
     if provenance_args.prov_bulk_size: ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
 
-    if args.provenance:
+    if args.provenance and args.provenance != 'inline':
         prov_config = load_provenance_config(args.provenance)
     elif CommandLineInputs.inline_prov_config:
         prov_config = CommandLineInputs.inline_prov_config
     else:
-        print("\nMust supply either inline provenance config in dispel4py workflow or with --provenance-config argument.\n")
+        print("\nMust supply either inline provenance config in dispel4py workflow or specify\n"
+              "a file for the --provenance-config argument.\n")
         sys.exit(1)
 
     prov_config['s-prov:mapping'] = args.target
@@ -2276,14 +2277,18 @@ def configure_prov_run(
 
     """
 
-    # When a configuration is set using command line argument "provenance-config", configure_prov_run should only run when force argument is set to True.
-    # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
-    # the inline provenance configuration in the workflow is ignored.
+    # When a configuration is set using command line argument "provenance-config",
+    # configure_prov_run should only run when force argument is set to True.
+    # When e.g. called from workflow script and the provenance-config argument
+    # is present, the force argument defaults to False and the inline provenance
+    # configuration in the workflow is ignored.
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
         if graph: CommandLineInputs.inline_graph = graph
         if sprovConfig: CommandLineInputs.inline_prov_config = sprovConfig
         if runId: CommandLineInputs.inline_prov_config['s-prov:run-id'] = runId
-        print("provenance.configure_prov_run: Command line configuration available. So Inline provenance configuration saved, but not used yet.")
+        print("Provenance configuration specified inline from workflow module, but command line\n"
+              "configuration implied. Inline module provenance configuration saved, but might be\n"
+              "overridden by configuration specified on command line.")
         return None
 
     if sprovConfig:
