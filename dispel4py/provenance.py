@@ -2124,7 +2124,7 @@ def components_type_str_list_2_class_tuple(prov_config):
                 prov_ct["s-prov:type"] = tuple(component_type_list)    
 
 
-def init_provenance_config(args, inputs):
+def init_provenance_config(args):
     provparser = create_provenance_argparser()
     provenance_args, remaining = provparser.parse_known_args()
 
