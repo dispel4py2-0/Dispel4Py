@@ -782,7 +782,7 @@ class ProvenanceType(GenericPE):
         return None
 
     def sendProvRequestToService(self):
-        params = urlencode({'prov': ujson.dumps(self.bulk_prov,reject_bytes=False)})
+        params = urlencode({'prov': ujson.dumps(self.bulk_prov, encode_html_chars=True, reject_bytes=False)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
             "Accept": "application/json"}

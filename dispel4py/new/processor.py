@@ -824,7 +824,7 @@ def load_graph_and_inputs(args):
         elif args.provenance and (args.provenance == 'inline' or os.path.exists(args.provenance)):
             from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
             print("Reading provenance config from cli supplied file (could be inline if explicitly specified).")
-            prov_config, remaining = init_provenance_config(args, inputs)
+            prov_config, remaining = init_provenance_config(args)
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
             print(prov_config)
             configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True )
