@@ -825,9 +825,12 @@ def load_graph_and_inputs(args):
             from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
             print("Reading provenance config from cli supplied file (could be inline if explicitly specified).")
             prov_config, remaining = init_provenance_config(args)
+            if not prov_config:
+                print ("WARNING: Provenance confguration missing, processing will continue without provenance recordings")
+            else:
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
-            print(prov_config)
-            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True )
+                print(prov_config)
+                configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True)
         else:
             print("WARNING: --provenance-config supplied, but no config seems to be specified.\n"
                   "Command line argument parsing may break and/or no provenance may be generated.\n"

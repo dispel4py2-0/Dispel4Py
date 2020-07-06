@@ -2141,9 +2141,10 @@ def init_provenance_config(args):
     elif CommandLineInputs.inline_prov_config:
         prov_config = CommandLineInputs.inline_prov_config
     else:
-        print("\nMust supply either inline provenance config in dispel4py workflow or specify\n"
-              "a file for the --provenance-config argument.\n")
-        sys.exit(1)
+        print("\WARNING: User should supply either inline provenance config in dispel4py workflow or specify\n"
+              "a file for the --provenance-config argument.\n Processing continuing without provenance recordings")
+        return False, False
+        #sys.exit(1)
 
     prov_config['s-prov:mapping'] = args.target
 
