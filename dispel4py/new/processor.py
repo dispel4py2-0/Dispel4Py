@@ -727,8 +727,11 @@ def create_arg_parser():  # pragma: no cover
                         help='number of iterations', default=1)
     parser.add_argument('--provenance-config', dest='provenance',
                         metavar='provenance-config-path', type=str,
-                        nargs='?', help='trace provenance with given config (JSON).\n'
-                                         '(has priority over inline specified provenance configuration)\n'
+                        nargs='?', help='This argument is MANDATORY to process commandline provenance config!\n'
+                                         'optionally specify a path to file with given config (JSON) or specify "inline".\n'
+                                         'This option has priority over inline specified provenance configuration\n'
+                                         'if its value is a valid provenance file. Specify "inline" as value if the\n'
+                                         'provenance configuration is embedded in the workflow graph(=module argument).\n'
                                          'Attention: "s-prov:WFExecutionInputs" is deprecated. \n'
                                          '"--provenance --help" for help on additional options.' )
     return parser
@@ -782,13 +785,32 @@ def create_inputs(args, graph):
 
     return inputs
 
+
+def check_commandline_argument(argument):
+    argument_present=False
+    for arg in sys.argv:
+        if argument == arg[:len(argument)]:
+            argument_present=True
+            break
+    return argument_present
+
+
 def load_graph_and_inputs(args):
     from dispel4py.utils import load_graph
     from dispel4py.provenance import CommandLineInputs
 
-    if args.provenance:
+    # Checking if --provenance-config is part of arguments in commandline,
+    # to set the flag to process all present commandline provenance config arguments.
+    # So, in order to process commandline provenance, the user should give a --provenance-config
+    # argument.
+    # If the value of --provenance-config is not a file, it should be 'inline', to indicate the
+    # configuration is in the graph/workflow and not as a separate file.
+    if check_commandline_argument("--provenance-config"):
+        print("DEBUG: User specified --provenance-config on cli")
         CommandLineInputs.provenanceCommandLineConfigPresent = True
+
     CommandLineInputs.inputs = get_inputs_from_arguments(args)
+    CommandLineInputs.module = args.module
     graph = load_graph(args.module, args.attr)
     if graph is None:
         return None, None
@@ -796,16 +818,23 @@ def load_graph_and_inputs(args):
     graph.flatten()
     inputs = create_inputs(args, graph)
 
-    if args.provenance:
-        if not os.path.exists(args.provenance):
+    if CommandLineInputs.provenanceCommandLineConfigPresent:
+        if args.provenance and args.provenance != 'inline' and not os.path.exists(args.provenance):
             print("Can't load provenance configuration %s" % args.provenance)
-        else:
+        elif args.provenance and (args.provenance == 'inline' or os.path.exists(args.provenance)):
             from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
-            prov_config, remaining = init_provenance_config(args, inputs)
+            print("Reading provenance config from cli supplied file (could be inline if explicitly specified).")
+            prov_config, remaining = init_provenance_config(args)
+            if not prov_config:
+                print ("WARNING: Provenance confguration missing, processing will continue without provenance recordings")
+            else:
              ## Ignore returned remaining command line arguments. Will be taken care of in main()
-            print(prov_config)
-            configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True )
-
+                print(prov_config)
+                configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True)
+        else:
+            print("WARNING: --provenance-config supplied, but no config seems to be specified.\n"
+                  "Command line argument parsing may break and/or no provenance may be generated.\n"
+                  "Specify --provenance-config=inline if the configuration is in the workflow.")
     return graph, inputs
 
 
@@ -818,7 +847,8 @@ def main():   # pragma: no cover
     from importlib import import_module
 
     args, remaining = parse_common_args()
-    graph, inputs = load_graph_and_inputs(args)
+
+    graph, inputs = load_graph_and_inputs(args, )
     if graph is None:
         return
     

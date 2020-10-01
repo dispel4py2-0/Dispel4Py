@@ -18,6 +18,7 @@ from dispel4py.core import GenericPE
 from dispel4py.base import IterativePE, NAME, SimpleFunctionPE
 from dispel4py.workflow_graph import WorkflowGraph
 import json
+import base64
 import sys
 import datetime
 import uuid
@@ -36,6 +37,9 @@ import collections
 from copy import deepcopy
 import pip
 import inspect
+import base64
+import requests
+import jwt
 
 if sys.version_info[0] < 3:
     import httplib
@@ -66,6 +70,13 @@ Documentation for the dispe4py provenance module.
 
 More details.
 """
+
+SPROV_CL_D4PY_INPUT = {
+    "mime-type": "text/json",
+    "name": "dispel4py_input",
+    "prov:type": "provone:Data",
+    "value": "encoded_json"
+}
 
 
 # def write(self, name, data, **kwargs):
@@ -460,8 +471,7 @@ class ProvenanceType(GenericPE):
         
     REPOS_URL=""
     PROV_EXPORT_URL=""
-
-    TOKEN_ENDPOINT=""
+    PROV_BEARER_TOKEN=""
     
     SAVE_MODE_SERVICE='service'
     SAVE_MODE_FILE='file'
@@ -708,23 +718,13 @@ class ProvenanceType(GenericPE):
 
     def postprocess(self):
 
-        
+
         if len(self.bulk_prov)>0:
-            
+
             if self.save_mode==ProvenanceType.SAVE_MODE_SERVICE:
+
                 #self.log("TO SERVICE ________________ID: "+str(self.provurl.netloc))
-                params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-                headers = {
-                       "Content-type": "application/x-www-form-urlencoded",
-                       "Accept": "application/json"}
-                self.connection = HTTPConnection(
-                                                     self.provurl.netloc)
-                self.connection.request(
-                                    "POST",
-                                    self.provurl.path,
-                                    params,
-                                    headers)
-                response = self.connection.getresponse()
+                response = self.sendProvRequestToService()
                 self.log("Postprocess: " +
                      str((response.status, response.reason, response.read())))
 #                    response.read())))
@@ -771,24 +771,37 @@ class ProvenanceType(GenericPE):
             prov = prov[0]["data"]
 
         self.bulk_prov.append(deepcopy(prov))
-        
+
         if len(self.bulk_prov) > ProvenanceType.BULK_SIZE:
             #self.log("TO SERVICE ________________ID: "+str(self.bulk_prov))
-            params = urlencode({'prov': ujson.dumps(self.bulk_prov)})
-            headers = {
-                "Content-type": "application/x-www-form-urlencoded",
-                "Accept": "application/json"}
-            self.connection = HTTPConnection(
-                                                     self.provurl.netloc)
-            self.connection.request(
-                "POST", self.provurl.path, params, headers)
-            response = self.connection.getresponse()
-            #self.log("progress: " + str((response.status, response.reason,response.read())))
-            #                             response, response.read())))
 
+            response = self.sendProvRequestToService()
+#             self.log("progress: " + str((response.status, response.reason,response.read())))
             self.bulk_prov[:]=[]
 
         return None
+
+    def sendProvRequestToService(self):
+        params = urlencode({'prov': ujson.dumps(self.bulk_prov, encode_html_chars=True, reject_bytes=False)})
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"}
+        if self.PROV_BEARER_TOKEN:
+            # Check if token is expired and add to the HTTP headers if it isn't.
+            try:
+                jwt.decode(self.PROV_BEARER_TOKEN, options={"verify_signature": False, "verify_aud": False}, verify_expiration=True)
+            except jwt.exceptions.ExpiredSignatureError:
+                self.log("Token expired. We can only refresh if we talk directly to sprov-api.")
+            except jwt.exceptions.DecodeError:
+                self.log("Malformed token supplied. It must be a properly formatted JWT!")
+
+            headers['Authorization'] = "Bearer " + self.PROV_BEARER_TOKEN
+
+        self.connection = HTTPConnection(self.provurl.netloc)
+        self.connection.request(
+            "POST", self.provurl.path, params, headers)
+        response = self.connection.getresponse()
+        return response
 
 
     def writeProvToFile(self, prov):
@@ -2063,66 +2076,86 @@ def load_provenance_config(configfile):
         return config_obj
 
 def create_provenance_argparser():
-     parser = argparse.ArgumentParser(description='Submit provenance parameters.')
-     parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
-                         help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
-                               "if save-mode in provenance config is 'service', in which case this argument is "
-                               "mandatory."))
-     parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
-                         help=("The service endpoint from where the provenance of a workflow execution,"
-                               "after being stored, can be extracted in PROV format."))
-     parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
-                         help=("indicates a file system path where the lineage will be stored. Mandatory "
-                               "if save-mode in provenance configuration is 'file'."))
-     parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, default=1, type=int,
-                         help=("Number of lineage documents to be stored in a single file or in a single"
-                               "request to the remote service. Helps tuning the overhead brought by the latency"
-                               "of accessing storage resources."))
-     parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
-                         help=("Run ID of the run. This is mandatory if the target is 'mpi' "
-                               "and there is no run-id in the provenance configuration."))
-     return parser
-    
-def init_provenance_config(args, inputs):
+    parser = argparse.ArgumentParser(description='Submit provenance parameters.')
+    parser.add_argument('--provenance-repository-url', dest='prov_repo_url', nargs='?', required=False,
+                        help=("Indicates the repository endpoint (S-ProvFlow) where the provenance will be sent "
+                            "if save-mode in provenance config is 'service', in which case this argument is "
+                            "mandatory."))
+    parser.add_argument('--provenance-export-url', dest='prov_export_url', nargs='?', required=False,
+                        help=("The service endpoint from where the provenance of a workflow execution,"
+                            "after being stored, can be extracted in PROV format."))
+    parser.add_argument('--provenance-path', dest='prov_path', nargs='?', required=False, 
+                        help=("indicates a file system path where the lineage will be stored. Mandatory "
+                            "if save-mode in provenance configuration is 'file'."))
+    parser.add_argument('--provenance-bulk-size', dest='prov_bulk_size', nargs='?', required=False, type=int,
+                        help=("Number of lineage documents to be stored in a single file or in a single"
+                            "request to the remote service. Helps tuning the overhead brought by the latency"
+                            "of accessing storage resources."))
+    parser.add_argument('--provenance-runid', dest='prov_runid', nargs='?', required=False,
+                        help=("Run ID of the run. This is mandatory if the target is 'mpi' "
+                            "and there is no run-id in the provenance configuration."))
+    parser.add_argument('--provenance-userid', dest='prov_userid', nargs='?', required=False,
+                        help=("User ID the user will be identified with in the provenance documents."))
+    parser.add_argument('--provenance-bearer-token', dest='prov_bearer_token', nargs='?', required=False,
+                        help=("Token that will be used to authenticate agains the sprov-api"))
+    return parser
 
-    provparser = create_provenance_argparser()
-    provenance_args, remaining = provparser.parse_known_args()
-    ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
-    ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
-    ProvenanceType.PROV_PATH = provenance_args.prov_path
-    ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
+def components_type_str_list_2_class_tuple(prov_config):
 
     ## Figure out the module name of the graph and import it;
     ## The component types must be resolved through its imports.
     from importlib import import_module
-    module_name = os.path.splitext(os.path.basename(args.module))[0]
+    module_name = os.path.splitext(os.path.basename(CommandLineInputs.module))[0]
     module = import_module(module_name)
 
-    prov_config = load_provenance_config(args.provenance)
     if 's-prov:componentsType' in prov_config:
         for prov_ct_name in prov_config['s-prov:componentsType'].keys():
             prov_ct = prov_config['s-prov:componentsType'][prov_ct_name]
             component_type_list = []
-            ## Obtain the list of component types and convert the strings
-            ## to python classes and add them to the s-prov:type list as
-            ## classes, not as the strings they are in the json file.
-            for ct in prov_ct["s-prov:type"]:
-                component_type = module.__dict__[ct]
-                component_type_list.append(component_type)
-            ## Convert to tuple, because injectProv() appends it with tuple
-            ## and you cannot append a tuple to a list.
-            prov_ct["s-prov:type"] = tuple(component_type_list)
+            if isinstance(prov_ct["s-prov:type"], list):            # Inline config may contain list of classnames or tuple with clases 
+                ## Obtain the list of component types and convert the strings
+                ## to python classes and add them to the s-prov:type list as
+                ## classes, not as the strings they are in the json file.
+                for ct in prov_ct["s-prov:type"]:
+                    component_type = module.__dict__[ct]
+                    component_type_list.append(component_type)
+                ## Convert to tuple, because injectProv() appends it with tuple
+                ## and you cannot append a tuple to a list.
+                prov_ct["s-prov:type"] = tuple(component_type_list)    
 
-    if inputs:
-        input_item = {"name":"dispel4py-input", "mime-type":"application/json", "value":json.dumps(inputs)}
-        if "s-prov:WFExecutionInputs" in prov_config:
-            prov_config["s-prov:WFExecutionInputs"].append(input_item)
-        else:
-            prov_config["s-prov:WFExecutionInputs"] = [input_item,]
+
+def init_provenance_config(args):
+    provparser = create_provenance_argparser()
+    provenance_args, remaining = provparser.parse_known_args()
+
+    # init_provenance_config is also called when inline provenance config is used.
+    # Overwrite class variables only if present in commandline
+    if provenance_args.prov_repo_url: ProvenanceType.REPOS_URL = provenance_args.prov_repo_url
+    if provenance_args.prov_export_url: ProvenanceType.PROV_EXPORT_URL = provenance_args.prov_export_url
+    if provenance_args.prov_bearer_token: ProvenanceType.PROV_BEARER_TOKEN = provenance_args.prov_bearer_token
+    if provenance_args.prov_path: ProvenanceType.PROV_PATH = provenance_args.prov_path
+    if provenance_args.prov_bulk_size: ProvenanceType.BULK_SIZE = provenance_args.prov_bulk_size
+
+    if args.provenance and args.provenance != 'inline':
+        prov_config = load_provenance_config(args.provenance)
+    elif CommandLineInputs.inline_prov_config:
+        prov_config = CommandLineInputs.inline_prov_config
+    else:
+        print("\WARNING: User should supply either inline provenance config in dispel4py workflow or specify\n"
+              "a file for the --provenance-config argument.\n Processing continuing without provenance recordings")
+        return False, False
+        #sys.exit(1)
+
     prov_config['s-prov:mapping'] = args.target
 
     if provenance_args.prov_runid:
         prov_config['s-prov:run-id'] = provenance_args.prov_runid
+    if provenance_args.prov_userid: 
+        prov_config['provone:User'] = provenance_args.prov_userid
+
+    if not 'provone:User' in prov_config:
+        print("\nWARNING: No username is supplied, neither inline or via the command line. Assuming user anonymous")
+        prov_config['provone:User'] = "anonymous"
 
     if 's-prov:save-mode' in prov_config:
         if prov_config['s-prov:save-mode'] == 'file' and not provenance_args.prov_path:
@@ -2153,13 +2186,16 @@ class CommandLineInputs():
     """
     inputs = {}
     provenanceCommandLineConfigPresent = False
+    inline_prov_config = {}
+    inline_graph = None
+    module = None
 
 
 def configure_prov_run(
         graph,
         provRecorderClass=None,
         provImpClass=ProvenanceType,
-        input=None,
+        input=[],
         username=None,
         workflowId=None,
         description=None,
@@ -2242,14 +2278,22 @@ def configure_prov_run(
 
     """
 
-    # When a configuration is set using command line argument "provenance-config", this method should only run when force argument is set to True.
-    # When e.g. called from workflow script and the provenance-config argument is present, the force argument defaults to False and 
-    # the inline provenance configuration in the workflow is ignored.
+    # When a configuration is set using command line argument "provenance-config",
+    # configure_prov_run should only run when force argument is set to True.
+    # When e.g. called from workflow script and the provenance-config argument
+    # is present, the force argument defaults to False and the inline provenance
+    # configuration in the workflow is ignored.
     if CommandLineInputs.provenanceCommandLineConfigPresent and not force:
-        print("configure_prov_run: Skipping inline provenence configuration, because command line configuration is available.")
+        if graph: CommandLineInputs.inline_graph = graph
+        if sprovConfig: CommandLineInputs.inline_prov_config = sprovConfig
+        if runId: CommandLineInputs.inline_prov_config['s-prov:run-id'] = runId
+        print("Provenance configuration specified inline from workflow module, but command line\n"
+              "configuration implied. Inline module provenance configuration saved, but might be\n"
+              "overridden by configuration specified on command line.")
         return None
 
     if sprovConfig:
+        components_type_str_list_2_class_tuple(sprovConfig)
         if 's-prov:run-id' in sprovConfig:
             runId = sprovConfig['s-prov:run-id']
         if 's-prov:session-id' in sprovConfig:
@@ -2258,8 +2302,8 @@ def configure_prov_run(
             system_id = sprovConfig['s-prov:system-id']
         if 's-prov:transfer-rules' in sprovConfig:
             transfer_rules = sprovConfig['s-prov:transfer-rules']
-        # if 's-prov:WFExecutionInputs' in sprovConfig:
-        input = sprovConfig['s-prov:WFExecutionInputs']
+        if 's-prov:WFExecutionInputs' in sprovConfig:
+            input = sprovConfig['s-prov:WFExecutionInputs']
         if 'provone:User' in sprovConfig:
             username = sprovConfig['provone:User']
         if 's-prov:workflowId' in sprovConfig:
@@ -2278,7 +2322,7 @@ def configure_prov_run(
             save_mode = sprovConfig['s-prov:save-mode']
         if 's-prov:mapping' in sprovConfig:
             mapping = sprovConfig['s-prov:mapping']
-            
+
     if not update and (username is None or workflowId is None or workflowName is None):
         raise Exception("Missing values")
     if runId is None and mapping != 'mpi':
@@ -2292,9 +2336,13 @@ def configure_prov_run(
         sessionId = os.environ["SPROV_SESSIONID"]
 
     if CommandLineInputs.inputs:
-        # inputs given as arguments on the command line (-f & -d) prevail over 
-        # inputs defined in the configuration in workflow dispel4py code and in configuration file (--provenance-config)
-        input = CommandLineInputs.inputs
+        # If inputs are given in the command line, using -d or -f, these inputs should be added  
+        # to the inputs defined as WFExecutionInputs in the workflow configuration. 
+        cl_input = SPROV_CL_D4PY_INPUT
+        cl_input['value'] = json.dumps(CommandLineInputs.inputs).encode()
+
+        input.append(cl_input)
+
 
     print('Change grouping implementation ')
 
@@ -2302,7 +2350,9 @@ def configure_prov_run(
         getDestination_prov
     global meta
     
-    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,controlParameters={'username':username,'runId':runId},sel_rules=sel_rules,transfer_rules=transfer_rules)
+    workflow=injectProv(graph, provImpClass, componentsType=componentsType,save_mode=save_mode,
+                        controlParameters={'username':username,'runId':runId},
+                        sel_rules=sel_rules,transfer_rules=transfer_rules)
     
     d4py_newrun = NewWorkflowRun(save_mode)
 
