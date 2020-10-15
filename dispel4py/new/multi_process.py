@@ -49,6 +49,7 @@ import argparse
 import copy
 import multiprocessing
 import traceback
+import os
 import types
 from dispel4py.new.processor \
     import GenericWrapper, simpleLogger, STATUS_ACTIVE, STATUS_TERMINATED, SimpleProcessingPE
@@ -67,9 +68,7 @@ def parse_args(args, namespace):    # pragma: no cover
                         action='store_true')
     parser.add_argument('-n', '--num', metavar='num_processes', required=True,
                         type=int, help='number of processes to run')
-    parser.add_argument('--monitoring', nargs='?', action='append',
-                        help='monitor processing and write timestamps to file')
-    parser.add_argument('--name', help='job name')
+
     result, remaining = parser.parse_known_args(args, namespace)
     return result
 
@@ -115,20 +114,11 @@ def process(workflow, inputs, args):
     process_pes = {}
     queues = {}
     result_queue = None
-    monitoring_queue = None
     try:
         if args.results:
             result_queue = multiprocessing.Queue()
     except AttributeError:
         pass
-    try:
-        if args.monitoring:
-            monitoring_queue = multiprocessing.Queue()
-            monitoring_outputs = list(args.monitoring)
-            monitoring_job_name = args.name
-    except AttributeError:
-        pass
-
     for pe in nodes:
         provided_inputs = processor.get_inputs(pe, inputs)
         for proc in processes[pe.id]:
@@ -136,8 +126,6 @@ def process(workflow, inputs, args):
             cp.rank = proc
             cp.log = types.MethodType(simpleLogger, cp)
             wrapper = MultiProcessingWrapper(proc, cp, provided_inputs)
-            if monitoring_queue:
-                wrapper = add_monitoring_wrapper(wrapper, monitoring_queue)
             process_pes[proc] = wrapper
             wrapper.input_queue = multiprocessing.Queue()
             wrapper.input_queue.name = 'Queue_%s_%s' % (cp.id, cp.rank)
@@ -158,63 +146,15 @@ def process(workflow, inputs, args):
         p = multiprocessing.Process(target=_processWorker, args=(wrapper,))
         jobs.append(p)
 
-    if monitoring_queue:
-        from dispel4py.new.monitoring import publish_and_subscribe
-        info = {'name': monitoring_job_name,
-                'processes': processes,
-                'inputs': inputmappings,
-                'outputs': outputmappings,
-                'mapping': 'multi'}
-        publisher, subscription_procs = \
-            publish_and_subscribe(
-                workflow, info, monitoring_queue, monitoring_outputs)
-
     for j in jobs:
         j.start()
 
     for j in jobs:
         j.join()
 
-    if monitoring_queue:
-        monitoring_queue.put(STATUS_TERMINATED)
-        publisher.join()
-        for p in subscription_procs:
-            p.join()
-
     if result_queue:
         result_queue.put(STATUS_TERMINATED)
     return result_queue
-
-
-from dispel4py.new.monitoring import TimestampEventsWrapper
-
-
-def write_events(wrapper):
-    while wrapper.events:
-        event = wrapper.events.pop(0)
-        wrapper.monitoring_queue.put(
-            (wrapper.baseObject.pe.id,
-             wrapper.baseObject.pe.rank,
-             event))
-    while wrapper.baseObject.pe._monitoring_events:
-        event = wrapper.baseObject.pe._monitoring_events.pop(0)
-        wrapper.monitoring_queue.put(
-            (wrapper.baseObject.pe.id,
-             wrapper.baseObject.pe.rank,
-             event))
-
-
-def add_monitoring_wrapper(wrapper, monitoring_queue,
-                           WrapperMonitor=TimestampEventsWrapper):
-    wrapper.monitoring_queue = monitoring_queue
-    wrapper.write_events = types.MethodType(write_events, wrapper)
-    monitor = WrapperMonitor(wrapper)
-    wrapper.pe.wrapper = monitor
-    # now point the PE output writers to the new monitoring wrapper
-    # otherwise any output written with self.write() is not captured
-    for output in wrapper.pe.outputconnections.values():
-        output['writer'].wrapper = monitor
-    return monitor
 
 
 class MultiProcessingWrapper(GenericWrapper):
@@ -252,7 +192,7 @@ class MultiProcessingWrapper(GenericWrapper):
         return data, status
 
     def _write(self, name, data):
-        # self.pe.log('Writing %s to %s' % (data, name))
+        #self.pe.log('MP Writing %s to %s' % (data, name))
 
         try:
             targets = self.targets[name]
@@ -266,10 +206,7 @@ class MultiProcessingWrapper(GenericWrapper):
             if isinstance(self.pe, SimpleProcessingPE):
                 dest = communication.getDestination({inputName: data[0]})
             else:
-                try:
-                    dest = communication.getDestination({inputName: data})
-                except:
-                    dest = communication.getDestination({inputName: data['data']})
+                dest = communication.getDestination({inputName: data})
 
             output = {inputName: data}
             for i in dest:
