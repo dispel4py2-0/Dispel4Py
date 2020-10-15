@@ -122,7 +122,8 @@ def map_partitions(filename):
     
     partitions_list = partition_all_pes(order_ct, pt)
     
-    source_pe = order_ct.index[len(order_ct)-1][0] 
+    source_pe = order_ct.index[len(order_ct)-1][0]
+    ## HACK: change the name of the workflow
     num_processor = int(re.findall(r'corr_.+_n(\d+)_?', filename)[0])
     
     partitions_proc = {}
@@ -151,6 +152,7 @@ def map_partitions(filename):
 
 #### Important 
 ## You need to spicify the CSV to use here. This CSV is obtained using the --monitoring flag when the workflow was run
+## Atention to the naming format of the file: workflow_mapping_n[NUMPROCESSES]_platform.csv
 ## Example:
 ## map_partitions('corr_multi_n32.csv')
 
