@@ -4,5 +4,6 @@ config = {
     "simple": "dispel4py.new.simple_process",
     "storm": "dispel4py.storm.storm_submission",
     "spark": "dispel4py.new.spark_process",
-    "zmq_multi": "dispel4py.new.zmq_multi"
+    "zmq_multi": "dispel4py.new.zmq_multi",
+    "dyn_multi": "dispel4py.new.dynamic
 }
