@@ -29,11 +29,21 @@ from dispel4py.new import processor
 # ====================
 # Constants
 # ====================
-# Redis group prefix
+# Redis stream prefix
 REDIS_STREAM_PREFIX = "DISPEL4PY_DYNAMIC_STREAM_"
+# Redis group prefix
 REDIS_STREAM_GROUP_PREFIX = "DISPEL4PY_DYNAMIC_GROUP_"
-STATELESS_STREAM_READ_TIMEOUT = 1000
+
+# Redis stream data type must be a dict, this is the key
 REDIS_STREAM_DATA_DICT_KEY = b'0'
+
+# Redis message count pre-read
+REDIS_READ_COUNT = 1
+
+# Redis read parameter. To enable its blocking read and never timeout
+REDIS_BLOCKING_FOREVER = 0
+# Redis read parameter. To enable its blocking read with a suitable timeout
+REDIS_STATELESS_STREAM_READ_TIMEOUT = 1000
 
 
 def parse_args(args, namespace):
@@ -150,7 +160,9 @@ def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_str
 
         if cnt == 1:
             # block = 0 means blocking read
-            response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"}, 1, 0, True)
+            response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
+                                    REDIS_READ_COUNT, REDIS_BLOCKING_FOREVER, True)
+
             redis_id, value = decode_redis_stream_data(response)
             _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
 
@@ -161,12 +173,12 @@ def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_str
             an item if one is immediately available, else raise the Empty exception ('timeout' is ignored in that case). 
             '''
 
-            response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"}, 1,
-                                    STATELESS_STREAM_READ_TIMEOUT, True)
+            response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
+                                    REDIS_READ_COUNT, REDIS_STATELESS_STREAM_READ_TIMEOUT, True)
 
             if not response:
                 # read timeout, because no data, continue to read
-                print(f"consumer:{proc} get no data in {STATELESS_STREAM_READ_TIMEOUT}ms.")
+                print(f"consumer:{proc} get no data in {REDIS_STATELESS_STREAM_READ_TIMEOUT}ms.")
                 continue
             else:
                 redis_id, value = decode_redis_stream_data(response)
