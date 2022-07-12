@@ -19,7 +19,10 @@ refer to redis document: https://redis.io/docs/manual/data-types/streams
 '''
 import argparse
 import atexit
+import signal
 import uuid
+from random import random
+
 import redis
 import copy
 import multiprocessing
@@ -33,6 +36,8 @@ from dispel4py.new import processor
 # Constants
 # ====================
 # Redis stream prefix
+from dispel4py.utils import make_hash
+
 REDIS_STREAM_PREFIX = "DISPEL4PY_DYNAMIC_STREAM_"
 # Redis group prefix
 REDIS_STREAM_GROUP_PREFIX = "DISPEL4PY_DYNAMIC_GROUP_"
@@ -45,15 +50,15 @@ REDIS_READ_COUNT = 1
 
 # Redis read parameter. To enable its blocking read and never timeout
 REDIS_BLOCKING_FOREVER = 0
-# Read timeout from the global stateless stream
+# Read timeout in ms from the global stateless stream
 REDIS_STATELESS_STREAM_READ_TIMEOUT = 1000
-# Read timeout from the specified stateful stream
+# Read timeout in ms from the specified stateful stream
 REDIS_STATEFUL_STREAM_READ_TIMEOUT = 500
-# Stateful process work for stateless time after no stateful data founded
-REDIS_STATEFUL_TAKEOVER_PERIOD = 2000
+# Stateful process work for stateless time in seconds after no stateful data founded
+REDIS_STATEFUL_TAKEOVER_PERIOD = 2
 
-# Redis lock renew interval in ms for stateful process
-REDIS_LOCK_RENEW_INTERVAL = 10000
+# Redis lock renew interval in seconds for stateful process
+REDIS_LOCK_RENEW_INTERVAL = 10
 
 # singal to end of process
 SIGNAL_TERMINATED = "TERMINATED"
@@ -72,7 +77,7 @@ def parse_args(args, namespace):
     return result
 
 
-def _get_destination(graph, node, output_name):
+def _get_destination(graph, node, output_name, output_value):
     """
         This function is to get the destinations of a certain node in the graph
     """
@@ -91,14 +96,18 @@ def _get_destination(graph, node, output_name):
             if hasattr(dest, "stateful"):
                 groupingtype = dest.stateful
                 if isinstance(groupingtype, list):
-                    # TODO How to do ?
                     # communication = GroupByCommunication(dest_processes, dest_input, groupingtype)
-                    pass
+                    grouping_tuple = tuple([output_value[x] for x in groupingtype])
+                    dest_index = abs(make_hash(grouping_tuple)) % dest.numprocesses
+                    result.add((dest.id, dest_input, dest_index))
                 elif groupingtype == 'all':
                     for i in range(dest.numprocesses):
                         result.add((dest.id, dest_input, i))
                 elif groupingtype == 'global':
                     result.add((dest.id, dest_input, 0))
+                elif groupingtype == 'nature':
+                    # Randomly choose one instance
+                    result.add((dest.id, dest_input, random.randint(0,dest.numprocesses-1)))
             else:
                 result.add((dest.id, dest_input, -1))
 
@@ -152,7 +161,7 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
         if output:
             for output_name, output_value in output.items():
                 # get the destinations of the PE
-                destinations = _get_destination(workflow.graph, node, output_name)
+                destinations = _get_destination(workflow.graph, node, output_name, output_value)
                 # if the PE has no destinations, then print the data
                 if not destinations:
                     print('Output collected from %s: %s in process %s' % (pe_id, output_value, proc))
@@ -323,6 +332,7 @@ def process(workflow, inputs, args):
     redis_connection.xgroup_create(default_redis_stream_name, redis_stream_group_name, "$", True)
 
     # register exit hook to clean redis stream
+    # signal.signal(signal.SIGTERM, signal_handler)
     atexit.register(clean_redis_on_exit, redis_connection, default_redis_stream_name)
 
     # process size
@@ -334,37 +344,23 @@ def process(workflow, inputs, args):
         # find stateful nodes
         pe = node.getContainedObject()
 
-        for inputconnection in pe.inputconnections.values():
-            if inputconnection.get(GROUPING):
-                pe.stateful = inputconnection[GROUPING]
-                stateful_nodes.append(node)
+        # handle stateful, both natural & grouping
+        stateful = None
+        if hasattr(pe, "stateful"):
+            stateful = pe.stateful
+            stateful_nodes.append(node)
+        else:
+            for inputconnection in pe.inputconnections.values():
+                if inputconnection.get(GROUPING):
+                    pe.stateful = inputconnection[GROUPING]
+                    stateful = pe.stateful
+                    stateful_nodes.append(node)
 
-        # handle provided input(here assuming provided inputs is not given to stateful node)
-        provided_inputs = processor.get_inputs(pe, inputs)
-        if provided_inputs is not None:
-            if hasattr(pe, "stateful"):
-                raise "Provided inputs is not supported by stateful node"
-
-            has_provided_input = True
-            if isinstance(provided_inputs, int):
-                for i in range(provided_inputs):
-                    redis_connection.xadd(default_redis_stream_name,
-                                          {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, {}))})
-            else:
-                for d in provided_inputs:
-                    redis_connection.xadd(default_redis_stream_name,
-                                          {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
-
-    # end of input
-    # if has_provided_input:
-    #     redis_connection.xadd(default_redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
 
     # check if process number >=  minimal require of stateful pes
     minimal_stateful_process = sum(map(lambda x: x.getContainedObject().numprocesses, stateful_nodes))
     if size < minimal_stateful_process:
         raise "Process number less than minial requirement of graph"
-
-
 
     # init workers
     prepare_workers = {}
@@ -396,6 +392,27 @@ def process(workflow, inputs, args):
         p = multiprocessing.Process(target=_process_worker, args=(
             workflow, args.redis_ip, args.redis_port, default_redis_stream_name, redis_stream_group_name, proc))
         jobs.append(p)
+
+    for node in workflow.graph.nodes():
+        pe = node.getContainedObject()
+        # handle provided input
+        provided_inputs = processor.get_inputs(pe, inputs)
+        if provided_inputs is not None:
+            # if hasattr(pe, "stateful"):
+            #     raise "Provided inputs is not supported by stateful node"
+
+            has_provided_input = True
+            target_stream_name = f"{default_redis_stream_name}_{pe.id}_0" if hasattr(pe,"stateful") else default_redis_stream_name
+            if isinstance(provided_inputs, int):
+                for i in range(provided_inputs):
+                    redis_connection.xadd(target_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, {}))})
+            else:
+                for d in provided_inputs:
+                    redis_connection.xadd(target_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
+
+    # end of input
+    # if has_provided_input:
+    #     redis_connection.xadd(default_redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
 
     # TODO Monitor?
 
