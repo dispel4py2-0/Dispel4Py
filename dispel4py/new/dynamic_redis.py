@@ -356,8 +356,8 @@ def process(workflow, inputs, args):
                                           {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
 
     # end of input
-    if has_provided_input:
-        redis_connection.xadd(default_redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
+    # if has_provided_input:
+    #     redis_connection.xadd(default_redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
 
     # check if process number >=  minimal require of stateful pes
     minimal_stateful_process = sum(map(lambda x: x.getContainedObject().numprocesses, stateful_nodes))
