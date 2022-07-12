@@ -114,33 +114,6 @@ def _get_destination(graph, node, output_name, output_value):
     return result
 
 
-class RedisWriter():
-    """
-        This class is written for PE when using PE.write() function, write data to redis
-    """
-
-    def __init__(self, r, redis_stream_name, node, output_name, workflow):
-        self.r = r
-        self.redis_stream_name = redis_stream_name
-        self.node = node
-        self.output_name = output_name
-        self.workflow = workflow
-
-    def write(self, data):
-
-        # get the destinations of the PE
-        destinations = _get_destination(self.workflow.graph, self.node, self.output_name)
-
-        # if the PE has no destinations, then print the data
-        if not destinations:
-            print('Output collected from %s: %s' % (self.node.getContainedObject().id, data))
-        # otherwise, put the data in the destinations to the queue
-        else:
-            for dest_id, input_name in destinations:
-                print('sending to %s with value: %s' % (dest_id, data))
-                self.r.xadd(self.redis_stream_name, (dest_id, {input_name: data}))
-
-
 def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
     """
         This function is to process the data of the queue in the certain PE
@@ -151,10 +124,6 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
 
         pe = pes[pe_id]
         node = nodes[pe_id]
-
-        # TODO should found the right target stream name. Some for stateful, some for stateless.
-        for o in pe.outputconnections:
-            pe.outputconnections[o]['writer'] = RedisWriter(r, redis_stream_name, node, o, workflow)
 
         output = pe.process(data)
 
