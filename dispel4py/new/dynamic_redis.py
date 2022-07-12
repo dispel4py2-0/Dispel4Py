@@ -56,7 +56,7 @@ REDIS_STATEFUL_TAKEOVER_PERIOD = 2000
 REDIS_LOCK_RENEW_INTERVAL = 10000
 
 # singal to end of process
-SINGAL_TERMINATED = "TERMINATED"
+SIGNAL_TERMINATED = "TERMINATED"
 
 def parse_args(args, namespace):
     """
@@ -190,13 +190,38 @@ def _redis_lock_renew(r, stateful_instance_id):
 def _release_redis_lock(r, stateful_instance_id):
     """
         Release Redis distributed lock.
+        return True if not terminated
     """
     return r.delete(stateful_instance_id)
 
+def process_stateful(r, redis_stream_name, redis_stream_group_name,stateful_instance_id, proc, pes, nodes, workflow):
+    """
+        Read and process stateful data from redis
+        return True if not terminated
+    """
+    # Try to read from stateful stream first
+    response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}",
+                            {f"{redis_stream_name}_{stateful_instance_id}": ">"}, REDIS_READ_COUNT,
+                            REDIS_STATEFUL_STREAM_READ_TIMEOUT, True)
+    if not response:
+        # read timeout, because no data, read stateless data instead
+        print(
+            f"stateful process:{proc} for instance:{stateful_instance_id} get no data in {REDIS_STATEFUL_STREAM_READ_TIMEOUT}ms, take stateless now")
+
+        # read stateless data instead
+        begin = time.time()
+        while time.time() - begin < REDIS_STATEFUL_TAKEOVER_PERIOD:
+            if not process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
+                return False
+    else:
+        redis_id, value = _decode_redis_stream_data(response)
+        _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
+
+    return True
 
 def process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
     """
-        Read stateless data from redis
+        Read and process stateless data from redis
     """
     response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"}, REDIS_READ_COUNT,
                             REDIS_STATELESS_STREAM_READ_TIMEOUT, True)
@@ -206,8 +231,9 @@ def process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, 
         print(f"process:{proc} get no data in {REDIS_STATELESS_STREAM_READ_TIMEOUT}ms.")
     else:
         redis_id, value = _decode_redis_stream_data(response)
-        if value == SINGAL_TERMINATED:
-            # terminated
+        if value == SIGNAL_TERMINATED:
+            # push another SIGNAL_TERMINATED into the global stateless queue
+            r.xadd(redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
             return False
         _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
 
@@ -230,58 +256,25 @@ def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_str
         if not _redis_lock(r, stateful_instance_id):
             return f"Cannot acquire distributed lock for {stateful_instance_id}."
 
-    cnt = 1
     last_renew_time = time.time()
 
     while True:
+        if stateful:
+            if not process_stateful(r, redis_stream_name, redis_stream_group_name,stateful_instance_id, proc, pes, nodes, workflow):
+                _release_redis_lock(r, stateful_instance_id)
+                print(f"TERMINATED: stateful process:{proc} for instance:{stateful_instance_id} ends now")
+                break
 
-        if cnt == 1:
-            # block = 0 means blocking read
-            if stateful:
-                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}",
-                                        {f"{redis_stream_name}_{stateful_instance_id}": ">"}, REDIS_READ_COUNT,
-                                        REDIS_BLOCKING_FOREVER, True)
-            else:
-                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
-                                        REDIS_READ_COUNT, REDIS_BLOCKING_FOREVER, True)
-
-            redis_id, value = _decode_redis_stream_data(response)
-            _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
+            # Renew lock periodically
+            # still a weak guarantee, will be bad if process data takes too long, but may be fine for most case
+            if time.time() > last_renew_time + REDIS_LOCK_RENEW_INTERVAL:
+                if not _redis_lock_renew(r, stateful_instance_id):
+                    return f"Renew distributed lock for{stateful_instance_id} encounter a problem."
+                last_renew_time = time.time()
         else:
-            if stateful:
-                # Try to read from stateful stream first
-                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}",
-                                        {f"{redis_stream_name}_{stateful_instance_id}": ">"}, REDIS_READ_COUNT,
-                                        REDIS_STATEFUL_STREAM_READ_TIMEOUT, True)
-                if not response:
-                    # read timeout, because no data, read stateless data instead
-                    print(
-                        f"stateful process:{proc} for instance:{stateful_instance_id} get no data in {REDIS_STATEFUL_STREAM_READ_TIMEOUT}ms, take stateless now")
-
-                    # read stateless data instead
-                    begin = time.time()
-                    while time.time() - begin < REDIS_STATEFUL_TAKEOVER_PERIOD:
-                        process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow)
-                else:
-                    redis_id, value = _decode_redis_stream_data(response)
-                    _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
-            else:
-                if not process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
-                    # Terminate
-                    # Release lock
-                    _release_redis_lock(r, stateful_instance_id)
-                    break
-
-                # Renew lock periodically
-                # still a weak guarantee, will be bad if process data takes too long, but may be fine for most case
-                if time.time() > last_renew_time + REDIS_LOCK_RENEW_INTERVAL:
-                    if not _redis_lock_renew(r,stateful_instance_id):
-                        return f"Renew distributed lock for{stateful_instance_id} encounter a problem."
-                    last_renew_time = time.time()
-
-        cnt += 1
-
-
+            if not process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
+                print(f"TERMINATED: stateless process:{proc} ends now")
+                break
 
 
 def _decode_redis_stream_data(redis_response):
@@ -335,6 +328,7 @@ def process(workflow, inputs, args):
     # process size
     size = args.num
 
+    has_provided_input = False
     stateful_nodes = []
     for node in workflow.graph.nodes():
         # find stateful nodes
@@ -351,6 +345,7 @@ def process(workflow, inputs, args):
             if hasattr(pe, "stateful"):
                 raise "Provided inputs is not supported by stateful node"
 
+            has_provided_input = True
             if isinstance(provided_inputs, int):
                 for i in range(provided_inputs):
                     redis_connection.xadd(default_redis_stream_name,
@@ -360,10 +355,16 @@ def process(workflow, inputs, args):
                     redis_connection.xadd(default_redis_stream_name,
                                           {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
 
+    # end of input
+    if has_provided_input:
+        redis_connection.xadd(default_redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
+
     # check if process number >=  minimal require of stateful pes
     minimal_stateful_process = sum(map(lambda x: x.getContainedObject().numprocesses, stateful_nodes))
     if size < minimal_stateful_process:
         raise "Process number less than minial requirement of graph"
+
+
 
     # init workers
     prepare_workers = {}
