@@ -18,12 +18,15 @@ Dynamic Using Redis.
 refer to redis document: https://redis.io/docs/manual/data-types/streams
 '''
 import argparse
+import atexit
 import uuid
 import redis
 import copy
 import multiprocessing
 import time
 import json
+
+from dispel4py.core import GROUPING
 from dispel4py.new import processor
 
 # ====================
@@ -49,10 +52,11 @@ REDIS_STATEFUL_STREAM_READ_TIMEOUT = 500
 # Stateful process work for stateless time after no stateful data founded
 REDIS_STATEFUL_TAKEOVER_PERIOD = 2000
 
-
 # Redis lock renew interval in ms for stateful process
 REDIS_LOCK_RENEW_INTERVAL = 10000
 
+# singal to end of process
+SINGAL_TERMINATED = "TERMINATED"
 
 def parse_args(args, namespace):
     """
@@ -62,7 +66,6 @@ def parse_args(args, namespace):
                                      description='Submit a dispel4py graph to redis dynamic processing')
     parser.add_argument('-ri', '--redis-ip', required=True, help='IP address of external redis server')
     parser.add_argument('-rp', '--redis-port', help='External redis server port,default 6379', type=int, default=6379)
-    # parser.add_argument('-ct', '--consumer-timeout', help='stop consumers after timeout in ms', type=int)
     parser.add_argument('-n', '--num', metavar='num_processes', required=True, type=int,
                         help='number of processes to run')
     result = parser.parse_args(args, namespace)
@@ -85,17 +88,19 @@ def _get_destination(graph, node, output_name):
         if source.id == pe_id and output_name == edge[2]['FROM_CONNECTION']:
             dest_input = edge[2]['TO_CONNECTION']
 
-            # TODO handle with grouping, in different mode, how can I know about grouping?
-            try:
-                next_stateful = dest.getContainedObject().inputconnections['input'].get('grouping')
-            except Exception:
-                next_stateful = None
-            if next_stateful:
-                if next_stateful == "global":
+            if hasattr(dest, "stateful"):
+                groupingtype = dest.stateful
+                if isinstance(groupingtype, list):
+                    # TODO How to do ?
+                    # communication = GroupByCommunication(dest_processes, dest_input, groupingtype)
+                    pass
+                elif groupingtype == 'all':
+                    for i in range(dest.numprocesses):
+                        result.add((dest.id, dest_input, i))
+                elif groupingtype == 'global':
                     result.add((dest.id, dest_input, 0))
-                    continue
-
-            result.add((dest.id, dest_input,-1))
+            else:
+                result.add((dest.id, dest_input, -1))
 
     return result
 
@@ -155,7 +160,6 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                 else:
                     for dest_id, input_name, dest_instance in destinations:
                         print('sending to %s with value: %s in processs %s' % (dest_id, output_value, proc))
-                        # q.put((dest_id, {input_name: output_value}))
 
                         if dest_instance != -1:
                             # stateful
@@ -175,17 +179,39 @@ def _redis_lock(r, stateful_instance_id):
     """
     return r.set(stateful_instance_id, "", ex=30, nx=True)
 
+
 def _redis_lock_renew(r, stateful_instance_id):
     """
         Renew the Redis distributed lock.
     """
     return r.set(stateful_instance_id, "", ex=30)
 
+
 def _release_redis_lock(r, stateful_instance_id):
     """
         Release Redis distributed lock.
     """
     return r.delete(stateful_instance_id)
+
+
+def process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
+    """
+        Read stateless data from redis
+    """
+    response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"}, REDIS_READ_COUNT,
+                            REDIS_STATELESS_STREAM_READ_TIMEOUT, True)
+
+    if not response:
+        # read timeout, because no data, continue to read
+        print(f"process:{proc} get no data in {REDIS_STATELESS_STREAM_READ_TIMEOUT}ms.")
+    else:
+        redis_id, value = _decode_redis_stream_data(response)
+        if value == SINGAL_TERMINATED:
+            # terminated
+            return False
+        _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
+
+    return True
 
 
 def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_stream_group_name, proc, stateful=False,
@@ -211,66 +237,51 @@ def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_str
 
         if cnt == 1:
             # block = 0 means blocking read
-            response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
-                                    REDIS_READ_COUNT, REDIS_BLOCKING_FOREVER, True)
+            if stateful:
+                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}",
+                                        {f"{redis_stream_name}_{stateful_instance_id}": ">"}, REDIS_READ_COUNT,
+                                        REDIS_BLOCKING_FOREVER, True)
+            else:
+                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
+                                        REDIS_READ_COUNT, REDIS_BLOCKING_FOREVER, True)
 
             redis_id, value = _decode_redis_stream_data(response)
             _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
         else:
             if stateful:
                 # Try to read from stateful stream first
-                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {f"{redis_stream_name}_{stateful_instance_id}": ">"},
-                                        REDIS_READ_COUNT, REDIS_STATEFUL_STREAM_READ_TIMEOUT, True)
+                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}",
+                                        {f"{redis_stream_name}_{stateful_instance_id}": ">"}, REDIS_READ_COUNT,
+                                        REDIS_STATEFUL_STREAM_READ_TIMEOUT, True)
                 if not response:
-                    # read timeout, because no data, continue to read
-                    print(f"consumer:{stateful_instance_id} get no data in {REDIS_STATEFUL_STREAM_READ_TIMEOUT}ms, take stateless now")
+                    # read timeout, because no data, read stateless data instead
+                    print(
+                        f"stateful process:{proc} for instance:{stateful_instance_id} get no data in {REDIS_STATEFUL_STREAM_READ_TIMEOUT}ms, take stateless now")
 
+                    # read stateless data instead
                     begin = time.time()
                     while time.time() - begin < REDIS_STATEFUL_TAKEOVER_PERIOD:
-                        response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
-                                                REDIS_READ_COUNT, REDIS_STATELESS_STREAM_READ_TIMEOUT, True)
-
-                        if not response:
-                            # read timeout, because no data, continue to read
-                            print(f"consumer:{proc} get no data in {REDIS_STATELESS_STREAM_READ_TIMEOUT}ms.")
-                            continue
-                        else:
-                            redis_id, value = _decode_redis_stream_data(response)
-                            _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
-
-                    continue
-
+                        process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow)
                 else:
                     redis_id, value = _decode_redis_stream_data(response)
                     _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
             else:
-                response = r.xreadgroup(redis_stream_group_name, f"consumer:{proc}", {redis_stream_name: ">"},
-                                        REDIS_READ_COUNT, REDIS_STATELESS_STREAM_READ_TIMEOUT, True)
+                if not process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
+                    # Terminate
+                    # Release lock
+                    _release_redis_lock(r, stateful_instance_id)
+                    break
 
-                if not response:
-                    # read timeout, because no data, continue to read
-                    print(f"consumer:{proc} get no data in {REDIS_STATELESS_STREAM_READ_TIMEOUT}ms.")
-                    continue
-                else:
-                    redis_id, value = _decode_redis_stream_data(response)
-                    _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow)
-
-                # still a weak guarantee, will be bad if process data takes too long, but
+                # Renew lock periodically
+                # still a weak guarantee, will be bad if process data takes too long, but may be fine for most case
                 if time.time() > last_renew_time + REDIS_LOCK_RENEW_INTERVAL:
-                    if not _redis_lock_renew():
+                    if not _redis_lock_renew(r,stateful_instance_id):
                         return f"Renew distributed lock for{stateful_instance_id} encounter a problem."
                     last_renew_time = time.time()
 
         cnt += 1
 
-    # Release lock
-    _release_redis_lock(r, stateful_instance_id)
 
-
-def _process_worker_stateful(workflow, redis_ip, redis_port, redis_stream_name, redis_stream_group_name, proc):
-    """
-        This function is to process a stateful workflow in a certain process
-    """
 
 
 def _decode_redis_stream_data(redis_response):
@@ -283,82 +294,111 @@ def _decode_redis_stream_data(redis_response):
     return redis_id, value
 
 
+def clean_redis_on_exit(redis_connection, default_redis_stream_name):
+    """
+        Clean redis stream when exit
+    """
+    print("Begin to clean redis stream keys...")
+    scanresult = redis_connection.scan(0, f"{default_redis_stream_name}*", 1000)
+    if scanresult:
+        next_cursor, redis_keys = scanresult
+        for key in redis_keys:
+            redis_connection.delete(key)
+
+
 def process(workflow, inputs, args):
     """
         This function is to process the workflow with given inputs and args
     """
     elapsed_time = 0
     start_time = time.time()
+    jobid = str(uuid.uuid1())
 
     # create redis stream and group
-
-    jobid = str(uuid.uuid1())
     # Redis stream name & group name
-    redis_stream_name = REDIS_STREAM_PREFIX + jobid
+    default_redis_stream_name = REDIS_STREAM_PREFIX + jobid
     redis_stream_group_name = REDIS_STREAM_GROUP_PREFIX + jobid
 
     # connect to redis
     redis_connection = redis.Redis(args.redis_ip, args.redis_port)
 
     # redis stream delete existing
-    if redis_connection.exists(redis_stream_name):
-        redis_connection.delete(redis_stream_name)
+    if redis_connection.exists(default_redis_stream_name):
+        redis_connection.delete(default_redis_stream_name)
 
     # create consumer group, read FIFO, auto create stream
-    redis_connection.xgroup_create(redis_stream_name, redis_stream_group_name, "$", True)
+    redis_connection.xgroup_create(default_redis_stream_name, redis_stream_group_name, "$", True)
 
+    # register exit hook to clean redis stream
+    atexit.register(clean_redis_on_exit, redis_connection, default_redis_stream_name)
+
+    # process size
     size = args.num
 
+    stateful_nodes = []
+    for node in workflow.graph.nodes():
+        # find stateful nodes
+        pe = node.getContainedObject()
+
+        for inputconnection in pe.inputconnections.values():
+            if inputconnection.get(GROUPING):
+                pe.stateful = inputconnection[GROUPING]
+                stateful_nodes.append(node)
+
+        # handle provided input(here assuming provided inputs is not given to stateful node)
+        provided_inputs = processor.get_inputs(pe, inputs)
+        if provided_inputs is not None:
+            if hasattr(pe, "stateful"):
+                raise "Provided inputs is not supported by stateful node"
+
+            if isinstance(provided_inputs, int):
+                for i in range(provided_inputs):
+                    redis_connection.xadd(default_redis_stream_name,
+                                          {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, {}))})
+            else:
+                for d in provided_inputs:
+                    redis_connection.xadd(default_redis_stream_name,
+                                          {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
+
+    # check if process number >=  minimal require of stateful pes
+    minimal_stateful_process = sum(map(lambda x: x.getContainedObject().numprocesses, stateful_nodes))
+    if size < minimal_stateful_process:
+        raise "Process number less than minial requirement of graph"
+
     # init workers
-    workers = {}
+    prepare_workers = {}
     for proc in range(size):
         cp = copy.deepcopy(workflow)
         cp.rank = proc
-        workers[proc] = cp
+        prepare_workers[proc] = cp
 
-    nodes = {node.getContainedObject().id: node for node in workflow.graph.nodes()}
+    # init jobs
     jobs = []
-    for node in workflow.graph.nodes():
+
+    # stateful jobs
+    for node in stateful_nodes:
         pe = node.getContainedObject()
-        provided_inputs = processor.get_inputs(pe, inputs)
+        # create redis stream for each instance
+        for i in range(pe.numprocesses):
+            instance_id = f"{pe.id}_{i}"
+            redis_connection.xgroup_create(f"{default_redis_stream_name}_{instance_id}", redis_stream_group_name, "$",
+                                           True)
+            # randomly choose one
+            proc, workflow = prepare_workers.popitem()
+            p = multiprocessing.Process(target=_process_worker, args=(
+                workflow, args.redis_ip, args.redis_port, default_redis_stream_name, redis_stream_group_name, proc,
+                True, instance_id))
+            jobs.append(p)
 
-        # stateful
-        try:
-            stateful = pe.inputconnections['input'].get('grouping')
-        except Exception:
-            stateful = None
-
-        if stateful:
-            # create redis stream for each instance
-            for i in range(pe.numprocesses):
-                instance_id = f"{pe.id}_{i}"
-                redis_connection.xgroup_create(f"{redis_stream_name}_{instance_id}", redis_stream_group_name, "$", True)
-                p = multiprocessing.Process(target=_process_worker, args=(
-                    workflow, args.redis_ip, args.redis_port, redis_stream_name, redis_stream_group_name, proc, True,
-                    instance_id))
-                jobs.append(p)
-
-        if provided_inputs is not None:
-            if isinstance(provided_inputs, int):
-                for i in range(provided_inputs):
-                    # q.put((pe.id, {}))
-                    # Cannot add an tuple because XADD fields must be a non-empty dict
-                    # Cannot add a dict because Invalid input of type: 'dict'.
-                    redis_connection.xadd(redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, {}))})
-            else:
-                for d in provided_inputs:
-                    # q.put((pe.id, d))
-                    redis_connection.xadd(redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
-
-    # init other jobs
-    for proc, workflow in workers.items():
+    for proc, workflow in prepare_workers.items():
+        # stateless jobs
         p = multiprocessing.Process(target=_process_worker, args=(
-            workflow, args.redis_ip, args.redis_port, redis_stream_name, redis_stream_group_name, proc))
+            workflow, args.redis_ip, args.redis_port, default_redis_stream_name, redis_stream_group_name, proc))
         jobs.append(p)
 
     # TODO Monitor?
 
-    print('Starting %s workers communicating' % (len(workers)))
+    print('Starting %s workers communicating' % (len(jobs)))
     for j in jobs:
         j.start()
     for j in jobs:
