@@ -38,6 +38,9 @@ from dispel4py.new import processor
 # Redis stream prefix
 from dispel4py.utils import make_hash
 
+# whether enable the Redis lock, design for future real distributed deployment
+REDIS_LOCK_ENABLE = False
+
 REDIS_STREAM_PREFIX = "DISPEL4PY_DYNAMIC_STREAM_"
 # Redis group prefix
 REDIS_STREAM_GROUP_PREFIX = "DISPEL4PY_DYNAMIC_GROUP_"
@@ -53,7 +56,7 @@ REDIS_BLOCKING_FOREVER = 0
 # Read timeout in ms from the global stateless stream
 REDIS_STATELESS_STREAM_READ_TIMEOUT = 1000
 # Read timeout in ms from the specified stateful stream
-REDIS_STATEFUL_STREAM_READ_TIMEOUT = 500
+REDIS_STATEFUL_STREAM_READ_TIMEOUT = 5000
 # Stateful process work for stateless time in seconds after no stateful data founded
 REDIS_STATEFUL_TAKEOVER_PERIOD = 2
 
@@ -125,6 +128,9 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
         pe = pes[pe_id]
         node = nodes[pe_id]
 
+        for o in pe.outputconnections:
+            pe.outputconnections[o]['writer'] = GenericWriter(r, node, o, workflow,redis_stream_name,proc)
+
         output = pe.process(data)
 
         if output:
@@ -137,7 +143,7 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                 # otherwise, put the data in the destinations to the queue
                 else:
                     for dest_id, input_name, dest_instance in destinations:
-                        print('sending to %s with value: %s in processs %s' % (dest_id, output_value, proc))
+                        # print('sending to %s with value: %s in processs %s' % (dest_id, output_value, proc))
 
                         if dest_instance != -1:
                             # stateful
@@ -148,6 +154,7 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                                    {REDIS_STREAM_DATA_DICT_KEY: json.dumps((dest_id, {input_name: output_value}))})
 
     except Exception as e:
+        print(e)
         pass
 
 
@@ -155,14 +162,14 @@ def _redis_lock(r, stateful_instance_id):
     """
         Redis distributed lock.
     """
-    return r.set(stateful_instance_id, "", ex=30, nx=True)
+    return r.set(stateful_instance_id, "", ex=30, nx=True) if REDIS_LOCK_ENABLE else True
 
 
 def _redis_lock_renew(r, stateful_instance_id):
     """
         Renew the Redis distributed lock.
     """
-    return r.set(stateful_instance_id, "", ex=30)
+    return r.set(stateful_instance_id, "", ex=30) if REDIS_LOCK_ENABLE else True
 
 
 def _release_redis_lock(r, stateful_instance_id):
@@ -170,7 +177,8 @@ def _release_redis_lock(r, stateful_instance_id):
         Release Redis distributed lock.
         return True if not terminated
     """
-    return r.delete(stateful_instance_id)
+    return r.delete(stateful_instance_id) if REDIS_LOCK_ENABLE else True
+
 
 def process_stateful(r, redis_stream_name, redis_stream_group_name,stateful_instance_id, proc, pes, nodes, workflow):
     """
@@ -218,6 +226,39 @@ def process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, 
     return True
 
 
+# This class is written for PE when using PE.write() function
+class GenericWriter():
+
+    def __init__(self, r, node, output_name, workflow,redis_stream_name,proc):
+        self.r = r
+        self.node = node
+        self.output_name = output_name
+        self.workflow = workflow
+        self.redis_stream_name = redis_stream_name
+        self.proc = proc
+
+    def write(self, data):
+        output_value = data
+        # get the destinations of the PE
+        destinations = _get_destination(self.workflow.graph, self.node, self.output_name,data)
+
+        # if the PE has no destinations, then print the data
+        if not destinations:
+            print('Output collected from %s: %s in process %s' % (self.node.getContainedObject().id, output_value, self.proc))
+        # otherwise, put the data in the destinations to the queue
+        else:
+            for dest_id, input_name, dest_instance in destinations:
+                # print('sending to %s with value: %s in processs %s' % (dest_id, output_value, self.proc))
+
+                if dest_instance != -1:
+                    # stateful
+                    self.r.xadd(f"{self.redis_stream_name}_{dest_id}_{dest_instance}",
+                           {REDIS_STREAM_DATA_DICT_KEY: json.dumps((dest_id, {input_name: output_value}))})
+                else:
+                    self.r.xadd(self.redis_stream_name,
+                           {REDIS_STREAM_DATA_DICT_KEY: json.dumps((dest_id, {input_name: output_value}))})
+
+
 def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_stream_group_name, proc, stateful=False,
                     stateful_instance_id=None):
     """
@@ -228,6 +269,8 @@ def _process_worker(workflow, redis_ip, redis_port, redis_stream_name, redis_str
 
     # connect to redis
     r = redis.Redis(redis_ip, redis_port)
+    print(f"process:{proc} for instance:{stateful_instance_id} redis connection created.")
+
 
     # Lock if process stateful
     if stateful:
