@@ -117,7 +117,7 @@ class HappyState(GenericPE):
 
         happiest_state, happiest_score = self.happiest
 
-        print("self mode state[%s:%s] , self happiest:%s " % (state,self.mood[state],self.happiest))
+        # print("mode state[%s:%s] , happiest:%s " % (state,self.mood[state],self.happiest))
 
         if self.mood[state] > happiest_score:
             happiest_score = self.mood[state]
