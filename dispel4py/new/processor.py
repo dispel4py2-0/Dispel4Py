@@ -867,6 +867,9 @@ def main():   # pragma: no cover
     except:
         # no other arguments required for target
         pass
+    print("RUN ARGS: ")
+    print(args)
+    print("==========")
     process = getattr(import_module(target), 'process')
     elapsed_time=0
     start_time = time.time()
