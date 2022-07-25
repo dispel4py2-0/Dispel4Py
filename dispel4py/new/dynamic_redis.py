@@ -19,26 +19,27 @@ refer to redis document: https://redis.io/docs/manual/data-types/streams
 '''
 import argparse
 import atexit
-import signal
+import copy
+import json
+import multiprocessing
+import time
 import uuid
 from random import random
 
 import redis
-import copy
-import multiprocessing
-import time
-import json
 
 from dispel4py.core import GROUPING
 from dispel4py.new import processor
-
 # ====================
 # Constants
 # ====================
 # Redis stream prefix
 from dispel4py.utils import make_hash
 
-# whether enable the Redis lock, design for future real distributed deployment
+# whether to enable terminate message
+TERMINATE_ENABLE = False
+
+# whether to enable the Redis lock, design for future real distributed deployment
 REDIS_LOCK_ENABLE = False
 
 REDIS_STREAM_PREFIX = "DISPEL4PY_DYNAMIC_STREAM_"
@@ -143,7 +144,7 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                 # otherwise, put the data in the destinations to the queue
                 else:
                     for dest_id, input_name, dest_instance in destinations:
-                        # print('sending to %s with value: %s in processs %s' % (dest_id, output_value, proc))
+                        # print('sending to %s with value: %s in process %s' % (dest_id, output_value, proc))
 
                         if dest_instance != -1:
                             # stateful
@@ -205,6 +206,7 @@ def process_stateful(r, redis_stream_name, redis_stream_group_name,stateful_inst
 
     return True
 
+
 def process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow):
     """
         Read and process stateless data from redis
@@ -227,7 +229,7 @@ def process_stateless(r, redis_stream_name, redis_stream_group_name, proc, pes, 
 
 
 # This class is written for PE when using PE.write() function
-class GenericWriter():
+class GenericWriter:
 
     def __init__(self, r, node, output_name, workflow,redis_stream_name,proc):
         self.r = r
@@ -248,7 +250,7 @@ class GenericWriter():
         # otherwise, put the data in the destinations to the queue
         else:
             for dest_id, input_name, dest_instance in destinations:
-                # print('sending to %s with value: %s in processs %s' % (dest_id, output_value, self.proc))
+                # print('sending to %s with value: %s in process %s' % (dest_id, output_value, self.proc))
 
                 if dest_instance != -1:
                     # stateful
@@ -357,15 +359,12 @@ def process(workflow, inputs, args):
         pe = node.getContainedObject()
 
         # handle stateful, both natural & grouping
-        stateful = None
         if hasattr(pe, "stateful"):
-            stateful = pe.stateful
             stateful_nodes.append(node)
         else:
             for inputconnection in pe.inputconnections.values():
                 if inputconnection.get(GROUPING):
                     pe.stateful = inputconnection[GROUPING]
-                    stateful = pe.stateful
                     stateful_nodes.append(node)
 
 
@@ -423,8 +422,22 @@ def process(workflow, inputs, args):
                     redis_connection.xadd(target_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps((pe.id, d))})
 
     # end of input
-    # if has_provided_input:
-    #     redis_connection.xadd(default_redis_stream_name, {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)})
+    # if has_provided_input & TERMINATE_ENABLE:
+    #     terminate_message = {REDIS_STREAM_DATA_DICT_KEY: json.dumps(SIGNAL_TERMINATED)}
+    #     # get first pe
+    #     source_pe = workflow.graph.nodes[0]
+    #     if source_pe in stateful_nodes:
+    #         for i in range(source_pe.getContainedObject().numprocesses):
+    #             redis_connection.xadd(f"{default_redis_stream_name}_{pe.id}_{i}", terminate_message)
+    #     else:
+    #         redis_connection.xadd(default_redis_stream_name, terminate_message)
+
+        # redis_connection.xadd(default_redis_stream_name, terminate_message)
+        #
+        # for node in stateful_nodes:
+        #     for i in range(node.getContainedObject().numprocesses):
+        #         redis_connection.xadd(f"{default_redis_stream_name}_{pe.id}_{i}", terminate_message)
+
 
     # TODO Monitor?
 
