@@ -61,7 +61,7 @@ class GenericWriter():
         # otherwise, put the data in the destinations to the queue
         else:
             for dest_id, input_name in destinations:
-                print('sending to %s with value: %s' % (dest_id, data))
+                # print('sending to %s with value: %s' % (dest_id, data))
                 self.q.put((dest_id, {input_name: data}))
 
 
@@ -90,7 +90,7 @@ def _communicate(pes, nodes, value, proc, q, workflow):
                 # otherwise, put the data in the destinations to the queue
                 else:
                     for dest_id, input_name in destinations:
-                        print('sending to %s with value: %s in processs %s' % (dest_id, output_value, proc))
+                        # print('sending to %s with value: %s in processs %s' % (dest_id, output_value, proc))
                         q.put((dest_id, {input_name: output_value}))
 
     except Exception as e:
