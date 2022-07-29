@@ -5,6 +5,7 @@ This is the cleaner program for data in "Articles.txt"
 import pandas
 
 df = pandas.read_csv("Articles.csv", encoding="ISO-8859-1")
+
 # print(df.head())
 # print(df.dtypes)
 # print("AAA")
@@ -33,7 +34,14 @@ locationCol = df["Article"].str.split(":",1,True)
 df["Location"] = locationCol[0].str.upper()
 df.drop(columns=["Article"],inplace=True)
 df["Article"] = locationCol[1]
-# df.columns = ["Location","Article","Date","Heading","NewsType"]
+
+# drop na(no Location info make the second col to be None or Location col too long)
+print(f"lines before drop na:{df.count()}")
+
+df = df[df['Location'].str.len().lt(26)]
+df = df.dropna(subset=['Article'])
+
+print(f"lines after drop na:{df.count()}")
 
 df.to_csv("Articles_cleaned.csv", index_label=False, header= None, index = False, sep='\t' )
 
