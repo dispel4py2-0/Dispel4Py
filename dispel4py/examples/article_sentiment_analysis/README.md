@@ -35,7 +35,7 @@ In multiprocessing mode, parameter '-n' specify the number of processes. For exe
 ```bash
 $ dispel4py\new\processor.py multi dispel4py.examples.article_sentiment_analysis.analysis_sentiment -n 13 -d "{\"read\" : [ {\"input\" : \"Articles_cleaned.csv\"} ]}"
 ``` 
-Compared to multiprocessing mode, you will additionally need to specify the IP address and port(optional, default 6379) of the redis server .For executing it with the enhanced dynamic mode, connecting to local redis server, and assign 12 processes:
+Compared to multiprocessing mode, you should additionally specify the IP address and port(optional, default 6379) of the redis server .For executing it with the enhanced dynamic mode, connecting to local redis server, and assign 12 processes:
 ```bash
 $ dispel4py\new\processor.py dynamic_redis dispel4py.examples.article_sentiment_analysis.analysis_sentiment -ri localhost -n 12 -d "{\"read\" : [ {\"input\" : \"Articles_cleaned.csv\"} ]}"
 ``` 

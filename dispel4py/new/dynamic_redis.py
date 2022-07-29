@@ -13,7 +13,7 @@
 # limitations under the License.
 
 '''
-Dynamic Using Redis.
+Enhanced Dynamic Using Redis.
 
 refer to redis document: https://redis.io/docs/manual/data-types/streams
 '''
