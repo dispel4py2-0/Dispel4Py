@@ -30,10 +30,7 @@ $ pip install nltk numpy
 
 The workflow source code is "analysis_sentiment.py". You could modify the ROOT_DIR if you want to indicate a different folder.
 
-For executing it with the simple mode:
-```bash
-$ dispel4py\new\processor.py simple dispel4py.examples.article_sentiment_analysis.analysis_sentiment -d "{\"read\" : [ {\"input\" : \"Articles_cleaned.csv\"} ]}"
-``` 
+
 In multiprocessing mode, parameter '-n' specify the number of processes. For executing it with the multiprocessing mode and assign 13 processes:
 ```bash
 $ dispel4py\new\processor.py multi dispel4py.examples.article_sentiment_analysis.analysis_sentiment -n 13 -d "{\"read\" : [ {\"input\" : \"Articles_cleaned.csv\"} ]}"
