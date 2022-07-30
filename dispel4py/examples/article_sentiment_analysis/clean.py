@@ -28,6 +28,8 @@ df["Article"] = df["Article"].str.replace(r'<link.*/>', "", regex=True)
 df["Article"] = df["Article"].str.replace(r'img alt.*http.*"/', "", regex=True)
 df["Article"] = df["Article"].str.replace("&amp;", "&")
 df["Article"] = df["Article"].str.replace("\r\n", "")
+df["Article"] = df["Article"].str.replace("\r", "")
+df["Article"] = df["Article"].str.replace("\n", "")
 
 # new column location
 locationCol = df["Article"].str.split(":",1,True)
@@ -43,6 +45,6 @@ df = df.dropna(subset=['Article'])
 
 print(f"lines after drop na:{df.count()}")
 
-df.to_csv("Articles_cleaned.csv", index_label=False, header= None, index = False, sep='\t' )
+df.to_csv("Articles_cleaned.csv", index_label=False, header= None, index = False, sep='\t',line_terminator="\n" )
 
 print(df.head(5))
