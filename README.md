@@ -43,3 +43,61 @@ For the EPOS use cases obspy is included in a separate Dockerfile `Dockerfile.se
 ```
 docker build . -f Dockerfile.seismo -t dare-dispel4py-seismo
 ```
+
+## Development
+For installing for development with a conda environment
+
+### Installing
+1. `conda create --name py7 python=3.7`
+2. `conda activate py37`
+3. `pip uninstall py37`
+4. `git clone https://github.com/dispel4py2-0/dispel4py.git`
+5. `cd dispel4py`
+6. `pip install -r requirements.txt`
+7. `python setup.py install`
+
+### Examples
+#### Word Count Example
+
+RDD:
+```sh
+python -m dispel4py.new.processor dispel4py.new.dynamic_redis_v1 dispel4py.examples.graph_testing.word_count -ri localhost -n 4 -i 10
+```
+
+FD - This is the one that works for groupings!!
+
+```sh
+python -m dispel4py.new.processor dispel4py.new.dynamic_redis dispel4py.examples.graph_testing.word_count -ri localhost -n 4 -i 10
+```
+
+Note: In another tab, we need to have REDIS working in background: >> redis-server
+
+---
+
+#### Internal Extinction (dispel4py/examples/internal_extinction)
+
+RDD:
+```sh
+python -m dispel4py.new.processor  dispel4py.new.dynamic_redis_v1 dispel4py.examples.internal_extinction.int_ext_graph  -ri localhost -n 4 -d "{\"read\" : [ {\"input\" : \"dispel4py/examples/internal_extinction/coordinates.txt\"} ]}"
+```
+
+FD -This is the one that works for groupings!!
+
+**This doesn't seem to be working**
+```sh
+python -m dispel4py.new.processor  dispel4py.new.dynamic_redis dispel4py.examples.internal_extinction.int_ext_graph  -ri localhost -n 4 -d "{\"read\" : [ {\"input\" : \"dispel4py/examples/internal_extinction/coordinates.txt\"} ]}"
+```
+
+Note: In another tab, we need to have REDIS working in background: >> redis-server
+
+---
+
+#### Sentiment Analysis (dispel4py/examples/article_sentiment_analysis)
+
+FD Strategy:
+```sh
+python -m dispel4py.new.processor  dispel4py.new.dynamic_redis dispel4py.examples.article_sentiment_analysis.analysis_sentiment -ri localhost -n 32 -d "{\"read\" : [ {\"input\" : \"dispel4py/examples/articles_sentiment_analysis/Articles_cleaned.csv\"} ]}
+```
+
+Note: In another tab, we need to have REDIS working in background: >> redis-server
+
