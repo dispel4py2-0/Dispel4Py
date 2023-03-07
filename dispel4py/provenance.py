@@ -29,7 +29,7 @@ import socket
 import ujson
 import urllib
 import pickle
-from pip._internal.utils.misc import get_installed_distributions
+#from pip._internal.utils.misc import get_installed_distributions
 from dispel4py.new import simple_process
 import dispel4py.new.mappings
 from subprocess import Popen, PIPE

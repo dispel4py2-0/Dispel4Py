@@ -1,0 +1,3 @@
+networkx
+flake8
+redis
