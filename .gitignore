@@ -14,3 +14,7 @@ __pycache__/
 
 # Ignore Provenance Generated file
 /prov-files/*
+
+# Build dir
+build
+dist
