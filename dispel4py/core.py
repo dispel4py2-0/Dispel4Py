@@ -268,13 +268,13 @@ Example implementation::
         '''
         #self.log(type(self))
         self._write(name, data)
-        
+
 
     def _write(self, name, data, **kwargs):
         '''
         This writes the 'data' to the output pipe with name 'name' of this PE.
         '''
-         
+
         try:
             output = self.outputconnections[name]
             output[WRITER].write(data)
