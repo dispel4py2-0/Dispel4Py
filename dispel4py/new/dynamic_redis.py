@@ -384,7 +384,7 @@ def process(workflow, inputs, args):
     # check if process number >=  minimal require of stateful pes
     minimal_stateful_process = sum(map(lambda x: x.getContainedObject().numprocesses, stateful_nodes))
     if size < minimal_stateful_process:
-        raise "Process number less than minial requirement of graph"
+        raise Exception("Process number less than minimal requirement of graph")
 
     # init workers
     prepare_workers = {}

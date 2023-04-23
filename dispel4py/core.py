@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 '''
 The core module for dispel4py.
 '''
+
+from typing import Any, Dict, List, Optional
 
 import uuid
 # Connection-level dict elements
@@ -109,19 +110,18 @@ Example implementation::
 
             return { OUTPUT_NAME : output }
     '''
-
-    def __init__(self, numprocesses=1):
-        self.inputconnections = {}
-        self.outputconnections = {}
+    def __init__(self, numprocesses: int = 1):
+        self.inputconnections: Dict[str, Dict] = {}
+        self.outputconnections: Dict[str, Dict] = {}
         self.wrapper = 'simple'
-        self.pickleIgnore = []
+        self.pickleIgnore: List[str] = []
         self.pickleIgnore = list(vars(self).keys())
         self.numprocesses = numprocesses
         self.name = self.__class__.__name__
         #print "SETTING NAME: "+self.name
         self.id = self.name + str(uuid.uuid4())
 
-    def _add_input(self, name, grouping=None, tuple_type=None):
+    def _add_input(self, name: str, grouping: Optional[str] = None, tuple_type: Optional[List[str]] = None) -> None:
         '''
         Declares an input for this PE.
         This method may be used when initialising a PE instead of modifying
@@ -137,7 +137,7 @@ Example implementation::
         if tuple_type:
             self.inputconnections[name][TYPE] = tuple_type
 
-    def _add_output(self, name, tuple_type=None):
+    def _add_output(self, name: str, tuple_type: Optional[List[str]] = None) -> None:
         '''
         Declares an output for this PE.
         This method may be used when initialising a PE instead of modifying
@@ -150,7 +150,7 @@ Example implementation::
         if tuple_type:
             self.outputconnections[name][TYPE] = tuple_type
 
-    def setInputTypes(self, types):
+    def setInputTypes(self, types: List[str]) -> None:
         '''
         Sets the input types of this PE, in the form of a dictionary.
         It is meant to be overridden, e.g. if output types depend on input.
@@ -170,7 +170,7 @@ Example implementation::
         '''
         pass
 
-    def getOutputTypes(self):
+    def getOutputTypes(self) -> Dict[str, List[str]]:
         '''
         Returns the output types of this PE, in the form of a dictionary.
         This method may be overridden if output types are not static and
@@ -199,24 +199,24 @@ Example implementation::
             try:
                 ret[name] = output[TYPE]
             except KeyError:
-                raise Exception("%s: No output type defined for '%s'"
-                                % (self.id, name))
+                raise Exception("%s: No output type defined for '%s'" %
+                                (self.id, name))
         return ret
 
-    def _preprocess(self):
+    def _preprocess(self) -> None:
         '''
         Subclasses may override this method for variable and data
         initialisation before data processing commences.
         '''
-        None
+        pass
 
-    def preprocess(self):
+    def preprocess(self) -> None:
         '''
         This method called once before processing commences.
         '''
         self._preprocess()
 
-    def _process(self, data):
+    def _process(self, data: Dict[str, Any]):
         '''
         To be overridden by a PE implementation subclass. The data input
         parameter may contain data in any format that is prepared by a PE
@@ -231,9 +231,9 @@ Example implementation::
         during processing using the :py:func:`~dispel4py.core.GenericPE.write`
         method.
         '''
-        None
+        pass
 
-    def process(self, inputs):
+    def process(self, inputs: Dict[str, Any]):
         '''
         The 'inputs' dictionary contains data from any or all of the streams
         that are connected to this PE, in any order. The return value of this
@@ -252,7 +252,7 @@ Example implementation::
         return self._process(inputs)
 
     def _postprocess(self):
-        None
+        pass
 
     def postprocess(self):
         '''
@@ -261,7 +261,7 @@ Example implementation::
         '''
         self._postprocess()
 
-    def write(self, name, data, **kwargs):
+    def write(self, name: str, data, **kwargs):
         '''
         Allows for preprocessing of data to be written to the output pipe.
         This method should be overridden by PE base classes.
@@ -269,8 +269,7 @@ Example implementation::
         #self.log(type(self))
         self._write(name, data)
 
-
-    def _write(self, name, data, **kwargs):
+    def _write(self, name: str, data, **kwargs):
         '''
         This writes the 'data' to the output pipe with name 'name' of this PE.
         '''
@@ -279,5 +278,5 @@ Example implementation::
             output = self.outputconnections[name]
             output[WRITER].write(data)
         except KeyError:
-            raise Exception("Can't write data: Unknown output connection\
-                            '%s' for PE '%s'" % (name, type(self).__name__))
+            raise Exception('Can\'t write data: Unknown output connection '
+                            f'{name} for PE {type(self).__name__}')

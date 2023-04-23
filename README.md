@@ -4,7 +4,7 @@ dispel4py is a free and open-source Python library for describing abstract strea
 
 ## Dependencies
 
-dispel4py has been tested with Python *2.7.6*, *2.7.5*, *2.7.2*, *2.6.6* and Python *3.4.3*, *3.6*, *3.7*.
+dispel4py has been tested with Python *2.7.6*, *2.7.5*, *2.7.2*, *2.6.6* and Python *3.4.3*, *3.6*, *3.7*, *3.10*.
 
 The following Python packages are required to run dispel4py:
 

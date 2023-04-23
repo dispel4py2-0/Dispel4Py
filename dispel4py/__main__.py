@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Union
 
 import argparse
 from importlib import import_module
 
 
-def main(args=None):
-
+def main(args: Union[None, argparse.Namespace, List[str]] = None) -> None:
     parser = argparse.ArgumentParser(
         description='Submit a dispel4py graph for processing.')
     parser.add_argument('target', help='target execution platform')

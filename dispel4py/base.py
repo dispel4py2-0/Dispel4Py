@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 '''
 Base PEs implementing typical processing patterns.
 '''
 
-from dispel4py.core import GenericPE, NAME
+from typing import Any, Callable, Dict, List, Optional
+
+from dispel4py.core import NAME, GenericPE
 
 
 class BasePE(GenericPE):
@@ -27,7 +28,11 @@ class BasePE(GenericPE):
     INPUT_NAME = 'input'
     OUTPUT_NAME = 'output'
 
-    def __init__(self, inputs=[], outputs=[], num_inputs=0, num_outputs=0):
+    def __init__(self,
+                 inputs: List[str] = [],
+                 outputs: List[str] = [],
+                 num_inputs: int = 0,
+                 num_outputs: int = 0):
         '''
         :param inputs: a list of input names (optional)
         :param outputs: a list of output names (optional)
@@ -39,10 +44,10 @@ class BasePE(GenericPE):
         GenericPE.__init__(self)
 
         for i in range(num_inputs):
-            name = '%s%s' % (BasePE.INPUT_NAME, i)
+            name = f'{BasePE.INPUT_NAME}{i}'
             self.inputconnections[name] = {NAME: name}
         for i in range(num_outputs):
-            name = '%s%s' % (BasePE.OUTPUT_NAME, i)
+            name = f'{BasePE.OUTPUT_NAME}{i}'
             self.outputconnections[name] = {NAME: name}
         for name in inputs:
             self.inputconnections[name] = {NAME: name}
@@ -134,15 +139,20 @@ class SimpleFunctionPE(IterativePE):
     INPUT_NAME = IterativePE.INPUT_NAME
     OUTPUT_NAME = IterativePE.OUTPUT_NAME
 
-    def __init__(self, compute_fn=None, params={}):
+    def __init__(self,
+                 compute_fn: Optional[Callable[[Any], Any]] = None,
+                 params: Dict[Any, Any] = {}) -> None:
         IterativePE.__init__(self)
         if compute_fn:
-            self.name = 'PE_%s' % compute_fn.__name__
+            self.name = f'PE_{compute_fn.__name__}'
         self.compute_fn = compute_fn
         self.params = params
 
-    def _process(self, data):
-        return self.compute_fn(data, **self.params)
+    def _process(self, data) -> Optional[Any]:
+        if self.compute_fn:
+            return self.compute_fn(data, **self.params)
+        else:
+            return None
 
 
 from dispel4py.workflow_graph import WorkflowGraph
@@ -152,7 +162,6 @@ def create_iterative_chain(functions,
                            FunctionPE_class=SimpleFunctionPE,
                            name_prefix='PE_',
                            name_suffix=''):
-
     '''
     Creates a composite PE wrapping a pipeline that processes obspy streams.
     :param chain: list of functions that process data iteratively. The function
@@ -176,15 +185,14 @@ def create_iterative_chain(functions,
             fn = fn_desc
             params = {}
 
-        # print 'adding %s to chain' % fn.__name__
         pe = FunctionPE_class()
         pe.compute_fn = fn
         pe.params = params
         pe.name = name_prefix + fn.__name__ + name_suffix
 
         if prev:
-            graph.connect(prev, IterativePE.OUTPUT_NAME,
-                          pe, IterativePE.INPUT_NAME)
+            graph.connect(prev, IterativePE.OUTPUT_NAME, pe,
+                          IterativePE.INPUT_NAME)
         else:
             first = pe
         prev = pe
