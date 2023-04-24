@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-'''
+"""
 Simple sequential processor mapping for dispel4py graphs.
 This processor determines the dependencies of each PE in the graph and
 executes them sequentially.
@@ -70,7 +70,7 @@ output stream is not connected::
 
     print results
     {'TestOneInOneOut1': {'output': [1, 2, 3, 4, 5]}}
-'''
+"""
 
 import types
 from dispel4py.new.processor import GenericWrapper, SimpleProcessingPE
@@ -78,11 +78,11 @@ from dispel4py.new import processor
 
 
 def simpleLogger(self, msg):
-    print("%s: %s" % (self.id, msg))
+    print(f"{self.id}: {msg}")
 
 
 def process_and_return(workflow, inputs, resultmappings=None):
-    '''
+    """
     Executes the simple sequential processor for dispel4py graphs and returns
     the data collected from any unconnected output streams.
 
@@ -92,13 +92,14 @@ def process_and_return(workflow, inputs, resultmappings=None):
         (the number of iterations) or a list of input data items.
     :rtype: a dictionary mapping PE ids to the output data produced by that PE
 
-    '''
+    """
     numnodes = 0
     for node in workflow.graph.nodes():
         numnodes += 1
         node.getContainedObject().numprocesses = 1
-    processes, inputmappings, outputmappings = \
-        processor.assign_and_connect(workflow, numnodes)
+    processes, inputmappings, outputmappings = processor.assign_and_connect(
+        workflow, numnodes
+    )
     # print 'Processes: %s' % processes
     # print inputmappings
     # print outputmappings
@@ -108,7 +109,7 @@ def process_and_return(workflow, inputs, resultmappings=None):
         proc_to_pe[processes[pe.id][0]] = pe
 
     simple = SimpleProcessingPE(inputmappings, outputmappings, proc_to_pe)
-    simple.id = 'SimplePE'
+    simple.id = "SimplePE"
     simple.result_mappings = resultmappings
     wrapper = SimpleProcessingWrapper(simple, [inputs])
     wrapper.targets = {}
@@ -128,7 +129,7 @@ def process_and_return(workflow, inputs, resultmappings=None):
 
 
 def process(workflow, inputs, args=None, resultmappings=None):
-    '''
+    """
     Executes the simple sequential processor for dispel4py graphs and prints
     out the input and output data. This is the default target when invoking
     the simple mapping with `dispel4py simple <module>`.
@@ -137,18 +138,17 @@ def process(workflow, inputs, args=None, resultmappings=None):
     :param inputs: inputs for root PEs of the graphs. This is a dictionary
         mapping a PE id to either a non-negative integer
         (the number of iterations) or a list of input data items.
-    '''
+    """
 
     try:
-        print('Inputs: %s' % {pe.id: data for pe, data in inputs.items()})
+        print("Inputs: {}".format({pe.id: data for pe, data in inputs.items()}))
     except:
-        print('Inputs: %s' % {pe: data for pe, data in inputs.items()})
+        print("Inputs: {}".format({pe: data for pe, data in inputs.items()}))
     results = process_and_return(workflow, inputs, resultmappings)
-    print('Outputs: %s' % results)
+    print(f"Outputs: {results}")
 
 
 class SimpleProcessingWrapper(GenericWrapper):
-
     def __init__(self, pe, provided_inputs=None):
         GenericWrapper.__init__(self, pe)
         self.pe.log = types.MethodType(simpleLogger, pe)
@@ -160,19 +160,18 @@ class SimpleProcessingWrapper(GenericWrapper):
         return result
 
     def _write(self, name, data):
-        #self.pe.log('SP Writing %s to %s' % (data, name))
+        # self.pe.log('SP Writing %s to %s' % (data, name))
         try:
             self.outputs[name].extend(data)
         except KeyError:
             self.outputs[name] = data
 
 
-def main():                                                  # pragma: no cover
-    '''
+def main():  # pragma: no cover
+    """
     This is the commandline entry point for the simple processor.
-    '''
-    from dispel4py.new.processor \
-        import load_graph_and_inputs, create_arg_parser
+    """
+    from dispel4py.new.processor import load_graph_and_inputs, create_arg_parser
 
     parser = create_arg_parser()
     args = parser.parse_args()

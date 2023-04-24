@@ -39,8 +39,7 @@ setup(
               'dispel4py.new',
               'dispel4py.examples',
               'dispel4py.examples.graph_testing',
-              'dispel4py.examples.article_sentiment_analysis',
-              'dispel4py.examples.internal_extinction'],
+              'dispel4py.examples.article_sentiment_analysis'],
     long_description=read('README.md'),
     install_requires=['networkx', 'flake8', 'redis'],
     entry_points={
