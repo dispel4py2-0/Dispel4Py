@@ -3,10 +3,9 @@ import os
 
 
 import copy
-from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
-from dispel4py.core import GenericPE, NAME, TYPE, GROUPING
-from dispel4py.base import SimpleFunctionPE, IterativePE, BasePE
+from dispel4py.core import GenericPE, NAME, TYPE
+from dispel4py.base import SimpleFunctionPE, BasePE
 from dispel4py.provenance import *
 
 
