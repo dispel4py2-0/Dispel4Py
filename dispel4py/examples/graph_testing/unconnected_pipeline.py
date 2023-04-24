@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces two pipeline workflows which are unconnected.  
 
 .. image:: /api/images/unconnected_pipeline.png
@@ -92,18 +92,18 @@ It can be executed with MPI and STORM.
         TestOneInOneOut11 (rank 8): Completed.
 				
 * STORM:  
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
 
 def testPipeline(graph):
-    '''
+    """
     Creates a pipeline and adds it to the given graph.
-    
+
     :rtype: the modified graph
-    '''
+    """
     prod = t.TestProducer()
     prev = prod
     part1 = [prod]
@@ -111,21 +111,22 @@ def testPipeline(graph):
     for i in range(5):
         cons = t.TestOneInOneOut()
         part2.append(cons)
-        graph.connect(prev, 'output', cons, 'input')
+        graph.connect(prev, "output", cons, "input")
         prev = cons
     return graph
-    
+
+
 def testUnconnected():
-    '''
+    """
     Creates a graph with two unconnected pipelines.
-    
+
     :rtype: the created graph
-    '''
+    """
     graph = WorkflowGraph()
     testPipeline(graph)
     testPipeline(graph)
     return graph
 
 
-''' important: this is the graph_variable '''
+""" important: this is the graph_variable """
 graph = testUnconnected()

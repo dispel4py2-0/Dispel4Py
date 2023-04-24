@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces a workflow that splits the data and sends it to two nodes (cons1 and cons2)
 and the output of those two nodes is merged by another node (last). 
 
@@ -62,27 +62,29 @@ It can be executed with MPI and STORM.
         TestTwoInOneOut3 (rank 2): Completed.
 				
 * STORM:  
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testSplitMerge():
-    '''
+    """
     Creates the split/merge graph with 4 nodes.
-    
+
     :rtype: the created graph
-    '''
+    """
     graph = WorkflowGraph()
     prod = t.TestProducer(2)
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOutWriter()
     last = t.TestTwoInOneOut()
-    graph.connect(prod, 'output0', cons1, 'input')
-    graph.connect(prod, 'output1', cons2, 'input')
-    graph.connect(cons1, 'output', last, 'input0')
-    graph.connect(cons2, 'output', last, 'input1')
+    graph.connect(prod, "output0", cons1, "input")
+    graph.connect(prod, "output1", cons2, "input")
+    graph.connect(cons1, "output", last, "input0")
+    graph.connect(cons2, "output", last, "input1")
     return graph
 
-''' important: this is the graph_variable '''
+
+""" important: this is the graph_variable """
 graph = testSplitMerge()

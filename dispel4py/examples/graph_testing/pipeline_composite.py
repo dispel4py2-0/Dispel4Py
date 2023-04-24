@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces a pipeline workflow with one producer node and a chain of functions that process the data.
 
 Execution: 
@@ -95,40 +95,45 @@ Execution:
     
         python storm_submission.py dispel4py.examples.graph_testing.pipeline_composite -m remote
                 
-'''
+"""
 
 
 from dispel4py.base import create_iterative_chain
 from dispel4py.examples.graph_testing.testing_PEs import TestProducer
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def addTwo(data):
-    '''
+    """
     Returns 2 + `data`.
-    '''
+    """
     return 2 + data
-    
+
+
 def multiplyByFour(data):
-    '''
+    """
     Returns 4 * `data`.
-    '''
+    """
     return 4 * data
 
+
 def divideByTwo(data):
-    '''
+    """
     Returns `data`/2.
-    '''
-    return data/2
+    """
+    return data / 2
+
 
 def subtract(data, n):
-    '''
+    """
     Returns `data` - `n`.
-    '''
+    """
     return data - n
-    
-functions = [ addTwo, multiplyByFour, divideByTwo, (subtract, { 'n' : 1 }) ]
+
+
+functions = [addTwo, multiplyByFour, divideByTwo, (subtract, {"n": 1})]
 composite = create_iterative_chain(functions)
 producer = TestProducer()
 
 graph = WorkflowGraph()
-graph.connect(producer, 'output', composite, 'input')
+graph.connect(producer, "output", composite, "input")

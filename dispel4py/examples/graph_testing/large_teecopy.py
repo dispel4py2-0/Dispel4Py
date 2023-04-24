@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces a workflow that copies the data (from node prod) to two nodes (cons2 and cons3). 
 This example can be used to process a large number of data blocks for testing.
     
@@ -56,18 +56,19 @@ It can be executed with MPI and STORM.
         TestOneInOneOut1 (rank 1): Completed
 				
 * STORM:  
-'''
+"""
 
 import sys
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testTee():
-    '''
+    """
     Creates a graph with two consumer nodes and a tee connection.
-    
+
     :rtype: the created graph
-    '''
+    """
     graph = WorkflowGraph()
     try:
         numIterations = int(sys.argv[4])
@@ -78,10 +79,11 @@ def testTee():
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     cons3 = t.TestOneInOneOut()
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(cons1, 'output', cons2, 'input')
-    graph.connect(cons1, 'output', cons3, 'input')
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(cons1, "output", cons2, "input")
+    graph.connect(cons1, "output", cons3, "input")
     return graph
 
-''' important: this is the graph_variable '''
+
+""" important: this is the graph_variable """
 graph = testTee()

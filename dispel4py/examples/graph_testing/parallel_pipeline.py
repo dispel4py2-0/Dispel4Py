@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph where each MPI process computes a partition of the workflow instead of a PE instance. 
 This happens automatically when the graph has more nodes than MPI processes. 
 In terms of internal execution, the user has control which parts of the graph are distributed to each MPI process. 
@@ -61,17 +61,18 @@ It can be executed with MPI and STORM.
 		GraphWrapperPE5 (rank 2): Completed.
 				
 * STORM:  
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testParallelPipeline():
-    '''
+    """
     Creates a graph with 4 nodes.
-    
+
     :rtype: the created graph
-    '''
+    """
     graph = WorkflowGraph()
     prod = t.TestProducer()
     prev = prod
@@ -79,11 +80,12 @@ def testParallelPipeline():
     cons2 = t.TestOneInOneOut()
     cons3 = t.TestOneInOneOut()
 
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(cons1, 'output', cons2, 'input')
-    graph.connect(cons1, 'output', cons3, 'input')
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(cons1, "output", cons2, "input")
+    graph.connect(cons1, "output", cons3, "input")
 
     return graph
 
-''' important: this is the graph_variable '''
+
+""" important: this is the graph_variable """
 graph = testParallelPipeline()

@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces a workflow with a pipeline 
 in which the producer node ``prod`` sends data to the consumer node ``cons1`` which then sends data to node ``cons2``. 
 Note that in this graph we have defined several instances of the cons1 and cons2 nodes
@@ -84,27 +84,29 @@ It can be executed with MPI and STORM.
     as the grouping has been defined as `global`.
 				
 * STORM:  
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testAlltoOne():
-    '''
+    """
     Creates a graph with two consumer nodes and a global grouping.
-    
+
     :rtype: the created graph
-    '''
+    """
     graph = WorkflowGraph()
     prod = t.TestProducer()
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
-    cons1.numprocesses=5
-    cons2.numprocesses=5
-    graph.connect(prod, 'output', cons1, 'input')
-    cons2.inputconnections['input']['grouping'] = 'global'
-    graph.connect(cons1, 'output', cons2, 'input')
+    cons1.numprocesses = 5
+    cons2.numprocesses = 5
+    graph.connect(prod, "output", cons1, "input")
+    cons2.inputconnections["input"]["grouping"] = "global"
+    graph.connect(cons1, "output", cons2, "input")
     return graph
 
-''' important: this is the graph_variable '''
+
+""" important: this is the graph_variable """
 graph = testAlltoOne()
