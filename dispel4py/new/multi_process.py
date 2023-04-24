@@ -101,8 +101,10 @@ def process(workflow, inputs, args):
             "Partitions: {}".format(
                 ", ".join(
                     (
-                        "[{}]".format(", ".join((pe.id for pe in part))
-                        for part in workflow.partitions)
+                        "[{}]".format(
+                            ", ".join((pe.id for pe in part))
+                            for part in workflow.partitions
+                        )
                     )
                 )
             )

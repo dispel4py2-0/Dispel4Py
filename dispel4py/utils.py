@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 Collection of dispel4py utilities.
-'''
+"""
 
 from dispel4py.workflow_graph import WorkflowGraph
 
@@ -27,21 +27,24 @@ import traceback
 
 def findWorkflowGraph(mod, attr):
     if attr is not None:
-        # use the named attribute
+        # Use the named attribute
         graph = getattr(mod, attr)
     else:
-        # search for a workflow graph in the given module
+        # Search for a workflow graph in the given module
         for i in dir(mod):
             attr = getattr(mod, i)
             if isinstance(attr, WorkflowGraph):
-                if not hasattr(attr, 'inputmappings')\
-                        and not hasattr(attr, 'outputmappings'):
+                if not hasattr(attr, "inputmappings") and not hasattr(
+                    attr, "outputmappings"
+                ):
                     graph = attr
     return graph
 
+
 def loadGraphFromFile(module_name, path, attr=None):
-    if (sys.version_info > (3, 0)):
+    if sys.version_info > (3, 0):
         from importlib import util
+
         spec = util.spec_from_file_location(module_name, path)
         module = util.module_from_spec(spec)
         sys.modules[spec.name] = module
@@ -54,42 +57,39 @@ def loadGraphFromFile(module_name, path, attr=None):
 
 
 def loadGraph(module_name, attr=None):
-    '''
+    """
     Loads a graph from the given module.
-    '''
+    """
     mod = import_module(module_name)
     graph = findWorkflowGraph(mod, attr)
     return graph
 
 
 def load_graph(graph_source, attr=None):
-    # try to load from a module
-    error_message = ''
+    # Try to load from a module
+    error_message = ""
     try:
         return loadGraph(graph_source, attr)
     except ImportError:
-        # it's not a module
-        error_message += 'No module "%s"\n' % graph_source
+        # It's not a module
+        error_message += f'No module "{graph_source}"\n'
         pass
     except Exception:
-        error_message += \
-            'Error loading graph module:\n%s' % traceback.format_exc()
+        error_message += f"Error loading graph module:\n{traceback.format_exc()}"
         pass
 
-    # maybe it's a file?
+    # Maybe it's a file?
     try:
         module_name = os.path.splitext(os.path.basename(graph_source))[0]
         return loadGraphFromFile(module_name, graph_source, attr)
     except IOError:
-        # it's not a file
-        error_message += 'No file "%s"\n' % graph_source
+        # It's not a file
+        error_message += f'No file "{graph_source}"\n'
     except Exception:
-        error_message += \
-            'Error loading graph from file:\n%s' % traceback.format_exc()
+        error_message += f"Error loading graph from file:\n{traceback.format_exc()}"
 
-    # we don't know what it is
-    print('Failed to load graph from "%s":\n%s' %
-          (graph_source, error_message))
+    # We don't know what it is
+    print(f'Failed to load graph from "{graph_source}":\n{error_message}')
 
 
 from sys import getsizeof
@@ -140,11 +140,11 @@ def total_size(o, handlers={}, verbose=False):
 
     return sizeof(o)
 
+
 import copy
 
 
 def make_hash(o):
-
     """
     Makes a hash from a dictionary, list, tuple or set to any level, that
     contains only other hashable types (including any lists, tuples, sets, and

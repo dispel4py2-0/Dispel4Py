@@ -171,7 +171,6 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                 # otherwise, put the data in the destinations to the queue
                 else:
                     for dest_id, input_name, dest_instance in destinations:
-
                         if dest_instance != -1:
                             # stateful
                             r.xadd(
