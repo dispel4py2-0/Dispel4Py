@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 Enactment of dispel4py graphs.
 This module contains methods that are used by different mappings.
 
@@ -38,7 +38,7 @@ with parameters
 Other parameters might be required by the target mapping, for example the
 number of processes if running in a parallel environment.
 
-'''
+"""
 import sys
 import argparse
 import os
@@ -53,16 +53,18 @@ STATUS_ACTIVE = 10
 STATUS_INACTIVE = 11
 STATUS_TERMINATED = 12
 # mapping for name to value
-STATUS = {STATUS_ACTIVE: 'ACTIVE',
-          STATUS_INACTIVE: 'INACTIVE',
-          STATUS_TERMINATED: 'TERMINATED'}
+STATUS = {
+    STATUS_ACTIVE: "ACTIVE",
+    STATUS_INACTIVE: "INACTIVE",
+    STATUS_TERMINATED: "TERMINATED",
+}
 
 
 def simpleLogger(self, msg):
     try:
-        print("%s (rank %s): %s" % (self.id, self.rank, msg))
+        print(f"{self.id} (rank {self.rank}): {msg}")
     except:
-        print("%s: %s" % (self.id, msg))
+        print(f"{self.id}: {msg}")
 
 
 def get_inputs(pe, inputs):
@@ -90,12 +92,11 @@ class GenericWriter(object):
 
 
 class GenericWrapper(object):
-
     def __init__(self, pe):
         self.pe = pe
         self.pe.wrapper = self
         for o in self.pe.outputconnections:
-            self.pe.outputconnections[o]['writer'] = GenericWriter(self, o)
+            self.pe.outputconnections[o]["writer"] = GenericWriter(self, o)
         self.targets = {}
         self._sources = {}
 
@@ -117,29 +118,25 @@ class GenericWrapper(object):
         self.pe.preprocess()
         result = self._read()
         inputs, status = result
-        # self.pe.log('Result: %s, status=%s' % (inputs, STATUS[status]))
         while status != STATUS_TERMINATED:
             if inputs is not None:
                 outputs = self.pe.process(inputs)
                 num_iterations += 1
                 if outputs is not None:
-                    # self.pe.log('Produced output: %s' % outputs)
                     for key, value in outputs.items():
                         self._write(key, value)
             inputs, status = self._read()
-            # self.pe.log('Result: %s, status=%s' % (inputs, STATUS[status]))
         self.pe.postprocess()
         self._terminate()
         if num_iterations == 1:
-            self.pe.log('Processed 1 iteration.')
+            self.pe.log("Processed 1 iteration.")
         else:
-            self.pe.log('Processed %s iterations.' % num_iterations)
+            self.pe.log(f"Processed {num_iterations} iterations.")
 
     def _read(self):
         # check the provided inputs
         if self.provided_inputs is not None:
-            if isinstance(self.provided_inputs, int) and \
-                    self.provided_inputs > 0:
+            if isinstance(self.provided_inputs, int) and self.provided_inputs > 0:
                 self.provided_inputs -= 1
                 return {}, STATUS_ACTIVE
             elif self.provided_inputs:
@@ -171,7 +168,7 @@ class GroupByCommunication(object):
         self.destinations = destinations
         self.input_name = input_name
         self.name = groupby
-        
+
     def getDestination(self, data):
         output = tuple([data[self.input_name][x] for x in self.groupby])
         dest_index = abs(make_hash(output)) % len(self.destinations)
@@ -181,7 +178,7 @@ class GroupByCommunication(object):
 class AllToOneCommunication(object):
     def __init__(self, destinations):
         self.destinations = destinations
-        self.name = 'global'
+        self.name = "global"
 
     def getDestination(self, data):
         return [self.destinations[0]]
@@ -190,7 +187,7 @@ class AllToOneCommunication(object):
 class OneToAllCommunication(object):
     def __init__(self, destinations):
         self.destinations = destinations
-        self.name = 'all'
+        self.name = "all"
 
     def getDestination(self, data):
         return self.destinations
@@ -199,19 +196,18 @@ class OneToAllCommunication(object):
 def _getConnectedInputs(node, graph):
     names = []
     for edge in graph.edges(node, data=True):
-        direction = edge[2]['DIRECTION']
+        direction = edge[2]["DIRECTION"]
         dest = direction[1]
-        dest_input = edge[2]['TO_CONNECTION']
+        dest_input = edge[2]["TO_CONNECTION"]
         if dest == node.getContainedObject():
             names.append(dest_input)
     return names
 
 
 def _getNumProcesses(size, numSources, numProcesses, totalProcesses):
-    
-    if (numProcesses>1) or (numProcesses==0):
+    if (numProcesses > 1) or (numProcesses == 0):
         return numProcesses
-    
+
     div = max(1, totalProcesses - numSources)
     return int(numProcesses * (size - numSources) / div)
 
@@ -236,32 +232,33 @@ def _assign_processes(workflow, size):
     if totalProcesses > size:
         success = False
         # we need at least one process for each node in the graph
-        print('Graph is larger than job size: %s > %s.' %
-              (totalProcesses, size))
+        print(f"Graph is larger than job size: {totalProcesses} > {size}.")
     else:
         node_counter = 0
         for node in graph.nodes():
             pe = node.getContainedObject()
-            prcs = 1 if pe.id in sources or (hasattr(pe, 'single') and pe.single==True) else _getNumProcesses(
-                size, numSources, pe.numprocesses, totalProcesses)
+            prcs = (
+                1
+                if pe.id in sources or (hasattr(pe, "single") and pe.single == True)
+                else _getNumProcesses(size, numSources, pe.numprocesses, totalProcesses)
+            )
             processes[pe.id] = range(node_counter, node_counter + prcs)
             node_counter = node_counter + prcs
     return success, sources, processes
 
 
-def _getCommunication(rank, source_processes,
-                      dest, dest_input, dest_processes):
-    communication = ShuffleCommunication(
-        rank, source_processes, dest_processes)
+def _getCommunication(rank, source_processes, dest, dest_input, dest_processes):
+    communication = ShuffleCommunication(rank, source_processes, dest_processes)
     try:
         if GROUPING in dest.inputconnections[dest_input]:
             groupingtype = dest.inputconnections[dest_input][GROUPING]
             if isinstance(groupingtype, list):
                 communication = GroupByCommunication(
-                    dest_processes, dest_input, groupingtype)
-            elif groupingtype == 'all':
+                    dest_processes, dest_input, groupingtype
+                )
+            elif groupingtype == "all":
                 communication = OneToAllCommunication(dest_processes)
-            elif groupingtype == 'global':
+            elif groupingtype == "global":
                 communication = AllToOneCommunication(dest_processes)
     except KeyError:
         print("No input '%s' defined for PE '%s'" % (dest_input, dest.id))
@@ -274,32 +271,33 @@ def _create_connections(graph, node, processes):
     inputmappings = {i: {} for i in processes[pe.id]}
     outputmappings = {i: {} for i in processes[pe.id]}
     for edge in graph.edges(node, data=True):
-        direction = edge[2]['DIRECTION']
+        direction = edge[2]["DIRECTION"]
         source = direction[0]
-        source_output = edge[2]['FROM_CONNECTION']
+        source_output = edge[2]["FROM_CONNECTION"]
         dest = direction[1]
         dest_processes = list(processes[dest.id])
         source_processes = list(processes[source.id])
-        dest_input = edge[2]['TO_CONNECTION']
-        allconnections = edge[2]['ALL_CONNECTIONS']
+        dest_input = edge[2]["TO_CONNECTION"]
+        allconnections = edge[2]["ALL_CONNECTIONS"]
         if dest == pe:
             for i in processes[pe.id]:
-                for (source_output, dest_input) in allconnections:
+                for source_output, dest_input in allconnections:
                     try:
                         inputmappings[i][dest_input] += source_processes
                     except KeyError:
                         inputmappings[i][dest_input] = source_processes
         if source == pe:
             for i in processes[pe.id]:
-                for (source_output, dest_input) in allconnections:
+                for source_output, dest_input in allconnections:
                     communication = _getCommunication(
-                        i, source_processes, dest, dest_input, dest_processes)
+                        i, source_processes, dest, dest_input, dest_processes
+                    )
                     try:
                         outputmappings[i][source_output].append(
-                            (dest_input, communication))
+                            (dest_input, communication)
+                        )
                     except KeyError:
-                        outputmappings[i][source_output] = \
-                            [(dest_input, communication)]
+                        outputmappings[i][source_output] = [(dest_input, communication)]
     return inputmappings, outputmappings
 
 
@@ -322,6 +320,7 @@ def assign_and_connect(workflow, size):
     else:
         return None
 
+
 import copy
 
 from dispel4py.workflow_graph import WorkflowGraph
@@ -331,7 +330,7 @@ def get_partitions(workflow):
     try:
         partitions = workflow.partitions
     except AttributeError:
-        print ("no predefined partitions")
+        print("no predefined partitions")
         sourcePartition = []
         otherPartition = []
         graph = workflow.graph
@@ -345,11 +344,12 @@ def get_partitions(workflow):
         workflow.partitions = partitions
     return partitions
 
+
 def get_partitions_adv(workflow):
     try:
         partitions = workflow.partitions
     except AttributeError:
-        print ("no predefined partitions")
+        print("no predefined partitions")
         sourcePartition = []
         otherPartition = []
         graph = workflow.graph
@@ -365,8 +365,9 @@ def get_partitions_adv(workflow):
 
 
 def create_partitioned(workflow_all):
-    processes_all, inputmappings_all, outputmappings_all = \
-        assign_and_connect(workflow_all, len(workflow_all.graph.nodes()))
+    processes_all, inputmappings_all, outputmappings_all = assign_and_connect(
+        workflow_all, len(workflow_all.graph.nodes())
+    )
     proc_to_pe_all = {v[0]: k for k, v in processes_all.items()}
     partitions = get_partitions(workflow_all)
     external_connections = []
@@ -382,11 +383,12 @@ def create_partitioned(workflow_all):
         component_ids = [pe.id for pe in part]
         workflow = copy.deepcopy(workflow_all)
         graph = workflow.graph
-        for node in list(graph.nodes()): 
+        for node in list(graph.nodes()):
             if node.getContainedObject().id not in component_ids:
                 graph.remove_node(node)
-        processes, inputmappings, outputmappings = \
-            assign_and_connect(workflow, len(graph.nodes()))
+        processes, inputmappings, outputmappings = assign_and_connect(
+            workflow, len(graph.nodes())
+        )
         proc_to_pe = {}
         for node in graph.nodes():
             pe = node.getContainedObject()
@@ -396,24 +398,26 @@ def create_partitioned(workflow_all):
             pe.rank = index
             proc_all = processes_all[pe.id][0]
             for output_name in outputmappings_all[proc_all]:
-                for dest_input, comm_all in\
-                        outputmappings_all[proc_all][output_name]:
+                for dest_input, comm_all in outputmappings_all[proc_all][output_name]:
                     dest = proc_to_pe_all[comm_all.destinations[0]]
                     if dest not in processes:
                         # it's an external connection
-                        external_connections.append((comm_all,
-                                                     partition_id,
-                                                     pe.id,
-                                                     output_name,
-                                                     pe_to_partition[dest],
-                                                     dest, dest_input))
+                        external_connections.append(
+                            (
+                                comm_all,
+                                partition_id,
+                                pe.id,
+                                output_name,
+                                pe_to_partition[dest],
+                                dest,
+                                dest_input,
+                            )
+                        )
                         try:
                             result_mappings[pe.id].append(output_name)
                         except:
                             result_mappings[pe.id] = [output_name]
-        partition_pe = SimpleProcessingPE(inputmappings,
-                                          outputmappings,
-                                          proc_to_pe)
+        partition_pe = SimpleProcessingPE(inputmappings, outputmappings, proc_to_pe)
 
         # use number of processes if specified in graph
         try:
@@ -435,17 +439,25 @@ def create_partitioned(workflow_all):
     ubergraph.partition_pes = partition_pes
     # sort the external connections so that nodes are added in the same order
     # if doing this in multiple processes in parallel this is important
-    for comm, source_partition, source_id, source_output, dest_partition, \
-        dest_id, dest_input in \
-            sorted(external_connections,
-                   key=lambda connections: len(connections)):
+    for (
+        comm,
+        source_partition,
+        source_id,
+        source_output,
+        dest_partition,
+        dest_id,
+        dest_input,
+    ) in sorted(external_connections, key=lambda connections: len(connections)):
         partition_pes[source_partition]._add_output((source_id, source_output))
-        partition_pes[dest_partition]._add_input((dest_id, dest_input),
-                                                 grouping=comm.name)
-        ubergraph.connect(partition_pes[source_partition],
-                          (source_id, source_output),
-                          partition_pes[dest_partition],
-                          (dest_id, dest_input))
+        partition_pes[dest_partition]._add_input(
+            (dest_id, dest_input), grouping=comm.name
+        )
+        ubergraph.connect(
+            partition_pes[source_partition],
+            (source_id, source_output),
+            partition_pes[dest_partition],
+            (dest_id, dest_input),
+        )
     return ubergraph
 
 
@@ -460,14 +472,14 @@ def map_inputs_to_partitions(ubergraph, inputs):
                 partition_id = ubergraph.pe_to_partition[pe.id]
                 pe_id = pe.id
             except Exception as exc:
-                raise Exception('Could not map input name "%s" to a PE. %s: %s'
-                                % (pe, exc.__class__.__name__, exc))
+                raise Exception(
+                    f'Could not map input name "{pe}" to a PE. {exc.__class__.__name__}: {exc}'
+                )
         mapped_pe = ubergraph.partition_pes[partition_id]
         try:
             mapped_pe_input = []
             for i in inputs[pe]:
-                mapped_data = {(pe_id, name):
-                               [data] for name, data in i.items()}
+                mapped_data = {(pe_id, name): [data] for name, data in i.items()}
                 mapped_pe_input.append(mapped_data)
         except TypeError:
             mapped_pe_input = inputs[pe]
@@ -506,7 +518,7 @@ def _is_root(node, workflow):
     result = True
     pe = node.getContainedObject()
     for edge in workflow.graph[node].values():
-        if pe == edge['DIRECTION'][1]:
+        if pe == edge["DIRECTION"][1]:
             result = False
             break
     return result
@@ -542,9 +554,10 @@ def _order_by_dependency(inputmappings, outputmappings):
 
 
 class SimpleProcessingPE(GenericPE):
-    '''
+    """
     A PE that processes a subgraph of PEs in sequence.
-    '''
+    """
+
     def __init__(self, input_mappings, output_mappings, proc_to_pe):
         GenericPE.__init__(self)
         # work out the order of PEs
@@ -571,17 +584,15 @@ class SimpleProcessingPE(GenericPE):
         results = {}
         for proc in self.ordered:
             pe = self.proc_to_pe[proc]
-            pe.writer = SimpleWriter(self, pe,
-                                     self.output_mappings[proc],
-                                     self.result_mappings)
+            pe.writer = SimpleWriter(
+                self, pe, self.output_mappings[proc], self.result_mappings
+            )
             pe._write = types.MethodType(_simple_write, pe)
             # if there was data produced in postprocessing
             # then we need to process that data in the PEs downstream
             if proc in all_inputs:
                 for data in all_inputs[proc]:
-                    # pe.log('Processing input: %s' % data)
                     result = pe.process(data)
-                    # pe.log('Produced result: %s' % result)
                     if result is not None:
                         for output_name in result:
                             pe.write(output_name, result[output_name])
@@ -607,9 +618,9 @@ class SimpleProcessingPE(GenericPE):
         inputs = self.map_inputs(inputs)
         for proc in self.ordered:
             pe = self.proc_to_pe[proc]
-            pe.writer = SimpleWriter(self, pe,
-                                     self.output_mappings[proc],
-                                     self.result_mappings)
+            pe.writer = SimpleWriter(
+                self, pe, self.output_mappings[proc], self.result_mappings
+            )
             pe._write = types.MethodType(_simple_write, pe)
             provided_inputs = get_inputs(pe, inputs)
             try:
@@ -625,7 +636,6 @@ class SimpleProcessingPE(GenericPE):
                 for i in range(0, provided_inputs):
                     _process_data(pe, {})
             else:
-
                 if provided_inputs is None:
                     if not pe.inputconnections:
                         # run at least once for a source of the graph
@@ -652,9 +662,7 @@ class SimpleProcessingPE(GenericPE):
 
 
 def _process_data(pe, data):
-    # pe.log('Processing input: %s' % data)
     result = pe.process(data)
-    # pe.log('Produced result: %s' % result)
     if result is not None:
         for output_name in result:
             pe.write(output_name, result[output_name])
@@ -674,7 +682,6 @@ class SimpleWriter(object):
         self.results = {}
 
     def write(self, output_name, data):
-        #self.pe.log('SPE Writing %s to %s' % (data, output_name))
         try:
             destinations = self.output_mappings[output_name]
             dest_data = data
@@ -693,51 +700,67 @@ class SimpleWriter(object):
             # if there are no named result outputs
             # the data is added to the results of the PE
             if self.result_mappings is None:
-                self.simple_pe.wrapper._write((self.pe.id, output_name),
-                                              [data])
-                
+                self.simple_pe.wrapper._write((self.pe.id, output_name), [data])
+
         # now check if the output is in the named results
         # (in case of a Tee) then data gets written to the PE results as well
         try:
-            
             if output_name in self.result_mappings[self.pe.id]:
-                self.simple_pe.wrapper._write((self.pe.id, output_name),
-                                              [data])
-                
-                #self.pe.log('SPE Writing %s to %s' % (data, output_name))
+                self.simple_pe.wrapper._write((self.pe.id, output_name), [data])
         except:
             pass
 
 
 def create_arg_parser():  # pragma: no cover
     parser = argparse.ArgumentParser(
-        description='Submit a dispel4py graph for processing.',
-        formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('target', help='target execution platform')
-    parser.add_argument('module', help='module that creates a dispel4py graph '
-                        '(python module or file name)')
-    parser.add_argument('-a', '--attr', metavar='attribute',
-                        help='name of graph variable in the module')
-    parser.add_argument('-f', '--file', metavar='inputfile',
-                        help="file containing input dataset in JSON format \n"
-                        "(has priority over -d)")
-    parser.add_argument('-d', '--data', metavar='inputdata',
-                        help="input dataset in JSON format")
-    parser.add_argument('-i', '--iter', metavar='iterations', type=int,
-                        help='number of iterations', default=1)
-    parser.add_argument('--provenance-config', dest='provenance',
-                        metavar='provenance-config-path', type=str,
-                        nargs='?', help='This argument is MANDATORY to process commandline provenance config!\n'
-                                         'optionally specify a path to file with given config (JSON) or specify "inline".\n'
-                                         'This option has priority over inline specified provenance configuration\n'
-                                         'if its value is a valid provenance file. Specify "inline" as value if the\n'
-                                         'provenance configuration is embedded in the workflow graph(=module argument).\n'
-                                         'Attention: "s-prov:WFExecutionInputs" is deprecated. \n'
-                                         '"--provenance --help" for help on additional options.' )
+        description="Submit a dispel4py graph for processing.",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument("target", help="target execution platform")
+    parser.add_argument(
+        "module",
+        help="module that creates a dispel4py graph " "(python module or file name)",
+    )
+    parser.add_argument(
+        "-a", "--attr", metavar="attribute", help="name of graph variable in the module"
+    )
+    parser.add_argument(
+        "-f",
+        "--file",
+        metavar="inputfile",
+        help="file containing input dataset in JSON format \n" "(has priority over -d)",
+    )
+    parser.add_argument(
+        "-d", "--data", metavar="inputdata", help="input dataset in JSON format"
+    )
+    parser.add_argument(
+        "-i",
+        "--iter",
+        metavar="iterations",
+        type=int,
+        help="number of iterations",
+        default=1,
+    )
+    parser.add_argument(
+        "--provenance-config",
+        dest="provenance",
+        metavar="provenance-config-path",
+        type=str,
+        nargs="?",
+        help="This argument is MANDATORY to process commandline provenance config!\n"
+        'optionally specify a path to file with given config (JSON) or specify "inline".\n'
+        "This option has priority over inline specified provenance configuration\n"
+        'if its value is a valid provenance file. Specify "inline" as value if the\n'
+        "provenance configuration is embedded in the workflow graph(=module argument).\n"
+        'Attention: "s-prov:WFExecutionInputs" is deprecated. \n'
+        '"--provenance --help" for help on additional options.',
+    )
     return parser
+
 
 def get_inputs_from_arguments(args):
     import json
+
     inputs = {}
 
     if args.file:
@@ -747,7 +770,7 @@ def get_inputs_from_arguments(args):
             with open(args.file) as inputfile:
                 inputs = json.loads(inputfile.read())
         except Exception as e:
-            print("Error reading JSON file '%s': %s" % (args.file, str(e)))
+            print(f"Error reading JSON file '{args.file}': {e}")
             raise e
     elif args.data:
         inputs = json.loads(args.data)
@@ -755,16 +778,15 @@ def get_inputs_from_arguments(args):
 
 
 def create_inputs(args, graph):
-    import json
     inputs = {}
 
     inputs = get_inputs_from_arguments(args)
 
     if not inputs:
         if args.iter == 1:
-            print('Processing 1 iteration.')
+            print("Processing 1 iteration.")
         else:
-            print('Processing %s iterations.' % args.iter)
+            print(f"Processing {args.iter} iterations.")
         for node in graph.graph.nodes():
             if _is_root(node, graph):
                 inputs[node.getContainedObject()] = args.iter
@@ -787,10 +809,10 @@ def create_inputs(args, graph):
 
 
 def check_commandline_argument(argument):
-    argument_present=False
+    argument_present = False
     for arg in sys.argv:
-        if argument == arg[:len(argument)]:
-            argument_present=True
+        if argument == arg[: len(argument)]:
+            argument_present = True
             break
     return argument_present
 
@@ -819,39 +841,66 @@ def load_graph_and_inputs(args):
     inputs = create_inputs(args, graph)
 
     if CommandLineInputs.provenanceCommandLineConfigPresent:
-        if args.provenance and args.provenance != 'inline' and not os.path.exists(args.provenance):
-            print("Can't load provenance configuration %s" % args.provenance)
-        elif args.provenance and (args.provenance == 'inline' or os.path.exists(args.provenance)):
-            from dispel4py.provenance import init_provenance_config, configure_prov_run, ProvenanceType
-            print("Reading provenance config from cli supplied file (could be inline if explicitly specified).")
+        if (
+            args.provenance
+            and args.provenance != "inline"
+            and not os.path.exists(args.provenance)
+        ):
+            print(f"Can't load provenance configuration {args.provenance}")
+        elif args.provenance and (
+            args.provenance == "inline" or os.path.exists(args.provenance)
+        ):
+            from dispel4py.provenance import (
+                init_provenance_config,
+                configure_prov_run,
+                ProvenanceType,
+            )
+
+            print(
+                "Reading provenance config from cli supplied file (could be inline if explicitly specified)."
+            )
             prov_config, remaining = init_provenance_config(args)
             if not prov_config:
-                print ("WARNING: Provenance confguration missing, processing will continue without provenance recordings")
+                print(
+                    "WARNING: Provenance confguration missing, processing will continue without provenance recordings"
+                )
             else:
-             ## Ignore returned remaining command line arguments. Will be taken care of in main()
+                ## Ignore returned remaining command line arguments. Will be taken care of in main()
                 print(prov_config)
-                configure_prov_run(graph, provImpClass=(ProvenanceType,),sprovConfig=prov_config, force=True)
+                configure_prov_run(
+                    graph,
+                    provImpClass=(ProvenanceType,),
+                    sprovConfig=prov_config,
+                    force=True,
+                )
         else:
-            print("WARNING: --provenance-config supplied, but no config seems to be specified.\n"
-                  "Command line argument parsing may break and/or no provenance may be generated.\n"
-                  "Specify --provenance-config=inline if the configuration is in the workflow.")
+            print(
+                "WARNING: --provenance-config supplied, but no config seems to be specified.\n"
+                "Command line argument parsing may break and/or no provenance may be generated.\n"
+                "Specify --provenance-config=inline if the configuration is in the workflow."
+            )
     return graph, inputs
 
 
-def parse_common_args():   # pragma: no cover
+def parse_common_args():  # pragma: no cover
     parser = create_arg_parser()
     return parser.parse_known_args()
 
+
 import time
-def main():   # pragma: no cover
+
+
+def main():  # pragma: no cover
     from importlib import import_module
 
     args, remaining = parse_common_args()
 
-    graph, inputs = load_graph_and_inputs(args, )
+    graph, inputs = load_graph_and_inputs(
+        args,
+    )
     if graph is None:
         return
-    
+
     try:
         # see if platform is in the mappings file as a simple name
         target = config[args.target]
@@ -859,7 +908,7 @@ def main():   # pragma: no cover
         # it is a proper module name - fingers crossed...
         target = args.target
     try:
-        parse_args = getattr(import_module(target), 'parse_args')
+        parse_args = getattr(import_module(target), "parse_args")
         args = parse_args(remaining, args)
     except SystemExit:
         # the sub parser raised an error
@@ -870,15 +919,15 @@ def main():   # pragma: no cover
     print("RUN ARGS: ")
     print(args)
     print("==========")
-    process = getattr(import_module(target), 'process')
-    elapsed_time=0
+    process = getattr(import_module(target), "process")
+    elapsed_time = 0
     start_time = time.time()
     errormsg = process(graph, inputs=inputs, args=args)
     if errormsg:
         print(errormsg)
-        
-    print ("ELAPSED TIME: "+str(time.time()-start_time))
-    
+
+    print("ELAPSED TIME: " + str(time.time() - start_time))
+
 
 if __name__ == "__main__":  # pragma: no cover
     main()

@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This graph is a modification of the :py:mod:`~test.graph_testing.parallel_pipeline` example, 
 showing how the user can specify how the graph is going to be partitioned into MPI processes. 
 In this example we are specifying that one MPI process is executing the pipline of nodes ``prod``, 
@@ -56,17 +56,18 @@ Execution:
         GraphWrapperPE5 (rank 0): Completed.
 
 * STORM:  
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testParallelPipeline():
-    '''
+    """
     Creates the parallel pipeline graph with partitioning information.
-    
+
     :rtype: the created graph
-    '''
+    """
     graph = WorkflowGraph()
     prod = t.TestProducer()
     prev = prod
@@ -74,13 +75,14 @@ def testParallelPipeline():
     cons2 = t.TestOneInOneOut()
     cons3 = t.TestOneInOneOut()
 
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(cons1, 'output', cons2, 'input')
-    graph.connect(cons1, 'output', cons3, 'input')
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(cons1, "output", cons2, "input")
+    graph.connect(cons1, "output", cons3, "input")
 
-    graph.partitions = [ [prod, cons1, cons2], [cons3] ]
+    graph.partitions = [[prod, cons1, cons2], [cons3]]
 
     return graph
 
-''' important: this is the graph_variable '''
+
+""" important: this is the graph_variable """
 graph = testParallelPipeline()

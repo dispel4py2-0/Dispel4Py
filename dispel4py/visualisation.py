@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 The IPython module for visualising a dispel4py graph using Graphviz dot.
 
 For example, to visualise a graph named 'pipeline'::
@@ -20,13 +20,13 @@ For example, to visualise a graph named 'pipeline'::
     from dispel4py.visualisation import display
     display(pipeline)
 
-'''
+"""
 from dispel4py.workflow_graph import drawDot
 from IPython.core.display import display_png
 
 
 def display(graph):
-    '''
+    """
     Visualises the input graph.
-    '''
+    """
     display_png(drawDot(graph), raw=True)

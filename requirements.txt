@@ -1,3 +1,4 @@
+black==23.3.0
 PyJWT == 2.6.0
 flake8 == 5.0.4
 httpsproxy-urllib2 == 1.0

@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces a workflow that sends copies of the output data from the producer node (words) 
 to two nodes (filter1 and filter2), and the outputs of those two filters are merged in the last node (count). 
 
@@ -66,27 +66,28 @@ It can be executed with MPI and STORM.
         As those PEs are filtering randomly the output could be completely different.
 				
 * STORM:  
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testGrouping():
-    '''
+    """
     Creates the test graph.
-    '''
+    """
     words = t.RandomWordProducer()
     filter1 = t.RandomFilter()
     filter2 = t.RandomFilter()
     count = t.WordCounter()
     graph = WorkflowGraph()
-    graph.connect(words, 'output', filter1, 'input')
-    graph.connect(words, 'output', filter2, 'input')
-    graph.connect(filter1, 'output', count, 'input')
-    graph.connect(filter2, 'output', count, 'input')
+    graph.connect(words, "output", filter1, "input")
+    graph.connect(words, "output", filter2, "input")
+    graph.connect(filter1, "output", count, "input")
+    graph.connect(filter2, "output", count, "input")
 
     return graph
 
-''' important: this is the graph_variable '''
-graph = testGrouping()
 
+""" important: this is the graph_variable """
+graph = testGrouping()

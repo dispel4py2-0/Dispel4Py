@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 Enactment of dispel4py graphs using multiprocessing.
 
 From the commandline, run the following command::
@@ -42,17 +42,21 @@ For example::
     TestOneInOneOut3 (rank 3): Processed 5 iterations.
     TestOneInOneOut4 (rank 4): Processed 5 iterations.
     TestOneInOneOut5 (rank 2): Processed 5 iterations.
-'''
+"""
 
 
 import argparse
 import copy
 import multiprocessing
 import traceback
-import os
 import types
-from dispel4py.new.processor \
-    import GenericWrapper, simpleLogger, STATUS_ACTIVE, STATUS_TERMINATED, SimpleProcessingPE
+from dispel4py.new.processor import (
+    GenericWrapper,
+    simpleLogger,
+    STATUS_ACTIVE,
+    STATUS_TERMINATED,
+    SimpleProcessingPE,
+)
 from dispel4py.new import processor
 
 
@@ -60,14 +64,21 @@ def _processWorker(wrapper):
     wrapper.process()
 
 
-def parse_args(args, namespace):    # pragma: no cover
+def parse_args(args, namespace):  # pragma: no cover
     parser = argparse.ArgumentParser(
-        prog='dispel4py',
-        description='Submit a dispel4py graph to multiprocessing.')
-    parser.add_argument('-s', '--simple', help='force simple processing',
-                        action='store_true')
-    parser.add_argument('-n', '--num', metavar='num_processes', required=True,
-                        type=int, help='number of processes to run')
+        prog="dispel4py", description="Submit a dispel4py graph to multiprocessing."
+    )
+    parser.add_argument(
+        "-s", "--simple", help="force simple processing", action="store_true"
+    )
+    parser.add_argument(
+        "-n",
+        "--num",
+        metavar="num_processes",
+        required=True,
+        type=int,
+        help="number of processes to run",
+    )
 
     result, remaining = parser.parse_known_args(args, namespace)
     return result
@@ -86,30 +97,42 @@ def process(workflow, inputs, args):
 
     if args.simple or not success:
         ubergraph = processor.create_partitioned(workflow)
-        print('Partitions: %s' % ', '.join(('[%s]' % ', '.join(
-            (pe.id for pe in part)) for part in workflow.partitions)))
+        print(
+            "Partitions: {}".format(
+                ", ".join(
+                    (
+                        "[{}]".format(
+                            ", ".join((pe.id for pe in part))
+                            for part in workflow.partitions
+                        )
+                    )
+                )
+            )
+        )
         for node in ubergraph.graph.nodes():
             wrapperPE = node.getContainedObject()
-            pes = [n.getContainedObject().id for
-                   n in wrapperPE.workflow.graph.nodes()]
-            print('%s contains %s' % (wrapperPE.id, pes))
+            pes = [n.getContainedObject().id for n in wrapperPE.workflow.graph.nodes()]
+            print(f"{wrapperPE.id} contains {pes}")
 
         try:
             result = processor.assign_and_connect(ubergraph, size)
             if result is None:
-                return 'dispel4py.multi_process: ' \
-                       'Not enough processes for execution of graph'
+                return (
+                    "dispel4py.multi_process: "
+                    "Not enough processes for execution of graph"
+                )
             processes, inputmappings, outputmappings = result
             inputs = processor.map_inputs_to_partitions(ubergraph, inputs)
             success = True
-            nodes = [node.getContainedObject()
-                     for node in ubergraph.graph.nodes()]
+            nodes = [node.getContainedObject() for node in ubergraph.graph.nodes()]
         except:
             print(traceback.format_exc())
-            return 'dispel4py.multi_process: ' \
-                   'Could not create mapping for execution of graph'
+            return (
+                "dispel4py.multi_process: "
+                "Could not create mapping for execution of graph"
+            )
 
-    print('Processes: %s' % processes)
+    print(f"Processes: {processes}")
 
     process_pes = {}
     queues = {}
@@ -128,7 +151,7 @@ def process(workflow, inputs, args):
             wrapper = MultiProcessingWrapper(proc, cp, provided_inputs)
             process_pes[proc] = wrapper
             wrapper.input_queue = multiprocessing.Queue()
-            wrapper.input_queue.name = 'Queue_%s_%s' % (cp.id, cp.rank)
+            wrapper.input_queue.name = f"Queue_{cp.id}_{cp.rank}"
             wrapper.result_queue = result_queue
             queues[proc] = wrapper.input_queue
             wrapper.targets = outputmappings[proc]
@@ -158,7 +181,6 @@ def process(workflow, inputs, args):
 
 
 class MultiProcessingWrapper(GenericWrapper):
-
     def __init__(self, rank, pe, provided_inputs=None):
         GenericWrapper.__init__(self, pe)
         self.pe.log = types.MethodType(simpleLogger, pe)
@@ -177,7 +199,7 @@ class MultiProcessingWrapper(GenericWrapper):
                 data, status = self.input_queue.get()
                 no_data = False
             except:
-                self.pe.log('Failed to read item from queue')
+                self.pe.log("Failed to read item from queue")
                 pass
         while status == STATUS_TERMINATED:
             self.terminated += 1
@@ -187,13 +209,11 @@ class MultiProcessingWrapper(GenericWrapper):
                 try:
                     data, status = self.input_queue.get()
                 except:
-                    self.pe.log('Failed to read item from queue')
+                    self.pe.log("Failed to read item from queue")
                     pass
         return data, status
 
     def _write(self, name, data):
-        #self.pe.log('MP Writing %s to %s' % (data, name))
-
         try:
             targets = self.targets[name]
         except KeyError:
@@ -201,8 +221,7 @@ class MultiProcessingWrapper(GenericWrapper):
             if self.result_queue:
                 self.result_queue.put((self.pe.id, name, data))
             return
-        for (inputName, communication) in targets:
-
+        for inputName, communication in targets:
             if isinstance(self.pe, SimpleProcessingPE):
                 dest = communication.getDestination({inputName: data[0]})
             else:
@@ -210,14 +229,13 @@ class MultiProcessingWrapper(GenericWrapper):
 
             output = {inputName: data}
             for i in dest:
-                #self.pe.log('Writing out %s' % output)
                 try:
                     self.output_queues[i].put((output, STATUS_ACTIVE))
                 except:
-                    self.pe.log("Failed to write item to output '%s'" % name)
+                    self.pe.log(f"Failed to write item to output '{name}'")
 
     def _terminate(self):
         for output, targets in self.targets.items():
-            for (inputName, communication) in targets:
+            for inputName, communication in targets:
                 for i in communication.destinations:
                     self.output_queues[i].put((None, STATUS_TERMINATED))

@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 See grouping_onetoall.py
 Only different is that this test give TestProducer a stateful property
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
+
 
 def testOnetoAll():
     graph = WorkflowGraph()
@@ -26,10 +27,11 @@ def testOnetoAll():
     prod.numprocesses = 1
     prod.stateful = "nature"
     cons = t.TestOneInOneOut()
-    cons.numprocesses=2
-    cons.inputconnections['input']['grouping'] = 'all'
-    graph.connect(prod, 'output', cons, 'input')
+    cons.numprocesses = 2
+    cons.inputconnections["input"]["grouping"] = "all"
+    graph.connect(prod, "output", cons, "input")
     return graph
 
-''' important: this is the graph_variable '''
+
+""" important: this is the graph_variable """
 graph = testOnetoAll()

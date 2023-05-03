@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 This is a dispel4py graph which produces a pipeline workflow with one producer node (prod) and 5 consumer nodes. 
 It can be executed with MPI and STORM. 
 
@@ -87,23 +87,26 @@ Execution:
         Running: java -client -Dstorm.options= -Dstorm.home= ...
         Submitting topology 'TestTopology' to storm.example.com:6627 ... 
         
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
+
 def testPipeline(graph):
-    '''
+    """
     Adds a pipeline to the given graph.
-    
+
     :rtype: the created graph
-    '''
+    """
     prod = t.TestProducer()
     prev = prod
     for i in range(5):
         cons = t.TestOneInOneOut()
-        graph.connect(prev, 'output', cons, 'input')
+        graph.connect(prev, "output", cons, "input")
         prev = cons
     return graph
-''' important: this is the graph_variable '''
+
+
+""" important: this is the graph_variable """
 graph = testPipeline(WorkflowGraph())

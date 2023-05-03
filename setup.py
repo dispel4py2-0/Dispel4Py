@@ -29,23 +29,26 @@ setup(
     version="1.3.0",
     author="The University of Edinburgh",
     author_email="a.krause@epcc.ed.ac.uk",
-    description=("dispel4py is a free and open-source Python library for \
+    description=(
+        "dispel4py is a free and open-source Python library for \
         describing abstract stream-based workflows for distributed \
-        data-intensive applications."),
+        data-intensive applications."
+    ),
     license="Apache 2",
     keywords="dispel4py dispel workflows processing elements data intensive",
     url="http://dispel4py.org",
-    packages=['dispel4py',
-              'dispel4py.new',
-              'dispel4py.examples',
-              'dispel4py.examples.graph_testing',
-              'dispel4py.examples.article_sentiment_analysis',
-              'dispel4py.examples.internal_extinction'],
-    long_description=read('README.md'),
-    install_requires=['networkx', 'flake8', 'redis'],
+    packages=[
+        "dispel4py",
+        "dispel4py.new",
+        "dispel4py.examples",
+        "dispel4py.examples.graph_testing",
+        "dispel4py.examples.article_sentiment_analysis",
+    ],
+    long_description=read("README.md"),
+    install_requires=["networkx", "flake8", "redis"],
     entry_points={
-        'console_scripts': [
-            'dispel4py = dispel4py.new.processor:main',
+        "console_scripts": [
+            "dispel4py = dispel4py.new.processor:main",
         ]
     },
     classifiers=[
@@ -54,6 +57,3 @@ setup(
         "License :: OSI Approved :: Apache 2 License",
     ],
 )
-
-
-

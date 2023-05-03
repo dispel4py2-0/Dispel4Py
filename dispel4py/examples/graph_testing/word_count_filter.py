@@ -1,5 +1,5 @@
 # Copyright (c) The University of Edinburgh 2014
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,20 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 Counts words produced by RandomWordProducer and filtered by RandomFilter.
-'''
+"""
 
 from dispel4py.workflow_graph import WorkflowGraph
 
-from dispel4py.examples.graph_testing.testing_PEs import RandomFilter, RandomWordProducer, WordCounter
+from dispel4py.examples.graph_testing.testing_PEs import (
+    RandomFilter,
+    RandomWordProducer,
+    WordCounter,
+)
 
 words = RandomWordProducer()
-words.numprocesses=1
+words.numprocesses = 1
 filter = RandomFilter()
-filter.numprocesses=5
+filter.numprocesses = 5
 count = WordCounter()
-count.numprocesses=3
+count.numprocesses = 3
 graph = WorkflowGraph()
-graph.connect(words, 'output', filter, 'input')
-graph.connect(filter, 'output', count, 'input')
+graph.connect(words, "output", filter, "input")
+graph.connect(filter, "output", count, "input")
