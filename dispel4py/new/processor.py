@@ -129,9 +129,15 @@ class GenericWrapper(object):
         self.pe.postprocess()
         self._terminate()
         if num_iterations == 1:
-            self.pe.log("Processed 1 iteration.")
+            try:
+                self.pe.log("Processed 1 iteration.")
+            except:
+                pass
         else:
-            self.pe.log(f"Processed {num_iterations} iterations.")
+            try:
+                self.pe.log(f"Processed {num_iterations} iterations.")
+            except:
+                pass
 
     def _read(self):
         # check the provided inputs
