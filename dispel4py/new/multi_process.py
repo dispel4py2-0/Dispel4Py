@@ -50,15 +50,18 @@ import copy
 import multiprocessing
 import traceback
 import types
+##from dispel4py.new.processor import simpleLogger
+
 from dispel4py.new.processor import (
     GenericWrapper,
-    simpleLogger,
     STATUS_ACTIVE,
     STATUS_TERMINATED,
     SimpleProcessingPE,
 )
 from dispel4py.new import processor
 
+def simpleLogger(self, msg):
+    print(f"{self.id}: {msg}") 
 
 def _processWorker(wrapper):
     wrapper.process()
@@ -147,7 +150,7 @@ def process(workflow, inputs, args):
         for proc in processes[pe.id]:
             cp = copy.deepcopy(pe)
             cp.rank = proc
-            cp.log = types.MethodType(simpleLogger, cp)
+            #cp.log = types.MethodType(simpleLogger, cp)
             wrapper = MultiProcessingWrapper(proc, cp, provided_inputs)
             process_pes[proc] = wrapper
             wrapper.input_queue = multiprocessing.Queue()
@@ -183,7 +186,7 @@ def process(workflow, inputs, args):
 class MultiProcessingWrapper(GenericWrapper):
     def __init__(self, rank, pe, provided_inputs=None):
         GenericWrapper.__init__(self, pe)
-        self.pe.log = types.MethodType(simpleLogger, pe)
+        #self.pe.log = types.MethodType(simpleLogger, pe)
         self.pe.rank = rank
         self.provided_inputs = provided_inputs
         self.terminated = 0
@@ -199,7 +202,7 @@ class MultiProcessingWrapper(GenericWrapper):
                 data, status = self.input_queue.get()
                 no_data = False
             except:
-                self.pe.log("Failed to read item from queue")
+                #self.pe.log("Failed to read item from queue")
                 pass
         while status == STATUS_TERMINATED:
             self.terminated += 1
@@ -209,7 +212,7 @@ class MultiProcessingWrapper(GenericWrapper):
                 try:
                     data, status = self.input_queue.get()
                 except:
-                    self.pe.log("Failed to read item from queue")
+                    #self.pe.log("Failed to read item from queue")
                     pass
         return data, status
 
