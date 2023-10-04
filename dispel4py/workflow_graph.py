@@ -34,40 +34,42 @@ class WorkflowNode:
     WORKFLOW_NODE_CP = 2
     node_counter = 0
 
-    def __init__(self, o):
-        self.obj = o
+    def __init__(self, obj):
+        self.obj = obj
         self.outputs = []
         self.inputs = []
 
-        if isinstance(o, GenericPE):
-            o.id = o.name + str(WorkflowNode.node_counter)
+        if isinstance(obj, GenericPE):
+            obj.id = obj.name + str(WorkflowNode.node_counter)
             WorkflowNode.node_counter += 1
             self.nodeType = self.WORKFLOW_NODE_PE
-            for i in o.inputconnections.values():
+
+            for i in obj.inputconnections.values():
                 # Empty for the time being - only the index matters
                 self.inputs.append({})
-            for i in o.outputconnections.values():
+
+            for i in obj.outputconnections.values():
                 self.outputs.append({})
-        elif isinstance(o, WorkflowGraph):
+        elif isinstance(obj, WorkflowGraph):
             self.nodeType = self.WORKFLOW_NODE_CP
             try:
-                for i in o.inputmappings:
+                for i in obj.inputmappings:
                     self.inputs.append({})
             except AttributeError:
                 pass
             try:
-                for i in o.outputmappings:
+                for i in obj.outputmappings:
                     self.outputs.append({})
             except AttributeError:
                 pass
         else:
             sys.stderr.write(
                 f"Error: Unknown type of object passed as a \
-                              Workflow Node: {type(o)}\n"
+                              Workflow Node: {type(obj)}\n"
             )
             raise Exception(
                 f"Unknown type of object passed as a \
-                             Workflow Node: {type(o)}"
+                             Workflow Node: {type(obj)}"
             )
 
     def getContainedObject(self):
@@ -103,43 +105,43 @@ class WorkflowGraph(object):
         self.objToNode[n] = nd
         return nd
 
-    def connect(self, fromNode, fromConnection, toNode, toConnection):
+    def connect(self, from_node, from_connection, to_node, to_connection):
         """
         Connect the two given nodes from the given output to the given input.
         If the nodes are not in the graph, they will be added.
 
-        :param fromNode: the source PE of the connection
-        :param fromConnection: the name of the output of the source node
+        :param from_node: the source PE of the connection
+        :param from_connection: the name of the output of the source node
         'fromNode'
-        :type fromConnection: String
-        :param toNode: the destination PE of the connection
-        :param toConnection: the name of the input of the destination node
+        :type from_connection: String
+        :param to_node: the destination PE of the connection
+        :param to_connection: the name of the input of the destination node
         'toNode'
-        :type toConnection: String
+        :type to_connection: String
         """
 
-        if fromNode not in self.objToNode:
-            self.add(fromNode)
-        if toNode not in self.objToNode:
-            self.add(toNode)
+        if from_node not in self.objToNode:
+            self.add(from_node)
+        if to_node not in self.objToNode:
+            self.add(to_node)
 
-        fromWfNode = self.objToNode[fromNode]
-        toWfNode = self.objToNode[toNode]
+        from_wf_node = self.objToNode[from_node]
+        to_wf_node = self.objToNode[to_node]
 
-        if self.graph.has_edge(fromWfNode, toWfNode):
-            self.graph[fromWfNode][toWfNode]["ALL_CONNECTIONS"].append(
-                (fromConnection, toConnection)
+        if self.graph.has_edge(from_wf_node, to_wf_node):
+            self.graph[from_wf_node][to_wf_node]["ALL_CONNECTIONS"].append(
+                (from_connection, to_connection)
             )
 
         else:
             self.graph.add_edge(
-                fromWfNode,
-                toWfNode,
+                from_wf_node,
+                to_wf_node,
                 **{
-                    "FROM_CONNECTION": fromConnection,
-                    "TO_CONNECTION": toConnection,
-                    "DIRECTION": (fromNode, toNode),
-                    "ALL_CONNECTIONS": [(fromConnection, toConnection)],
+                    "FROM_CONNECTION": from_connection,
+                    "TO_CONNECTION": to_connection,
+                    "DIRECTION": (from_node, to_node),
+                    "ALL_CONNECTIONS": [(from_connection, to_connection)],
                 },
             )
 
@@ -223,15 +225,19 @@ class WorkflowGraph(object):
             self.graph.remove_nodes_from(toRemove)
 
 
-def _create_dot(graph, instanceNames={}, counter=0):
+def _create_dot(graph, instance_names=None, counter=0):
+    if instance_names is None:
+        instance_names = {}
+
     dot = ""
+
     # Assign unique names
     for node in graph.graph.nodes():
         try:
             name = node.getContainedObject().id, counter
-        except:
+        except Exception as e:
             name = node.getContainedObject().__class__.__name__, counter
-        instanceNames[node] = name
+        instance_names[node] = name
         counter += 1
 
     # Now add all the nodes and their input and output connections
@@ -239,11 +245,11 @@ def _create_dot(graph, instanceNames={}, counter=0):
     for node in graph.graph.nodes():
         pe = node.getContainedObject()
         if isinstance(pe, WorkflowGraph):
-            dot += _create_cluster(pe, cluster_index, instanceNames, counter)
+            dot += _create_cluster(pe, cluster_index, instance_names, counter)
             cluster_index += 1
             continue
 
-        name, index = instanceNames[node]
+        name, index = instance_names[node]
         dot += f'{name}{index}[label="{{ '
         # Add inputs
         inputNames = []
@@ -288,9 +294,9 @@ def _create_dot(graph, instanceNames={}, counter=0):
                     destNode = graph.objToNode[dest]
                     dest_input = edge["TO_CONNECTION"]
                 dot += "{}{}:out_{}->{}{}:in_{};\n".format(
-                    *instanceNames[node],
+                    *instance_names[node],
                     source_output,
-                    *instanceNames[destNode],
+                    *instance_names[destNode],
                     dest_input,
                 )
     return dot

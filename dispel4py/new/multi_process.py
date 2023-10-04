@@ -50,7 +50,8 @@ import copy
 import multiprocessing
 import traceback
 import types
-##from dispel4py.new.processor import simpleLogger
+
+# from dispel4py.new.processor import simpleLogger
 
 from dispel4py.new.processor import (
     GenericWrapper,
@@ -60,8 +61,10 @@ from dispel4py.new.processor import (
 )
 from dispel4py.new import processor
 
+
 def simpleLogger(self, msg):
-    print(f"{self.id}: {msg}") 
+    print(f"{self.id}: {msg}")
+
 
 def _processWorker(wrapper):
     wrapper.process()
@@ -87,7 +90,8 @@ def parse_args(args, namespace):  # pragma: no cover
     return result
 
 
-def process(workflow, inputs, args):
+def process(workflow, inputs, args) -> multiprocessing.Queue:
+    result = None
     size = args.num
     success = True
     nodes = [node.getContainedObject() for node in workflow.graph.nodes()]
@@ -95,7 +99,8 @@ def process(workflow, inputs, args):
         try:
             result = processor.assign_and_connect(workflow, size)
             processes, inputmappings, outputmappings = result
-        except:
+        except Exception as e:
+            print(f'Exception in the process method: {e}')
             success = False
 
     if args.simple or not success:
@@ -128,7 +133,9 @@ def process(workflow, inputs, args):
             inputs = processor.map_inputs_to_partitions(ubergraph, inputs)
             success = True
             nodes = [node.getContainedObject() for node in ubergraph.graph.nodes()]
-        except:
+        except Exception as e:
+            print('Could not create mapping for execution of graph:')
+            print(e)
             print(traceback.format_exc())
             return (
                 "dispel4py.multi_process: "
@@ -136,21 +143,17 @@ def process(workflow, inputs, args):
             )
 
     print(f"Processes: {processes}")
+    # print(f'Result: {result}')
 
     process_pes = {}
     queues = {}
-    result_queue = None
-    try:
-        if args.results:
-            result_queue = multiprocessing.Queue()
-    except AttributeError:
-        pass
+    result_queue = multiprocessing.Queue()
     for pe in nodes:
         provided_inputs = processor.get_inputs(pe, inputs)
         for proc in processes[pe.id]:
             cp = copy.deepcopy(pe)
             cp.rank = proc
-            #cp.log = types.MethodType(simpleLogger, cp)
+            # cp.log = types.MethodType(simpleLogger, cp)
             wrapper = MultiProcessingWrapper(proc, cp, provided_inputs)
             process_pes[proc] = wrapper
             wrapper.input_queue = multiprocessing.Queue()
@@ -178,15 +181,14 @@ def process(workflow, inputs, args):
     for j in jobs:
         j.join()
 
-    if result_queue:
-        result_queue.put(STATUS_TERMINATED)
+    result_queue.put(STATUS_TERMINATED)
     return result_queue
 
 
 class MultiProcessingWrapper(GenericWrapper):
     def __init__(self, rank, pe, provided_inputs=None):
         GenericWrapper.__init__(self, pe)
-        #self.pe.log = types.MethodType(simpleLogger, pe)
+        # self.pe.log = types.MethodType(simpleLogger, pe)
         self.pe.rank = rank
         self.provided_inputs = provided_inputs
         self.terminated = 0
@@ -201,9 +203,9 @@ class MultiProcessingWrapper(GenericWrapper):
             try:
                 data, status = self.input_queue.get()
                 no_data = False
-            except:
-                #self.pe.log("Failed to read item from queue")
-                pass
+            except Exception as e:
+                # self.pe.log("Failed to read item from queue")
+                print(f'multi_process.py: Failed to read item from queue: "{e}"')
         while status == STATUS_TERMINATED:
             self.terminated += 1
             if self.terminated >= self._num_sources:
@@ -211,16 +213,18 @@ class MultiProcessingWrapper(GenericWrapper):
             else:
                 try:
                     data, status = self.input_queue.get()
-                except:
-                    #self.pe.log("Failed to read item from queue")
-                    pass
+                except Exception as e:
+                    # self.pe.log("Failed to read item from queue")
+                    print(f'multi_process.py: Failed to read item from queue: "{e}"')
         return data, status
 
     def _write(self, name, data):
         try:
+            # print(name)
+            # print(self.targets)
             targets = self.targets[name]
-        except KeyError:
-            # no targets
+        except KeyError as e:
+            #print(traceback.format_exc())
             if self.result_queue:
                 self.result_queue.put((self.pe.id, name, data))
             return
@@ -235,7 +239,8 @@ class MultiProcessingWrapper(GenericWrapper):
                 try:
                     self.output_queues[i].put((output, STATUS_ACTIVE))
                 except:
-                    self.pe.log(f"Failed to write item to output '{name}'")
+                    print(f"multi_process.py: Failed to write item to output '{name}'")
+                    #self.pe.log(f"Failed to write item to output '{name}'")
 
     def _terminate(self):
         for output, targets in self.targets.items():

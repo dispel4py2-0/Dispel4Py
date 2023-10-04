@@ -79,9 +79,14 @@ def parse_args(args, namespace):
         prog="dispel4py",
         description="Submit a dispel4py graph to redis dynamic processing",
     )
+
     parser.add_argument(
-        "-ri", "--redis-ip", required=True, help="IP address of external redis server"
+        "-ri",
+        "--redis-ip",
+        required=True,
+        help="IP address of external redis server"
     )
+
     parser.add_argument(
         "-rp",
         "--redis-port",
@@ -97,6 +102,7 @@ def parse_args(args, namespace):
         type=int,
         help="number of processes to run",
     )
+
     result = parser.parse_args(args, namespace)
     return result
 
@@ -117,18 +123,18 @@ def _get_destination(graph, node, output_name, output_value):
             dest_input = edge[2]["TO_CONNECTION"]
 
             if hasattr(dest, "stateful"):
-                groupingtype = dest.stateful
-                if isinstance(groupingtype, list):
+                grouping_type = dest.stateful
+                if isinstance(grouping_type, list):
                     # communication = GroupByCommunication(dest_processes, dest_input, groupingtype)
-                    grouping_tuple = tuple([output_value[x] for x in groupingtype])
+                    grouping_tuple = tuple([output_value[x] for x in grouping_type])
                     dest_index = abs(make_hash(grouping_tuple)) % dest.numprocesses
                     result.add((dest.id, dest_input, dest_index))
-                elif groupingtype == "all":
+                elif grouping_type == "all":
                     for i in range(dest.numprocesses):
                         result.add((dest.id, dest_input, i))
-                elif groupingtype == "global":
+                elif grouping_type == "global":
                     result.add((dest.id, dest_input, 0))
-                elif groupingtype == "nature":
+                elif grouping_type == "nature":
                     # Randomly choose one instance
                     result.add(
                         (dest.id, dest_input, random.randint(0, dest.numprocesses - 1))

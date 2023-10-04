@@ -45,7 +45,10 @@ def loadGraphFromFile(module_name, path, attr=None):
     if sys.version_info > (3, 0):
         from importlib import util
 
+        # print(f'Importing {module_name} from "{path}...')
         spec = util.spec_from_file_location(module_name, path)
+        # print(spec)
+
         module = util.module_from_spec(spec)
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)
