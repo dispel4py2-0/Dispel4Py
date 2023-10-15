@@ -1,12 +1,9 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-__author__ = 'Trung Dong Huynh'
-__email__ = 'trungdong@donggiang.com'
+__author__ = "Trung Dong Huynh"
+__email__ = "trungdong@donggiang.com"
 
-__all__ = [
-    'get'
-]
+__all__ = ["get"]
 
 from prov import Error
 
@@ -40,9 +37,9 @@ class Registry:
         from prov.serializers.provxml import ProvXMLSerializer
 
         Registry.serializers = {
-            'json': ProvJSONSerializer,
-            'provn': ProvNSerializer,
-            'xml': ProvXMLSerializer
+            "json": ProvJSONSerializer,
+            "provn": ProvNSerializer,
+            "xml": ProvXMLSerializer,
         }
 
 
@@ -56,8 +53,4 @@ def get(format_name):
     try:
         return Registry.serializers[format_name]
     except KeyError:
-        raise DoNotExist(
-            'No serializer available for the format "%s"' % format_name
-        )
-
-
+        raise DoNotExist('No serializer available for the format "%s"' % format_name)

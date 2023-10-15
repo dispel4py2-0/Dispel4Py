@@ -1,4 +1,4 @@
-'''
+"""
 The mapping to Apache Spark.
 
 Run as follows::
@@ -22,7 +22,7 @@ For example::
 
 If the input JSON data contains a URI to a text file this will be read as a
 Spark textfile input with one record per line.
-'''
+"""
 
 import argparse
 import sys
@@ -38,7 +38,6 @@ def simpleLogger(self, msg):
 
 
 class PEWrapper(object):
-
     def __init__(self, pe):
         self.pe = pe
         self.pe.log = types.MethodType(simpleLogger, pe)
@@ -47,54 +46,68 @@ class PEWrapper(object):
     def process(self, data):
         # self.pe.log('processing %s' % data)
         for output, desc in self.pe.outputconnections.items():
-            desc['writer'] = SimpleWriter(output)
+            desc["writer"] = SimpleWriter(output)
         result = self.pe.process(data)
         # self.pe.log('result: %s' % result)
         written = []
         if result is not None:
             written.append(result)
         for output, desc in self.pe.outputconnections.items():
-            written.extend(desc['writer'].data)
+            written.extend(desc["writer"].data)
         # self.pe.log('writing: %s' % written)
         return written
 
 
 class SimpleWriter(object):
-
     def __init__(self, output_name):
         self.output_name = output_name
         self.data = []
 
     def write(self, data):
-        self.data.append({'output': data})
+        self.data.append({"output": data})
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Submit a dispel4py graph to Apache Spark.')
-    parser.add_argument('module', help='module that creates a dispel4py graph '
-                        '(python module or file name)')
-    parser.add_argument('-a', '--attr', metavar='attribute',
-                        help='name of graph variable in the module')
-    parser.add_argument('-f', '--file', metavar='inputfile',
-                        help='file containing input dataset in JSON format')
-    parser.add_argument('-d', '--data', metavar='inputdata',
-                        help='input dataset in JSON format')
-    parser.add_argument('-i', '--iter', metavar='iterations', type=int,
-                        help='number of iterations', default=1)
-    parser.add_argument('-sm', '--master', help='master URL for the cluster')
-    parser.add_argument('-sn', '--name', help='name of the Spark process')
+        description="Submit a dispel4py graph to Apache Spark."
+    )
     parser.add_argument(
-        '-sd',
-        '--deploy-mode',
-        choices=['cluster', 'client'],
-        help='deploy driver on worker nodes or locally as external client')
+        "module",
+        help="module that creates a dispel4py graph " "(python module or file name)",
+    )
+    parser.add_argument(
+        "-a", "--attr", metavar="attribute", help="name of graph variable in the module"
+    )
+    parser.add_argument(
+        "-f",
+        "--file",
+        metavar="inputfile",
+        help="file containing input dataset in JSON format",
+    )
+    parser.add_argument(
+        "-d", "--data", metavar="inputdata", help="input dataset in JSON format"
+    )
+    parser.add_argument(
+        "-i",
+        "--iter",
+        metavar="iterations",
+        type=int,
+        help="number of iterations",
+        default=1,
+    )
+    parser.add_argument("-sm", "--master", help="master URL for the cluster")
+    parser.add_argument("-sn", "--name", help="name of the Spark process")
+    parser.add_argument(
+        "-sd",
+        "--deploy-mode",
+        choices=["cluster", "client"],
+        help="deploy driver on worker nodes or locally as external client",
+    )
     result = parser.parse_args()
     return result
 
 
 class Projection(object):
-
     def __init__(self, outputs):
         self.outputs = outputs
 
@@ -110,7 +123,6 @@ class Projection(object):
 
 
 class Rename(object):
-
     def __init__(self, mapping):
         self.mapping = mapping
 
@@ -127,9 +139,8 @@ class Rename(object):
 
 
 def process(sc, workflow, inputs, args):
+    from dispel4py.new.processor import assign_and_connect, _order_by_dependency
 
-    from dispel4py.new.processor\
-        import assign_and_connect, _order_by_dependency
     graph = workflow.graph
     result = assign_and_connect(workflow, graph.number_of_nodes())
     if result is None:
@@ -175,16 +186,14 @@ def process(sc, workflow, inputs, args):
                     for inp in outs[output_name]:
                         input_name = inp[0]
                         rename = Rename({output_name: input_name})
-                        output_rdd[(proc, input_name)] = \
-                            out_rdd.flatMap(rename.rename)
+                        output_rdd[(proc, input_name)] = out_rdd.flatMap(rename.rename)
             else:
                 for output_name in outs:
                     proj = Projection([output_name])
                     proj_rdd = out_rdd.flatMap(proj.project)
                     for inp in outs[output_name]:
                         rename = Rename({output_name: inp[0]})
-                        output_rdd[(proc, inp[0])] = \
-                            proj_rdd.flatMap(rename.rename)
+                        output_rdd[(proc, inp[0])] = proj_rdd.flatMap(rename.rename)
             if not outs:
                 result_rdd[proc] = out_rdd
 
@@ -204,8 +213,7 @@ def process(sc, workflow, inputs, args):
                     for inp in outs[output_name]:
                         input_name = inp[0]
                         rename = Rename({output_name: input_name})
-                        output_rdd[(proc, input_name)] = \
-                            out_rdd.flatMap(rename.rename)
+                        output_rdd[(proc, input_name)] = out_rdd.flatMap(rename.rename)
             else:
                 for output_name in outs:
                     proj = Projection([output_name])
@@ -213,8 +221,7 @@ def process(sc, workflow, inputs, args):
                     for inp in outs[output_name]:
                         input_name = inp[0]
                         rename = Rename({output_name: input_name})
-                        output_rdd[(proc, input_name)] = \
-                            out_rdd.flatMap(rename.rename)
+                        output_rdd[(proc, input_name)] = out_rdd.flatMap(rename.rename)
             if not outs:
                 result_rdd[proc] = out_rdd
     # print("RESULT PROCESSES: %s" % result_rdd.keys())
@@ -229,10 +236,9 @@ def run():
     from pyspark import SparkContext, SparkConf
 
     conf = SparkConf()
-    conf.setAppName('dispel4py')
+    conf.setAppName("dispel4py")
     conf.set("spark.storage.memoryFraction", "0.5")
-    sc = SparkContext(
-        conf=conf)
+    sc = SparkContext(conf=conf)
 
     from dispel4py.new import processor
     from dispel4py.utils import load_graph
@@ -253,24 +259,31 @@ def main():
     import os
     import subprocess
     import sys
+
     try:
-        spark_home = os.environ['SPARK_HOME']
+        spark_home = os.environ["SPARK_HOME"]
     except:
-        print('Please set SPARK_HOME.')
+        print("Please set SPARK_HOME.")
         sys.exit(1)
 
     parser = argparse.ArgumentParser(
-        description='Submit a dispel4py graph for processing.')
-    parser.add_argument('target', help='target execution platform')
+        description="Submit a dispel4py graph for processing."
+    )
+    parser.add_argument("target", help="target execution platform")
     args, remaining = parser.parse_known_args()
+
     this_path = os.path.abspath(__file__)
-    if this_path.endswith('pyc'):
+    if this_path.endswith("pyc"):
         this_path = this_path[:-1]
-    command = ['%s/bin/spark-submit' % spark_home,
-               '--py-files=dist/dispel4py-1.0.1-py2.7.egg',
-               this_path] + remaining
+
+    command = [
+        "%s/bin/spark-submit" % spark_home,
+        "--py-files=dist/dispel4py-1.0.1-py2.7.egg",
+        this_path,
+    ] + remaining
     print(command)
     subprocess.call(command)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run()

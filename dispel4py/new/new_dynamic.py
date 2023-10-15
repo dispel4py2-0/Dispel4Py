@@ -1,9 +1,11 @@
 import argparse
 import copy
 import types
+
 # import multiprocessing
 import time
 from multiprocessing import Process, Queue, TimeoutError, Value, Manager
+
 # from dispel4py.new import processor
 
 from dispel4py.new.processor import GenericWrapper, get_inputs, simpleLogger
@@ -25,10 +27,11 @@ MULTI_TIMEOUT = TIMEOUT_IN_SECONDS
 
 from dispel4py.new.logger import logger, print_stack_trace
 
+
 class TimerDecorator:
     def __init__(self):
         # Creating a multiprocessing.Value of type double ('d') with initial value 0.0
-        self.total_time = Value('d', 0.0)
+        self.total_time = Value("d", 0.0)
         # self.lock = multiprocessing.Lock()
 
     def __call__(self, func):
@@ -43,43 +46,47 @@ class TimerDecorator:
 
             # print(f"'{func.__name__}' took {duration:.5f} seconds to execute.")
             return result
+
         return wrapper
+
 
 timer = TimerDecorator()
 
 
-
-
 def parse_args(args, namespace):
     parser = argparse.ArgumentParser(
-        prog='dispel4py',
-        description='Submit a dispel4py graph to zeromq multi processing')
-    parser.add_argument('-ct', '--consumer-timeout',
-                        help='stop consumers after timeout in ms',
-                        type=int)
-    parser.add_argument('-n', '--num', metavar='num_processes', required=True,
-                        type=int, help='number of processes to run')
-    
+        prog="dispel4py",
+        description="Submit a dispel4py graph to zeromq multi processing",
+    )
+    parser.add_argument(
+        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int
+    )
+    parser.add_argument(
+        "-n",
+        "--num",
+        metavar="num_processes",
+        required=True,
+        type=int,
+        help="number of processes to run",
+    )
+
     result = parser.parse_args(args, namespace)
     return result
 
 
 class GenericWriter:
-
     def __init__(self, queue, destinations):
         self.queue = queue
         self.destinations = destinations
 
     def write(self, data):
-
         if self.destinations:
             for dest_id, input_name in self.destinations:
                 self.queue.put((dest_id, {input_name: data}))
 
-class DynamicWrapper(object):
 
+class DynamicWrapper(object):
     def __init__(self, pe, provided_inputs):
-        
         self.pe = pe
         self.provided_inputs = provided_inputs
         self.pe.wrapper = self
@@ -89,25 +96,26 @@ class DynamicWrapper(object):
         # self.name = pe.name
         # self.pe.log = types.MethodType(simpleLogger, self.pe)
 
-        logger.debug(f"self.pe = {self.pe!r}\n \
+        logger.debug(
+            f"self.pe = {self.pe!r}\n \
                         self.pe.wrapper = {self.pe.wrapper!r}\n \
                         self.provided_inputs = {self.provided_inputs!r}\n \
-                        self.pe.outputconnections = {self.pe.outputconnections!r}")
-        
-    def process(self, data):
+                        self.pe.outputconnections = {self.pe.outputconnections!r}"
+        )
 
+    def process(self, data):
         # logger.debug(f"data = {data}")
         return self.pe.process(data)
 
 
-class DynamicWroker():
-
+class DynamicWroker:
     def __init__(self, queue, cp_graph, rank):
-
         self.graph = cp_graph
         self.rank = rank
         self.queue = queue
-        self.node_pe = {node.obj.id: {'node' : node, 'pe' : node.obj} for node in self.graph.nodes()}
+        self.node_pe = {
+            node.obj.id: {"node": node, "pe": node.obj} for node in self.graph.nodes()
+        }
 
     @timer
     def process(self):
@@ -125,23 +133,22 @@ class DynamicWroker():
                 # value = self.queue.get(not self.queue.empty())
                 value = self.queue.get(timeout=MULTI_TIMEOUT)
 
-                if value == 'STOP':
+                if value == "STOP":
                     # self.queue.put('STOP')
                     break
-                
 
                 pe_id, data = value
-                pe = self.node_pe[pe_id]['pe']
-                node = self.node_pe[pe_id]['node']
+                pe = self.node_pe[pe_id]["pe"]
+                node = self.node_pe[pe_id]["node"]
 
-                # logger.debug(f"rank = {self.rank}, pe_id = {pe_id}, pe = {pe}, node = {node}") 
+                # logger.debug(f"rank = {self.rank}, pe_id = {pe_id}, pe = {pe}, node = {node}")
 
-                
                 for output_name in pe.outputconnections:
-
                     destinations = self._get_destination(node, output_name)
-                    pe.outputconnections[output_name][WRITER] = GenericWriter(self.queue, destinations)
-                
+                    pe.outputconnections[output_name][WRITER] = GenericWriter(
+                        self.queue, destinations
+                    )
+
                 # logger.debug(f"outputconnections = {pe.outputconnections}")
 
                 output = pe.process(data)
@@ -155,7 +162,7 @@ class DynamicWroker():
 
                 # Reset retries after successful process
                 retries = 0
-                # timeout = INIT_TIMEOUT    
+                # timeout = INIT_TIMEOUT
 
             except Empty:
                 # Implement the retry mechanism here
@@ -163,7 +170,7 @@ class DynamicWroker():
                 retries += 1
 
                 if retries == MAX_RETRIES:
-                    self.queue.put('STOP')
+                    self.queue.put("STOP")
 
                     # logger.error(f"Empty queue, timeout = {MULTI_TIMEOUT * MAX_RETRIES}")
                     break
@@ -177,12 +184,9 @@ class DynamicWroker():
                 logger.error(f"Exception = {e}")
                 pass
 
-
         # self.queue.put('STOP')
 
-
     def _get_destination(self, node, output_name):
-
         """
         Function to get the destinations of a certain node in the graph.
 
@@ -198,25 +202,23 @@ class DynamicWroker():
         pe_id = node.obj.id
 
         for edge in self.graph.edges(node, data=True):
-            direction = edge[2]['DIRECTION']
+            direction = edge[2]["DIRECTION"]
             source, dest = direction
 
         # ensure it's the source and not the first PE
-        if source.id == pe_id and output_name == edge[2]['FROM_CONNECTION']:
-            dest_input = edge[2]['TO_CONNECTION']
+        if source.id == pe_id and output_name == edge[2]["FROM_CONNECTION"]:
+            dest_input = edge[2]["TO_CONNECTION"]
             destinations.add((dest.id, dest_input))
 
         return destinations
 
 
 def process(workflow, inputs=None, args=None):
-
-
     # logger.info(f"workflow = {workflow}, dir(workflow) = {dir(workflow)})")
 
     start_time = time.time()
 
-    size = args.num-1
+    size = args.num - 1
     graph = workflow.graph
 
     queue = Manager().Queue()
@@ -225,14 +227,12 @@ def process(workflow, inputs=None, args=None):
     # nodes = {node.getContainedObject().id: node for node in workflow.graph.nodes()}
 
     for node in graph.nodes():
-
         provided_inputs = get_inputs(node.obj, inputs)
         # logger.debug(f"dir(node.obj) = {dir(node.obj)}")
         node.obj = DynamicWrapper(node.obj, provided_inputs)
         # logger.debug(f"dir(node.obj) = {dir(node.obj.pe)}")
 
         if provided_inputs:
-
             # logger.debug(f"provided_inputs = {provided_inputs}")
 
             if isinstance(provided_inputs, int):
@@ -250,8 +250,8 @@ def process(workflow, inputs=None, args=None):
         worker = DynamicWroker(queue, cp_graph, rank)
         proc = Process(target=worker.process)
         workers.append(proc)
-        
-    print('Starting %s workers communicating' % (len(workers)))
+
+    print("Starting %s workers communicating" % (len(workers)))
 
     for worker in workers:
         worker.start()

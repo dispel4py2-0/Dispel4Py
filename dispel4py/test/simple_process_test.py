@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 Tests for simple sequential processing engine.
 
-'''
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.new import simple_process
@@ -27,10 +27,13 @@ def testPipeline():
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     graph = WorkflowGraph()
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(cons1, 'output', cons2, 'input')
-    results = simple_process.process_and_return(graph, inputs={ prod : [ {}, {}, {}, {}, {} ] } )
-    assert { cons2.id : { 'output' : [1, 2, 3, 4, 5] } } == results
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(cons1, "output", cons2, "input")
+    results = simple_process.process_and_return(
+        graph, inputs={prod: [{}, {}, {}, {}, {}]}
+    )
+    assert {cons2.id: {"output": [1, 2, 3, 4, 5]}} == results
+
 
 def testSquare():
     graph = WorkflowGraph()
@@ -38,12 +41,13 @@ def testSquare():
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     last = t.TestTwoInOneOut()
-    graph.connect(prod, 'output0', cons1, 'input')
-    graph.connect(prod, 'output1', cons2, 'input')
-    graph.connect(cons1, 'output', last, 'input0')
-    graph.connect(cons2, 'output', last, 'input1')
-    results = simple_process.process_and_return(graph, { prod : [{}]} )
-    assert {last.id : { 'output' :['1', '1']} } == results
+    graph.connect(prod, "output0", cons1, "input")
+    graph.connect(prod, "output1", cons2, "input")
+    graph.connect(cons1, "output", last, "input0")
+    graph.connect(cons2, "output", last, "input1")
+    results = simple_process.process_and_return(graph, {prod: [{}]})
+    assert {last.id: {"output": ["1", "1"]}} == results
+
 
 def testTee():
     graph = WorkflowGraph()
@@ -51,16 +55,20 @@ def testTee():
     prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(prod, 'output', cons2, 'input')
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(prod, "output", cons2, "input")
     results = simple_process.process_and_return(graph, {prod: [{}, {}, {}, {}, {}]})
-    assert { cons1.id : {'output': [1, 2, 3, 4, 5]}, cons2.id: {'output' : [1, 2, 3, 4, 5]} } == results
+    assert {
+        cons1.id: {"output": [1, 2, 3, 4, 5]},
+        cons2.id: {"output": [1, 2, 3, 4, 5]},
+    } == results
+
 
 def testWriter():
     graph = WorkflowGraph()
     prod = t.TestProducer()
     prev = prod
     cons1 = t.TestOneInOneOutWriter()
-    graph.connect(prod, 'output', cons1, 'input')
+    graph.connect(prod, "output", cons1, "input")
     results = simple_process.process_and_return(graph, {prod: [{}, {}, {}, {}, {}]})
-    assert { cons1.id : {'output': [1, 2, 3, 4, 5]} } == results
+    assert {cons1.id: {"output": [1, 2, 3, 4, 5]}} == results

@@ -1,21 +1,19 @@
 import logging, coloredlogs
+
 # import os
 
 format = "%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s"
 logger = logging.getLogger(__name__)
 logger.propagate = False
 # coloredlogs.install(level = 'debug', fmt = format, logger = logger)
-coloredlogs.install(level = 'info', fmt = format, logger = logger)
+coloredlogs.install(level="info", fmt=format, logger=logger)
 # coloredlogs.install(level = 'error', fmt = format, logger = logger)
 
 
-logging.getLogger('astropy').setLevel(logging.ERROR)
-logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
+logging.getLogger("astropy").setLevel(logging.ERROR)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 
-coloredlogs.install(level = 'error', fmt = format)
-
-
-
+coloredlogs.install(level="error", fmt=format)
 
 
 # logger.debug("this is a debugging message")
@@ -24,15 +22,18 @@ coloredlogs.install(level = 'error', fmt = format)
 # logger.error("this is an error message")
 
 
-
 import inspect
+
 
 def print_stack_trace():
     stack = inspect.stack()
     # pid = os.getpid()
     # print(f"Current process ID: {pid}")
     for frame in stack:
-        print(f"Function '{frame.function}' called from file '{frame.filename}' at line {frame.lineno}")
+        print(
+            f"Function '{frame.function}' called from file '{frame.filename}' at line {frame.lineno}"
+        )
+
 
 def simpleLogger(self, msg):
     try:

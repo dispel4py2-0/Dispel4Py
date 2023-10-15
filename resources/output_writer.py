@@ -16,7 +16,6 @@ import storm
 
 
 class OutputWriter(object):
-
     def __init__(self, scriptname, streamname):
         self.scriptname = scriptname
         self.streamname = streamname
@@ -25,14 +24,19 @@ class OutputWriter(object):
         result = output if isinstance(output, list) else [output]
         try:
             storm.emit(result, stream=self.streamname)
-            storm.log("Dispel4Py ------> %s: Emitted to stream %s."
-                      % (self.scriptname, self.streamname))
+            storm.log(
+                "Dispel4Py ------> %s: Emitted to stream %s."
+                % (self.scriptname, self.streamname)
+            )
         except TypeError:
             # encode manually
             encoded = encode_types(result)
             storm.emit(encoded, stream=self.streamname)
-            storm.log("Dispel4Py ------> %s: Emitted to stream %s."
-                      % (self.scriptname, self.streamname))
+            storm.log(
+                "Dispel4Py ------> %s: Emitted to stream %s."
+                % (self.scriptname, self.streamname)
+            )
+
 
 # import io
 # import numpy

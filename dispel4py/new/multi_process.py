@@ -101,7 +101,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
             result = processor.assign_and_connect(workflow, size)
             processes, inputmappings, outputmappings = result
         except Exception as e:
-            print(f'Exception in the process method: {e}')
+            print(f"Exception in the process method: {e}")
             success = False
 
     if args.simple or not success:
@@ -138,7 +138,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
             success = True
             nodes = [node.getContainedObject() for node in ubergraph.graph.nodes()]
         except Exception as e:
-            print('Could not create mapping for execution of graph:')
+            print("Could not create mapping for execution of graph:")
             print(e)
             print(traceback.format_exc())
             return (
@@ -147,12 +147,12 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
             )
 
     print(f"Processes: {processes}")
-    print(f'Result: {result}')
+    print(f"Result: {result}")
 
     process_pes = {}
     queues = {}
 
-    #result_queue = multiprocessing.Queue()
+    # result_queue = multiprocessing.Queue()
     result_queue = None
     try:
         if args.results:
@@ -238,7 +238,7 @@ class MultiProcessingWrapper(GenericWrapper):
             # print(self.targets)
             targets = self.targets[name]
         except KeyError as e:
-            #print(traceback.format_exc())
+            # print(traceback.format_exc())
             if self.result_queue:
                 self.result_queue.put((self.pe.id, name, data))
             return
@@ -254,7 +254,7 @@ class MultiProcessingWrapper(GenericWrapper):
                     self.output_queues[i].put((output, STATUS_ACTIVE))
                 except:
                     print(f"multi_process.py: Failed to write item to output '{name}'")
-                    #self.pe.log(f"Failed to write item to output '{name}'")
+                    # self.pe.log(f"Failed to write item to output '{name}'")
 
     def _terminate(self):
         for output, targets in self.targets.items():

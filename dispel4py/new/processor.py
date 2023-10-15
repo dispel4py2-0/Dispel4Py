@@ -245,8 +245,12 @@ def _assign_processes(workflow, size):
             pe = node.getContainedObject()
 
             num_processes = 1
-            if not ((pe.id in sources) or (hasattr(pe, "single") and pe.single == True)):
-                num_processes = _getNumProcesses(size, numSources, pe.numprocesses, totalProcesses)
+            if not (
+                (pe.id in sources) or (hasattr(pe, "single") and pe.single == True)
+            ):
+                num_processes = _getNumProcesses(
+                    size, numSources, pe.numprocesses, totalProcesses
+                )
 
             processes[pe.id] = range(node_counter, node_counter + num_processes)
             node_counter = node_counter + num_processes

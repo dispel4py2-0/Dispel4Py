@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-'''
+"""
 Tests for multiprocessing mapping.
 
 Using nose (https://nose.readthedocs.org/en/latest/) run as follows::
@@ -23,7 +23,7 @@ Using nose (https://nose.readthedocs.org/en/latest/) run as follows::
     Ran 3 tests in 0.042s
 
     OK
-'''
+"""
 import argparse
 
 from dispel4py.examples.graph_testing import testing_PEs as t
@@ -35,17 +35,19 @@ args = argparse.Namespace
 args.num = 5
 args.simple = False
 
+
 def testPipeline():
     prod = t.TestProducer()
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     graph = WorkflowGraph()
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(cons1, 'output', cons2, 'input')
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(cons1, "output", cons2, "input")
     args = argparse.Namespace
     args.num = 5
     args.simple = False
-    process(graph, inputs={ prod : [ {}, {}, {}  ] }, args=args )
+    process(graph, inputs={prod: [{}, {}, {}]}, args=args)
+
 
 def testSquare():
     graph = WorkflowGraph()
@@ -53,12 +55,13 @@ def testSquare():
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     last = t.TestTwoInOneOut()
-    graph.connect(prod, 'output0', cons1, 'input')
-    graph.connect(prod, 'output1', cons2, 'input')
-    graph.connect(cons1, 'output', last, 'input0')
-    graph.connect(cons2, 'output', last, 'input1')
+    graph.connect(prod, "output0", cons1, "input")
+    graph.connect(prod, "output1", cons2, "input")
+    graph.connect(cons1, "output", last, "input0")
+    graph.connect(cons2, "output", last, "input1")
     args.num = 4
-    process(graph, inputs={ prod : [{}]}, args=args )
+    process(graph, inputs={prod: [{}]}, args=args)
+
 
 def testTee():
     graph = WorkflowGraph()
@@ -66,14 +69,15 @@ def testTee():
     prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
-    graph.connect(prod, 'output', cons1, 'input')
-    graph.connect(prod, 'output', cons2, 'input')
+    graph.connect(prod, "output", cons1, "input")
+    graph.connect(prod, "output", cons2, "input")
     args.num = 3
     process(graph, inputs={prod: [{}, {}, {}, {}, {}]}, args=args)
 
-#print '='*20 + 'PIPELINE' + '='*20
-#testPipeline()
-#print '='*20 + 'SQUARE  ' + '='*20
-#testSquare()
-#print '='*20 + 'TEE     ' + '='*20
-#testTee()
+
+# print '='*20 + 'PIPELINE' + '='*20
+# testPipeline()
+# print '='*20 + 'SQUARE  ' + '='*20
+# testSquare()
+# print '='*20 + 'TEE     ' + '='*20
+# testTee()

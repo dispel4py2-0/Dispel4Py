@@ -81,10 +81,7 @@ def parse_args(args, namespace):
     )
 
     parser.add_argument(
-        "-ri",
-        "--redis-ip",
-        required=True,
-        help="IP address of external redis server"
+        "-ri", "--redis-ip", required=True, help="IP address of external redis server"
     )
 
     parser.add_argument(
