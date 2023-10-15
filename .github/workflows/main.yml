@@ -13,7 +13,7 @@ jobs:
       - name: Set up dir for new d4py
         run: |
           mkdir dispel4py # New version
-          tree
+          tree -L 2
           cd dispel4py
           
       - name: Checkout current repo
@@ -29,13 +29,12 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install -r ./requirements.txt
-          tree
           
       - name: Set up old d4p dir
         run: |
           cd ..
           mkdir dispel4py-autoscaling
-          tree
+          tree -L 2
           cd dispel4py-autoscaling
 
       - name: Checkout old dispel4py repo
