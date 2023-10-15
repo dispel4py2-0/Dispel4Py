@@ -1,5 +1,6 @@
-from dispel4py.seismo.seismo import SeismoPE
 import traceback
+
+from dispel4py.seismo.seismo import SeismoPE
 
 INPUT_NAME = "input"
 OUTPUT_NAME = "output"
@@ -13,12 +14,14 @@ class ObspyStreamPE(SeismoPE):
     def __init__(self):
         SeismoPE.__init__(self)
 
-    def setCompute(self, compute_fn, params={}):
+    def setCompute(self, compute_fn, params=None):
         """
         Define the compute function that this PE uses for processing input streams, and any input parameters for the function.
         The function must have at least one input, an obspy stream, and can accept more input parameters that must be provided
         before the PE is executed.
         """
+        if params is None:
+            params = {}
         self.compute_fn = compute_fn, dict(params)
 
     def setInputTypes(self, types):
@@ -44,8 +47,7 @@ class ObspyStreamPE(SeismoPE):
             self.log(traceback.format_exc())
             self.error += traceback.format_exc()
             self.log(
-                "Failed to execute function '%s' with parameters %s"
-                % (func.__name__, params)
+                f"Failed to execute function '{func.__name__}' with parameters {params}",
             )
 
 
@@ -53,7 +55,7 @@ from dispel4py.workflow_graph import WorkflowGraph
 
 
 def createProcessingComposite(
-    chain, suffix="", controlParameters={}, provRecorder=None
+    chain, suffix="", controlParameters=None, provRecorder=None,
 ):
     """
     Creates a composite PE wrapping a pipeline that processes obspy streams.
@@ -62,6 +64,8 @@ def createProcessingComposite(
     :param controlParameters: environment parameters for the processing elements
     :rtype: dictionary inputs and outputs of the composite PE that was created
     """
+    if controlParameters is None:
+        controlParameters = {}
     prev = None
     first = None
     graph = WorkflowGraph()

@@ -59,6 +59,7 @@ It can be executed with MPI and STORM.
 """
 
 import sys
+
 from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
@@ -75,7 +76,6 @@ def testTee():
     except:
         numIterations = 1
     prod = t.NumberProducer(numIterations)
-    prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     cons3 = t.TestOneInOneOut()

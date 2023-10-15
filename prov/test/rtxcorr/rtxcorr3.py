@@ -1,30 +1,22 @@
-from dispel4py.workflow_graph import WorkflowGraph
-from dispel4py.provenance import *
-from dispel4py.new.processor import *
-import time
+import os
 import random
-import numpy
+import time
 import traceback
-from dispel4py.base import (
-    create_iterative_chain,
-    GenericPE,
-    ConsumerPE,
-    IterativePE,
-    SimpleFunctionPE,
-)
-from dispel4py.new.simple_process import process_and_return
-import socket
-import json
-import ujson
+
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats.stats import pearsonr
-import networkx as nx
-import os
-from copy import deepcopy
+import ujson
 from dateutil.parser import parse as parse_date
 
+from dispel4py.base import (
+    GenericPE,
+)
+from dispel4py.new.processor import *
+from dispel4py.provenance import *
+from dispel4py.workflow_graph import WorkflowGraph
 
 sns.set(style="white")
 
@@ -142,7 +134,7 @@ class CompMatrix(GenericPE):
             if data[x][1] not in self.data:
                 # prepares the data to visualise the xcor matrix of a specific batch number.
                 self.data[data[x][1]] = {}
-                self.data[data[x][1]]["matrix"] = numpy.identity(self.size)
+                self.data[data[x][1]]["matrix"] = np.identity(self.size)
                 self.data[data[x][1]]["ro_count"] = 0
 
             self.data[data[x][1]]["matrix"][(data[x][2][1], data[x][2][0])] = data[x][0]
@@ -159,11 +151,11 @@ class CompMatrix(GenericPE):
                 matrix = self.data[data[x][1]]["matrix"]
 
                 d = pd.DataFrame(
-                    data=matrix, columns=range(0, self.size), index=range(0, self.size)
+                    data=matrix, columns=range(self.size), index=range(self.size),
                 )
 
-                mask = numpy.zeros_like(d, dtype=numpy.bool)
-                mask[numpy.triu_indices_from(mask)] = True
+                mask = np.zeros_like(d, dtype=np.bool)
+                mask[np.triu_indices_from(mask)] = True
 
                 # Set up the matplotlib figure
                 f, ax = plt.subplots(figsize=(11, 9))
@@ -209,7 +201,6 @@ class CorrCoef(GenericPE):
         self.batchnum = 1
 
     def _process(self, inputs):
-        index = None
         val = None
 
         try:
@@ -253,9 +244,9 @@ class CorrCoef(GenericPE):
         # self.addToProvState(None,,ignore_dep=False)
 
         if len(self.batch2) >= self.size and len(self.batch1) >= self.size:
-            array1 = numpy.array(self.batch1[0 : self.size])
-            array2 = numpy.array(self.batch2[0 : self.size])
-            ro = numpy.corrcoef([array1, array2])
+            array1 = np.array(self.batch1[0: self.size])
+            array2 = np.array(self.batch2[0: self.size])
+            ro = np.corrcoef([array1, array2])
 
             # stream out the correlation coefficient, the sequence number of the batch and the indexes of the sources.
             # Uncomment to reference entities in the Provenance State
@@ -278,8 +269,8 @@ class CorrCoef(GenericPE):
             self.batchnum += 1
             # self.log(self.batchnum)
 
-            self.batch1 = self.batch1[(self.size) : len(self.batch1)]
-            self.batch2 = self.batch2[(self.size) : len(self.batch2)]
+            self.batch1 = self.batch1[(self.size): len(self.batch1)]
+            self.batch2 = self.batch2[(self.size): len(self.batch2)]
 
 
 # number of projections = iterations/batch_size at speed defined by sampling rate
@@ -306,7 +297,7 @@ def createWf():
     mc.numprocesses = 1
     mat.numprocesses = 1
 
-    for i in range(0, variables_number):
+    for i in range(variables_number):
         sources[i] = Source(sampling_rate, i)
         # sources[i].prov_cluster='record0'
         #'+str(i%variables_number)
@@ -314,7 +305,7 @@ def createWf():
         sources[i].numprocesses = 1
         # sources[i].name="Source"+str(i)
 
-    for h in range(0, variables_number):
+    for h in range(variables_number):
         graph.connect(start, "output", sources[h], "iterations")
         for j in range(h + 1, variables_number):
             cc = CorrCoef(batch_size, (h, j))
@@ -374,7 +365,7 @@ class ProvenanceOnWriteOnly(ProvenancePE):
             # self.log(event)
             self.provon = False
 
-        super(ProvenanceOnWriteOnly, self).applyFlowResetPolicy(event, value)
+        super().applyFlowResetPolicy(event, value)
         # self.provon=False
 
 
@@ -397,7 +388,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
         }
         self.connection.request("POST", self.provurl.path, params, headers)
 
-        response = self.connection.getresponse()
+        self.connection.getresponse()
         # self.log("Postprocress: " +
         #         str((response.status, response.reason, response,
         #             response.read())))
@@ -476,7 +467,6 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
 
     def process(self, inputs):
         try:
-            out = None
             for x in inputs:
                 prov = inputs[x]
 
@@ -486,7 +476,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                 prov = prov["_d4p"]
                 # self.log(x)
                 self.sendToService(prov)
-                return None
+                return
             elif "provenance" in prov:
                 prov = prov["provenance"]
 
@@ -506,22 +496,22 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                             self.document.update({key: x[key]})
 
                         self.document.update(
-                            {"_id": x["prov_cluster"] + "_" + x["runId"]}
+                            {"_id": x["prov_cluster"] + "_" + x["runId"]},
                         )
                         self.document.update(
-                            {"instanceId": x["prov_cluster"] + "_" + x["runId"]}
+                            {"instanceId": x["prov_cluster"] + "_" + x["runId"]},
                         )
 
                         #
-                        if (self.document["startTime"] == None) or parse_date(
-                            self.document["startTime"]
+                        if (self.document["startTime"] is None) or parse_date(
+                            self.document["startTime"],
                         ) > parse_date(x["startTime"]):
                             # self.log("Adj  time to: "+str(x['endTime']))
                             self.document.update({"startTime": x["startTime"]})
                             self.streamsstart = x["streams"]
 
-                        elif (self.document["endTime"] == None) or parse_date(
-                            self.document["endTime"]
+                        elif (self.document["endTime"] is None) or parse_date(
+                            self.document["endTime"],
                         ) < parse_date(x["endTime"]):
                             self.document.update({"endTime": x["endTime"]})
                             self.streamsend = x["streams"]
@@ -533,7 +523,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                                 "DerivedFromDatasetID": "Data_"
                                 + d["prov_cluster"]
                                 + "_"
-                                + self.document["runId"]
+                                + self.document["runId"],
                             }
                             self.derivationIndex.update({d["prov_cluster"]: derivation})
 
@@ -559,7 +549,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                         + "_"
                         + self.document["runId"],
                         "location": self.locationss,
-                    }
+                    },
                 )
 
             if len(self.contente) > 0:
@@ -572,7 +562,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                         + "_"
                         + self.document["runId"],
                         "location": self.locationse,
-                    }
+                    },
                 )
 
             self.document["streams"][0]["content"] = (
@@ -627,7 +617,6 @@ class ProvenanceRecorderToFileBulk(ProvenanceRecorder):
 
     def process(self, inputs):
         try:
-            out = None
             for x in inputs:
                 prov = inputs[x]
 
@@ -658,7 +647,7 @@ def createGraphWithProv():
     # Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder subtypes
 
     # Ranomdly generated unique identifier for the current run
-    rid = os.environ["RUN_ID"]
+    os.environ["RUN_ID"]
 
     # Finally, provenance enhanced graph is prepared:
 
@@ -692,8 +681,6 @@ def createGraphWithProv():
 
 
 import argparse
-from dispel4py.new.multi_process import process
-
 
 args = argparse.Namespace
 args.num = 424

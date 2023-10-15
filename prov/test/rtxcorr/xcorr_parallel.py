@@ -1,28 +1,13 @@
-from dispel4py.workflow_graph import WorkflowGraph
+
+import seaborn as sns
+
+from dispel4py.base import (
+    GenericPE,
+)
+from dispel4py.new.processor import *
 from dispel4py.provenance import *
 from dispel4py.seismo.seismo import *
-from dispel4py.new.processor import *
-import time
-import random
-import numpy
-import traceback
-from dispel4py.base import (
-    create_iterative_chain,
-    GenericPE,
-    ConsumerPE,
-    IterativePE,
-    SimpleFunctionPE,
-)
-from dispel4py.new.simple_process import process_and_return
-from dispel4py.visualisation import display
-
-import IPython
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats.stats import pearsonr
-import networkx as nx
-from itertools import combinations
+from dispel4py.workflow_graph import WorkflowGraph
 
 sns.set(style="white")
 
@@ -103,10 +88,10 @@ class Combine(GenericPE):
         self.log("Combine_process")
         self.log(inputs.keys())
 
-        if "combine1" in inputs.keys():
+        if "combine1" in inputs:
             self.data1.append(inputs["combine1"][0])
 
-        if "combine2" in inputs.keys():
+        if "combine2" in inputs:
             self.data2.append(inputs["combine2"][0])
 
         if len(self.data1) > 0 and len(self.data2) > 0:
@@ -119,7 +104,7 @@ class Combine(GenericPE):
 
             # self.log(nc2)
             for k, v in nc2.attrs.items():
-                if k in nc.attrs.keys():
+                if k in nc.attrs:
                     nc.attrs[k] = v
                 else:
                     nc.attrs[k] = v

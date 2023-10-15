@@ -1,17 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Apr 07 09:32:54 2014
 
 @author: abell5
 """
 
+import numpy as np
+import scipy.fftpack
+import scipy.signal
+from numpy import complex, conjugate, copy, roll
+from obspy.signal.cross_correlation import xcorr
 from obspy.signal.util import nextpow2
 from scipy.fftpack import fft, ifft
-from numpy import complex, conjugate, roll, copy
-import scipy.signal
-import scipy.fftpack
-import numpy
-from obspy.signal.cross_correlation import xcorr
 
 """
 gapcorr = 0 fill gaps with 0s
@@ -61,8 +60,8 @@ author mdavid@ipgp.fr
 
 
 def PEXCorr1(st1, st2, maxlag):
-    st1 = st1 / numpy.linalg.norm(st1)
-    st2 = st2 / numpy.linalg.norm(st2)
+    st1 = st1 / np.linalg.norm(st1)
+    st2 = st2 / np.linalg.norm(st2)
     return xcorr(st1, st2, maxlag, full_xcorr=True)[2]
 
 
@@ -87,32 +86,32 @@ def PEXCorr2(st1, st2, maxlag):
 
     fft1 = scipy.fftpack.fft(st1)
     fft2 = scipy.fftpack.fft(st1)
-    data = numpy.array([fft1, fft2])
+    data = np.array([fft1, fft2])
 
     normalized = True
 
-    if numpy.shape(data)[0] == 2:
-        K = numpy.shape(data)[0]
+    if np.shape(data)[0] == 2:
+        K = np.shape(data)[0]
         # couples de stations
-        couples = numpy.concatenate((numpy.arange(0, K), K + numpy.arange(0, K)))
+        couples = np.concatenate((np.arange(0, K), K + np.arange(0, K)))
 
-    Nt = numpy.shape(data)[1]
+    Nt = np.shape(data)[1]
     Nc = 2 * Nt - 1
 
     # next power of 2
-    Nfft = 2 ** numpy.ceil(numpy.log2(numpy.abs(Nc)))
+    2 ** np.ceil(np.log2(np.abs(Nc)))
 
     corr = data
-    corr = numpy.conj(corr[couples[0]]) * corr[couples[1]]
-    corr = numpy.real(scipy.fftpack.ifft(corr)) / Nt
-    corr = numpy.concatenate((corr[-Nt + 1 :], corr[: Nt + 1]))
-    E = numpy.sqrt(numpy.mean(scipy.fftpack.ifft(data, axis=1) ** 2, axis=1))
+    corr = np.conj(corr[couples[0]]) * corr[couples[1]]
+    corr = np.real(scipy.fftpack.ifft(corr)) / Nt
+    corr = np.concatenate((corr[-Nt + 1:], corr[: Nt + 1]))
+    E = np.sqrt(np.mean(scipy.fftpack.ifft(data, axis=1) ** 2, axis=1))
     normFact = E[0] * E[1]
     if normalized:
-        corr /= numpy.real(normFact)
+        corr /= np.real(normFact)
     if maxlag != Nt:
-        tcorr = numpy.arange(-Nt + 1, Nt)
-        dN = numpy.where(numpy.abs(tcorr) <= maxlag)[0]
+        tcorr = np.arange(-Nt + 1, Nt)
+        dN = np.where(np.abs(tcorr) <= maxlag)[0]
         corr = corr[dN]
     del data
     return corr

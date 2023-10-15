@@ -28,16 +28,15 @@ import argparse
 import sys
 import types
 
-
 if sys.version_info == (3,):
     xrange = range
 
 
 def simpleLogger(self, msg):
-    print("%s: %s" % (self.id, msg))
+    print(f"{self.id}: {msg}")
 
 
-class PEWrapper(object):
+class PEWrapper:
     def __init__(self, pe):
         self.pe = pe
         self.pe.log = types.MethodType(simpleLogger, pe)
@@ -58,7 +57,7 @@ class PEWrapper(object):
         return written
 
 
-class SimpleWriter(object):
+class SimpleWriter:
     def __init__(self, output_name):
         self.output_name = output_name
         self.data = []
@@ -69,14 +68,14 @@ class SimpleWriter(object):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Submit a dispel4py graph to Apache Spark."
+        description="Submit a dispel4py graph to Apache Spark.",
     )
     parser.add_argument(
         "module",
-        help="module that creates a dispel4py graph " "(python module or file name)",
+        help="module that creates a dispel4py graph (python module or file name)",
     )
     parser.add_argument(
-        "-a", "--attr", metavar="attribute", help="name of graph variable in the module"
+        "-a", "--attr", metavar="attribute", help="name of graph variable in the module",
     )
     parser.add_argument(
         "-f",
@@ -85,7 +84,7 @@ def parse_args():
         help="file containing input dataset in JSON format",
     )
     parser.add_argument(
-        "-d", "--data", metavar="inputdata", help="input dataset in JSON format"
+        "-d", "--data", metavar="inputdata", help="input dataset in JSON format",
     )
     parser.add_argument(
         "-i",
@@ -103,11 +102,10 @@ def parse_args():
         choices=["cluster", "client"],
         help="deploy driver on worker nodes or locally as external client",
     )
-    result = parser.parse_args()
-    return result
+    return parser.parse_args()
 
 
-class Projection(object):
+class Projection:
     def __init__(self, outputs):
         self.outputs = outputs
 
@@ -122,7 +120,7 @@ class Projection(object):
             return []
 
 
-class Rename(object):
+class Rename:
     def __init__(self, mapping):
         self.mapping = mapping
 
@@ -139,7 +137,7 @@ class Rename(object):
 
 
 def process(sc, workflow, inputs, args):
-    from dispel4py.new.processor import assign_and_connect, _order_by_dependency
+    from dispel4py.new.processor import _order_by_dependency, assign_and_connect
 
     graph = workflow.graph
     result = assign_and_connect(workflow, graph.number_of_nodes())
@@ -150,7 +148,7 @@ def process(sc, workflow, inputs, args):
     process_to_pes = {}
     wrappers = {}
     for node in workflow.graph.nodes():
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         wrapper = PEWrapper(pe)
         for p in processes[pe.id]:
             process_to_pes[p] = pe
@@ -233,7 +231,7 @@ def process(sc, workflow, inputs, args):
 
 
 def run():
-    from pyspark import SparkContext, SparkConf
+    from pyspark import SparkConf, SparkContext
 
     conf = SparkConf()
     conf.setAppName("dispel4py")
@@ -267,7 +265,7 @@ def main():
         sys.exit(1)
 
     parser = argparse.ArgumentParser(
-        description="Submit a dispel4py graph for processing."
+        description="Submit a dispel4py graph for processing.",
     )
     parser.add_argument("target", help="target execution platform")
     args, remaining = parser.parse_known_args()
@@ -276,11 +274,7 @@ def main():
     if this_path.endswith("pyc"):
         this_path = this_path[:-1]
 
-    command = [
-        "%s/bin/spark-submit" % spark_home,
-        "--py-files=dist/dispel4py-1.0.1-py2.7.egg",
-        this_path,
-    ] + remaining
+    command = ["%s/bin/spark-submit" % spark_home, "--py-files=dist/dispel4py-1.0.1-py2.7.egg", this_path, *remaining]
     print(command)
     subprocess.call(command)
 

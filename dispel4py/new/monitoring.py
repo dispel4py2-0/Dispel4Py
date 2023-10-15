@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import List, Optional
 
 import time
 
@@ -26,7 +25,7 @@ class Timer:
         self.start = time.time()
         return self
 
-    def __exit__(self, *args: List[str]) -> None:
+    def __exit__(self, *args: list[str]) -> None:
         self.end = time.time()
         self.secs = self.end - self.start
 
@@ -34,7 +33,7 @@ class Timer:
 class MonitoringWrapper:
     def __init__(self, baseObject: object) -> None:
         self.__class__ = type(
-            baseObject.__class__.__name__, (self.__class__, baseObject.__class__), {}
+            baseObject.__class__.__name__, (self.__class__, baseObject.__class__), {},
         )
         self.__dict__ = baseObject.__dict__
         self.baseObject = baseObject
@@ -43,7 +42,7 @@ class MonitoringWrapper:
 class ReadTimingWrapper(MonitoringWrapper):
     def __init__(self, baseObject: object) -> None:
         MonitoringWrapper.__init__(self, baseObject)
-        self.readtime: Optional[float] = None
+        self.readtime: float | None = None
         self.readrate = []
 
     def _read(self):
@@ -55,7 +54,7 @@ class ReadTimingWrapper(MonitoringWrapper):
 
     def _terminate(self):
         self.log(
-            f"Average read rate : {sum(self.readrate) / float(len(self.readrate))}"
+            f"Average read rate : {sum(self.readrate) / float(len(self.readrate))}",
         )
         self.baseObject._terminate()
 

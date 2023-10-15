@@ -73,8 +73,9 @@ output stream is not connected::
 """
 
 import types
-from dispel4py.new.processor import GenericWrapper, SimpleProcessingPE
+
 from dispel4py.new import processor
+from dispel4py.new.processor import GenericWrapper, SimpleProcessingPE
 
 
 def simpleLogger(self, msg):
@@ -96,16 +97,16 @@ def process_and_return(workflow, inputs, resultmappings=None):
     numnodes = 0
     for node in workflow.graph.nodes():
         numnodes += 1
-        node.getContainedObject().numprocesses = 1
+        node.get_contained_object().numprocesses = 1
     processes, inputmappings, outputmappings = processor.assign_and_connect(
-        workflow, numnodes
+        workflow, numnodes,
     )
     # print 'Processes: %s' % processes
     # print inputmappings
     # print outputmappings
     proc_to_pe = {}
     for node in workflow.graph.nodes():
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         proc_to_pe[processes[pe.id][0]] = pe
 
     simple = SimpleProcessingPE(inputmappings, outputmappings, proc_to_pe)
@@ -141,9 +142,9 @@ def process(workflow, inputs, args=None, resultmappings=None):
     """
 
     try:
-        print("Inputs: {}".format({pe.id: data for pe, data in inputs.items()}))
+        print(f"Inputs: {({pe.id: data for pe, data in inputs.items()})}")
     except:
-        print("Inputs: {}".format({pe: data for pe, data in inputs.items()}))
+        print(f"Inputs: {(dict(inputs.items()))}")
     results = process_and_return(workflow, inputs, resultmappings)
     print(f"Outputs: {results}")
 
@@ -156,8 +157,7 @@ class SimpleProcessingWrapper(GenericWrapper):
         self.outputs = {}
 
     def _read(self):
-        result = super(SimpleProcessingWrapper, self)._read()
-        return result
+        return super()._read()
 
     def _write(self, name, data):
         # self.pe.log('SP Writing %s to %s' % (data, name))
@@ -171,7 +171,7 @@ def main():  # pragma: no cover
     """
     This is the commandline entry point for the simple processor.
     """
-    from dispel4py.new.processor import load_graph_and_inputs, create_arg_parser
+    from dispel4py.new.processor import create_arg_parser, load_graph_and_inputs
 
     parser = create_arg_parser()
     args = parser.parse_args()

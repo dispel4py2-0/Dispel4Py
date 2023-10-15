@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Tests all Python files of the project with flake8. This ensure PEP8 conformance
 and some other sanity checks as well.
 """
-from flake8.api import legacy as flake8
-import flake8.main
 import inspect
 import os
+
+import flake8.main
+from flake8.api import legacy as flake8
 
 FLAKE8_IGNORE_CODES = ["E402"]
 
@@ -41,10 +41,10 @@ def test_flake8():
 
     # Get the style checker with the default style.
     flake8_style = flake8.get_style_guide(
-        parse_argv=False, config_file=flake8.main.DEFAULT_CONFIG
+        parse_argv=False, config_file=flake8.main.DEFAULT_CONFIG,
     )
     flake8_style.options.ignore = tuple(
-        set(flake8_style.options.ignore).union(set(FLAKE8_IGNORE_CODES))
+        set(flake8_style.options.ignore).union(set(FLAKE8_IGNORE_CODES)),
     )
 
     report = flake8_style.check_files(files)

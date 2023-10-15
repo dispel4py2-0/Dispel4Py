@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.new.mpi_process import process
 from dispel4py.workflow_graph import WorkflowGraph
-from dispel4py.examples.graph_testing import testing_PEs as t
 
 
 def test_pipeline():

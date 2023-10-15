@@ -48,34 +48,34 @@ For example::
 import argparse
 import copy
 import multiprocessing
-import traceback
 import types
+from typing import Any
 
-# from dispel4py.new.processor import simpleLogger
-
-from dispel4py.new.processor import (
-    GenericWrapper,
-    STATUS_ACTIVE,
-    STATUS_TERMINATED,
-    SimpleProcessingPE,
-)
 from dispel4py.new import processor
 
+# from dispel4py.new.processor import simpleLogger
+from dispel4py.new.processor import (
+    STATUS_ACTIVE,
+    STATUS_TERMINATED,
+    GenericWrapper,
+    SimpleProcessingPE,
+)
 
-def simpleLogger(self, msg):
+
+def simple_logger(self, msg):
     print(f"{self.id}: {msg}")
 
 
-def _processWorker(wrapper):
+def _process_worker(wrapper):
     wrapper.process()
 
 
 def parse_args(args, namespace):  # pragma: no cover
     parser = argparse.ArgumentParser(
-        prog="dispel4py", description="Submit a dispel4py graph to multiprocessing."
+        prog="dispel4py", description="Submit a dispel4py graph to multiprocessing.",
     )
     parser.add_argument(
-        "-s", "--simple", help="force simple processing", action="store_true"
+        "-s", "--simple", help="force simple processing", action="store_true",
     )
     parser.add_argument(
         "-n",
@@ -92,14 +92,17 @@ def parse_args(args, namespace):  # pragma: no cover
 
 def process(workflow, inputs, args) -> multiprocessing.Queue:
     result = None
+    processes: dict[Any, range] = {}
+    input_mappings: dict = {}
+    output_mappings = {}
     size = args.num
     success = True
-    nodes = [node.getContainedObject() for node in workflow.graph.nodes()]
+    nodes = [node.get_contained_object() for node in workflow.graph.nodes()]
 
     if not args.simple:
         try:
             result = processor.assign_and_connect(workflow, size)
-            processes, inputmappings, outputmappings = result
+            processes, input_mappings, output_mappings = result
         except Exception as e:
             print(f"Exception in the process method: {e}")
             success = False
@@ -110,49 +113,35 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
         print(
             "Partitions: {}".format(
                 ", ".join(
-                    (
+                    
                         "[{}]".format(
-                            ", ".join((pe.id for pe in part))
+                            ", ".join(pe.id for pe in part)
                             for part in workflow.partitions
-                        )
-                    )
-                )
-            )
+                        ),
+                    
+                ),
+            ),
         )
 
         for node in ubergraph.graph.nodes():
-            wrapperPE = node.getContainedObject()
-            pes = [n.getContainedObject().id for n in wrapperPE.workflow.graph.nodes()]
+            wrapperPE = node.get_contained_object()
+            pes = [n.get_contained_object().id for n in wrapperPE.workflow.graph.nodes()]
             print(f"{wrapperPE.id} contains {pes}")
 
-        try:
-            result = processor.assign_and_connect(ubergraph, size)
-            if result is None:
-                return (
-                    "dispel4py.multi_process: "
-                    "Not enough processes for execution of graph"
-                )
+        result = processor.assign_and_connect(ubergraph, size)
+        if result is None:
+            raise RuntimeError("dispel4py.multi_process: Not enough processes for execution of graph")
 
-            processes, inputmappings, outputmappings = result
-            inputs = processor.map_inputs_to_partitions(ubergraph, inputs)
-            success = True
-            nodes = [node.getContainedObject() for node in ubergraph.graph.nodes()]
-        except Exception as e:
-            print("Could not create mapping for execution of graph:")
-            print(e)
-            print(traceback.format_exc())
-            return (
-                "dispel4py.multi_process: "
-                "Could not create mapping for execution of graph"
-            )
+        processes, input_mappings, output_mappings = result
+        inputs = processor.map_inputs_to_partitions(ubergraph, inputs)
+        success = True
+        nodes = [node.get_contained_object() for node in ubergraph.graph.nodes()]
 
     print(f"Processes: {processes}")
-    print(f"Result: {result}")
 
     process_pes = {}
     queues = {}
 
-    # result_queue = multiprocessing.Queue()
     result_queue = None
     try:
         if args.results:
@@ -165,26 +154,26 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
         for proc in processes[pe.id]:
             cp = copy.deepcopy(pe)
             cp.rank = proc
-            cp.log = types.MethodType(simpleLogger, cp)
+            cp.log = types.MethodType(simple_logger, cp)
             wrapper = MultiProcessingWrapper(proc, cp, provided_inputs)
             process_pes[proc] = wrapper
             wrapper.input_queue = multiprocessing.Queue()
             wrapper.input_queue.name = f"Queue_{cp.id}_{cp.rank}"
             wrapper.result_queue = result_queue
             queues[proc] = wrapper.input_queue
-            wrapper.targets = outputmappings[proc]
-            wrapper.sources = inputmappings[proc]
+            wrapper.targets = output_mappings[proc]
+            wrapper.sources = input_mappings[proc]
     for proc in process_pes:
         wrapper = process_pes[proc]
         wrapper.output_queues = {}
         for target in wrapper.targets.values():
-            for inp, comm in target:
+            for _inp, comm in target:
                 for i in comm.destinations:
                     wrapper.output_queues[i] = queues[i]
 
     jobs = []
     for wrapper in process_pes.values():
-        p = multiprocessing.Process(target=_processWorker, args=(wrapper,))
+        p = multiprocessing.Process(target=_process_worker, args=(wrapper,))
         jobs.append(p)
 
     for j in jobs:
@@ -208,7 +197,7 @@ class MultiProcessingWrapper(GenericWrapper):
         self.terminated = 0
 
     def _read(self):
-        result = super(MultiProcessingWrapper, self)._read()
+        result = super()._read()
         if result is not None:
             return result
         # read from input queue
@@ -237,16 +226,16 @@ class MultiProcessingWrapper(GenericWrapper):
             # print(name)
             # print(self.targets)
             targets = self.targets[name]
-        except KeyError as e:
+        except KeyError:
             # print(traceback.format_exc())
             if self.result_queue:
                 self.result_queue.put((self.pe.id, name, data))
             return
         for inputName, communication in targets:
             if isinstance(self.pe, SimpleProcessingPE):
-                dest = communication.getDestination({inputName: data[0]})
+                dest = communication.get_destination({inputName: data[0]})
             else:
-                dest = communication.getDestination({inputName: data})
+                dest = communication.get_destination({inputName: data})
 
             output = {inputName: data}
             for i in dest:
@@ -257,7 +246,7 @@ class MultiProcessingWrapper(GenericWrapper):
                     # self.pe.log(f"Failed to write item to output '{name}'")
 
     def _terminate(self):
-        for output, targets in self.targets.items():
-            for inputName, communication in targets:
+        for targets in self.targets.values():
+            for _inputName, communication in targets:
                 for i in communication.destinations:
                     self.output_queues[i].put((None, STATUS_TERMINATED))

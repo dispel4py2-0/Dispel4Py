@@ -13,27 +13,28 @@ Other parameters:
 
 import argparse
 import copy
-import msgpack
 import multiprocessing
 import uuid
-from dispel4py.new import processor
-import time
+
+import msgpack
 import zmq
 from zmq.devices.basedevice import ProcessDevice
+
+from dispel4py.new import processor
 
 
 def init_streamer(frontend_port, backend_port):
     streamerdevice = ProcessDevice(zmq.STREAMER, zmq.PULL, zmq.PUSH)
     streamerdevice.bind_in("tcp://127.0.0.1:%d" % frontend_port)
     streamerdevice.bind_out("tcp://127.0.0.1:%d" % backend_port)
-    streamerdevice.setsockopt_in(zmq.IDENTITY, "PULL".encode("utf-8"))
-    streamerdevice.setsockopt_out(zmq.IDENTITY, "PUSH".encode("utf-8"))
+    streamerdevice.setsockopt_in(zmq.IDENTITY, b"PULL")
+    streamerdevice.setsockopt_out(zmq.IDENTITY, b"PUSH")
     streamerdevice.start()
 
 
 def map_output(graph, node, output_name):
     result = set()
-    pe_id = node.getContainedObject().id
+    pe_id = node.get_contained_object().id
     for edge in graph.edges(node, data=True):
         direction = edge[2]["DIRECTION"]
         source = direction[0]
@@ -54,7 +55,7 @@ def process(workflow, inputs, args):
     producer = ZMQProducer(port=frontend_port, value_serializer=msgpack.packb)
     workers = {}
     for node in workflow.graph.nodes():
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         for proc in range(size):
             cp = copy.deepcopy(workflow)
             cp.rank = proc
@@ -64,11 +65,11 @@ def process(workflow, inputs, args):
         if provided_inputs is not None:
             if isinstance(provided_inputs, int):
                 for i in range(provided_inputs):
-                    print("writing initial input: {}".format(i))
+                    print(f"writing initial input: {i}")
                     producer.send(topic, value=(pe.id, {}))
             else:
                 for d in provided_inputs:
-                    print("writing initial input: {}".format(d))
+                    print(f"writing initial input: {d}")
                     producer.send(topic, value=(pe.id, d))
 
     jobs = []
@@ -83,7 +84,7 @@ def process(workflow, inputs, args):
         )
         jobs.append(p)
 
-    print("Starting {} workers communicating via topic {}".format(len(workers), topic))
+    print(f"Starting {len(workers)} workers communicating via topic {topic}")
     for j in jobs:
         j.start()
     for j in jobs:
@@ -137,7 +138,7 @@ class GenericWriter:
     def write(self, data):
         destinations = map_output(workflow.graph, self.pe_id, self.output_name)
         if not destinations:
-            print("Output collected from {}: {}".format(self.pe_id, data))
+            print(f"Output collected from {self.pe_id}: {data}")
         for dest_id, input_name in destinations:
             self.producer.send(topic, value=(dest_id, {input_name: data}))
 
@@ -146,10 +147,10 @@ def _processWorker(topic, proc, workflow):
     frontend_port = 5559
     backend_port = 5560
     pes = {
-        node.getContainedObject().id: node.getContainedObject()
+        node.get_contained_object().id: node.get_contained_object()
         for node in workflow.graph.nodes()
     }
-    nodes = {node.getContainedObject().id: node for node in workflow.graph.nodes()}
+    nodes = {node.get_contained_object().id: node for node in workflow.graph.nodes()}
     producer = ZMQProducer(port=frontend_port)
     consumer = ZMQConsumer(port=backend_port)
     while True:
@@ -157,25 +158,24 @@ def _processWorker(topic, proc, workflow):
             value = next(consumer)
             # print('Message from consumer ', value)
         except StopIteration:
-            return None
+            return
 
         try:
             pe_id, data = value
-            print("{} receiver input: {}".format(pe_id, data))
+            print(f"{pe_id} receiver input: {data}")
             pe = pes[pe_id]
             for o in pe.outputconnections:
                 pe.outputconnections[o]["writer"] = GenericWriter(producer, pe_id, o)
             output = pe.process(data)
-            print("{} writing output: {}".format(pe.id, output))
+            print(f"{pe.id} writing output: {output}")
             for output_name, output_value in output.items():
                 destinations = map_output(workflow.graph, nodes[pe_id], output_name)
                 if not destinations:
-                    print("Output collected from {}: {}".format(pe_id, output_value))
+                    print(f"Output collected from {pe_id}: {output_value}")
                 for dest_id, input_name in destinations:
                     producer.send(topic, value=(dest_id, {input_name: output_value}))
         except Exception as e:
             print(e)
-            pass
 
 
 def parse_args(args, namespace):
@@ -184,7 +184,7 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to zeromq multi processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int
+        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
     )
     parser.add_argument(
         "-n",
@@ -195,5 +195,4 @@ def parse_args(args, namespace):
         help="number of processes to run",
     )
     parser.add_argument("-t", "--topic", default=str(uuid.uuid4()), help="topic name")
-    result = parser.parse_args(args, namespace)
-    return result
+    return parser.parse_args(args, namespace)

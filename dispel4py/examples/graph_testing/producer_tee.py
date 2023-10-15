@@ -1,6 +1,5 @@
-from dispel4py.examples.graph_testing.testing_PEs import TestProducer, TestOneInOneOut
+from dispel4py.examples.graph_testing.testing_PEs import TestOneInOneOut, TestProducer
 from dispel4py.workflow_graph import WorkflowGraph
-
 
 prod = TestProducer()
 cons1a = TestOneInOneOut()

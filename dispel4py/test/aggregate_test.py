@@ -25,21 +25,20 @@ Using nose (https://nose.readthedocs.org/en/latest/) run as follows::
     OK
 """
 
-from dispel4py.examples.graph_testing.testing_PEs import NumberProducer
-from dispel4py.new.aggregate import (
-    parallelSum,
-    parallelCount,
-    parallelMin,
-    parallelMax,
-    parallelAvg,
-    parallelStdDev,
-    ContinuousReducePE,
-)
-
-from dispel4py.new import simple_process
-from dispel4py.workflow_graph import WorkflowGraph
-
 from nose import tools
+
+from dispel4py.examples.graph_testing.testing_PEs import NumberProducer
+from dispel4py.new import simple_process
+from dispel4py.new.aggregate import (
+    ContinuousReducePE,
+    parallelAvg,
+    parallelCount,
+    parallelMax,
+    parallelMin,
+    parallelStdDev,
+    parallelSum,
+)
+from dispel4py.workflow_graph import WorkflowGraph
 
 
 def graph_sum():
@@ -108,7 +107,7 @@ def testStdDev():
     stddev_wf = graph_stddev()
     stddev_wf.flatten()
     results = simple_process.process_and_return(
-        stddev_wf, inputs={"NumberProducer": [{}]}
+        stddev_wf, inputs={"NumberProducer": [{}]},
     )
     tools.eq_(1, len(results))
     for key in results:
@@ -121,7 +120,7 @@ def testCount():
     count_wf = graph_count()
     count_wf.flatten()
     results = simple_process.process_and_return(
-        count_wf, inputs={"NumberProducer": [{}]}
+        count_wf, inputs={"NumberProducer": [{}]},
     )
     tools.eq_(1, len(results))
     for key in results:
@@ -132,7 +131,7 @@ def testMinMax():
     min_max_wf = graph_min_max()
     min_max_wf.flatten()
     results = simple_process.process_and_return(
-        min_max_wf, inputs={"NumberProducer": [{}]}
+        min_max_wf, inputs={"NumberProducer": [{}]},
     )
     tools.eq_(2, len(results))
     for key in results:
@@ -143,7 +142,9 @@ def testMinMax():
 
 
 class TestPE(ContinuousReducePE):
-    def __init__(self, indexes=[0]):
+    def __init__(self, indexes=None):
+        if indexes is None:
+            indexes = [0]
         ContinuousReducePE.__init__(self, indexes)
 
     def _process(self, data):

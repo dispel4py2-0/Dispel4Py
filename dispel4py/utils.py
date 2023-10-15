@@ -16,13 +16,12 @@
 Collection of dispel4py utilities.
 """
 
-from dispel4py.workflow_graph import WorkflowGraph
-
-from importlib import import_module
-from imp import load_source
-import sys
 import os.path
+import sys
 import traceback
+from importlib import import_module
+
+from dispel4py.workflow_graph import WorkflowGraph
 
 
 def findWorkflowGraph(mod, attr):
@@ -35,28 +34,24 @@ def findWorkflowGraph(mod, attr):
             attr = getattr(mod, i)
             if isinstance(attr, WorkflowGraph):
                 if not hasattr(attr, "inputmappings") and not hasattr(
-                    attr, "outputmappings"
+                    attr, "outputmappings",
                 ):
                     graph = attr
     return graph
 
 
 def loadGraphFromFile(module_name, path, attr=None):
-    if sys.version_info > (3, 0):
-        from importlib import util
+    from importlib import util
 
-        # print(f'Importing {module_name} from "{path}...')
-        spec = util.spec_from_file_location(module_name, path)
-        # print(spec)
+    # print(f'Importing {module_name} from "{path}...')
+    spec = util.spec_from_file_location(module_name, path)
+    # print(spec)
 
-        module = util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-    else:
-        module = load_source(module_name, path)
+    module = util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
 
-    attr = findWorkflowGraph(module, attr)
-    return attr
+    return findWorkflowGraph(module, attr)
 
 
 def loadGraph(module_name, attr=None):
@@ -64,8 +59,7 @@ def loadGraph(module_name, attr=None):
     Loads a graph from the given module.
     """
     mod = import_module(module_name)
-    graph = findWorkflowGraph(mod, attr)
-    return graph
+    return findWorkflowGraph(mod, attr)
 
 
 def load_graph(graph_source, attr=None):
@@ -76,16 +70,14 @@ def load_graph(graph_source, attr=None):
     except ImportError:
         # It's not a module
         error_message += f'No module "{graph_source}"\n'
-        pass
     except Exception:
         error_message += f"Error loading graph module:\n{traceback.format_exc()}"
-        pass
 
     # Maybe it's a file?
     try:
         module_name = os.path.splitext(os.path.basename(graph_source))[0]
         return loadGraphFromFile(module_name, graph_source, attr)
-    except IOError:
+    except OSError:
         # It's not a file
         error_message += f'No file "{graph_source}"\n'
     except Exception:
@@ -93,18 +85,19 @@ def load_graph(graph_source, attr=None):
 
     # We don't know what it is
     print(f'Failed to load graph from "{graph_source}":\n{error_message}')
+    return None
 
 
-from sys import getsizeof
-from itertools import chain
 from collections import deque
+from itertools import chain
+from sys import getsizeof
 
 
 def dict_handler(d):
     return chain.from_iterable(d.items())
 
 
-def total_size(o, handlers={}, verbose=False):
+def total_size(o, handlers=None, verbose=False):
     """
     From: http://code.activestate.com/recipes/577504/
     Returns the approximate memory footprint an object and all of its contents.
@@ -117,6 +110,8 @@ def total_size(o, handlers={}, verbose=False):
                     OtherContainerClass: OtherContainerClass.get_elements}
 
     """
+    if handlers is None:
+        handlers = {}
     all_handlers = {
         tuple: iter,
         list: iter,

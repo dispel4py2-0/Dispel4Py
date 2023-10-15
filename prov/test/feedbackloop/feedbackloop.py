@@ -1,5 +1,4 @@
 
-# coding: utf-8
 
 # ## Enabling Active-Provenance in dispel4py - How To:
 # 
@@ -53,36 +52,36 @@ class Source(GenericPE):
 
     def __init__(self):
         GenericPE.__init__(self)
-        self._add_input('input')
-        self._add_output('output')
+        self._add_input("input")
+        self._add_output("output")
         
         #Uncomment this line to associate this PE to the mycluster provenance-cluster 
         #self.prov_cluster ='mycluster'
         
     
-    def _process(self,inputs):
+    def _process(self, inputs):
         print inputs
     
-        if 'input' in inputs:
+        if "input" in inputs:
             #self.log('from input')
-            inp=inputs['input'][0]
+            inp=inputs["input"][0]
        
         #Strarting from the number received in input, streams out values until >0
         while (inp>0):
-            self.write('output',inp,metadata={'iter':inp})
+            self.write("output", inp, metadata={"iter": inp})
             inp=inp-5
         
         
         
 
 
-def square(data,prov_cluster):
+def square(data, prov_cluster):
     data=data*data
     
     #User-defined metadata and format associated to the function output.
-    prov={'format':'Random float', 'metadata':{'value_s':str(data)}}
+    prov={"format": "Random float", "metadata": {"value_s": str(data)}}
     
-    return {'_d4p_prov':prov,'_d4p_data':data} 
+    return {"_d4p_prov": prov, "_d4p_data": data} 
     
     
     
@@ -90,16 +89,16 @@ class Div(GenericPE):
 
     def __init__(self):
         GenericPE.__init__(self)
-        self._add_input('input')
-        self._add_output('output')
+        self._add_input("input")
+        self._add_output("output")
         
         #Uncomment this line to associate this PE to the mycluster provenance-cluster 
         #self.prov_cluster ='mycluster'self.prov_cluster='mycluster'
             
-    def _process(self,data):
+    def _process(self, data):
         self.log("DIIIIV: "+str(data)) 
-        val = data['input'][0]/data['input'][1]
-        self.write('output',val,metadata={'val':val})
+        val = data["input"][0]/data["input"][1]
+        self.write("output", val, metadata={"val": val})
              
             
             
@@ -109,9 +108,9 @@ class CrossProd(GenericPE):
 
     def __init__(self):
         GenericPE.__init__(self)
-        self._add_input('input1')
-        self._add_input('input2')
-        self._add_output('output')
+        self._add_input("input1")
+        self._add_input("input2")
+        self._add_output("output")
         self.index1=0
         self.index2=0
         self.indexmap1={}
@@ -126,11 +125,11 @@ class CrossProd(GenericPE):
          
             
         try:
-            val = inputs['input1']
+            val = inputs["input1"]
             self.indexmap1[self.index1]=val
             
             #Adds the object and the associated metadata to the PEs state for later reference
-            self.addToProvState(str('index1'+str(self.index1)),self.indexmap1[self.index1],metadata={'res':str(self.indexmap1[self.index1])},ignore_inputs=False)
+            self.addToProvState(str("index1"+str(self.index1)), self.indexmap1[self.index1], metadata={"res": str(self.indexmap1[self.index1])}, ignore_inputs=False)
             self.index1+=1
             
             for x in self.indexmap2:
@@ -138,15 +137,15 @@ class CrossProd(GenericPE):
                 # Writes the output and specify additional dependencies. 
                 # Specifically, it refer to the object read from the list used to produce 
                 # the cross product
-                self.write('output', (val, self.indexmap2[x]), metadata={'res':str((val, self.indexmap2[x]))},dep=[str('index2'+str(x))])
+                self.write("output", (val, self.indexmap2[x]), metadata={"res": str((val, self.indexmap2[x]))}, dep=[str("index2"+str(x))])
             
         except KeyError:
              
-            val = inputs['input2']
+            val = inputs["input2"]
             self.indexmap2[self.index2]=val
             
             #Adds the object and the associated metadata to the PEs state for later reference
-            self.addToProvState('index2'+str(self.index2),self.indexmap2[self.index2],metadata={'res':str(self.indexmap2[self.index2])},ignore_inputs=False)
+            self.addToProvState("index2"+str(self.index2), self.indexmap2[self.index2], metadata={"res": str(self.indexmap2[self.index2])}, ignore_inputs=False)
             self.index2+=1
             
             for x in self.indexmap1:
@@ -154,27 +153,27 @@ class CrossProd(GenericPE):
                 # Writes the output and specify additional dependencies. 
                 # Specifically, it refer to the object read from the list used to produce 
                 # the cross product
-                self.write('output', (val, self.indexmap1[x]), metadata={'res':str((val, self.indexmap1[x]))},dep=[str('index1'+str(x))])
+                self.write("output", (val, self.indexmap1[x]), metadata={"res": str((val, self.indexmap1[x]))}, dep=[str("index1"+str(x))])
         
        
 # Instantiates the Workflow Components        
 
 sc = Source()
-sc.name='PE_source'
+sc.name="PE_source"
 divf=Div()
-divf.name='PE_div'
+divf.name="PE_div"
 crossp = CrossProd()
-squaref=SimpleFunctionPE(square,{})
+squaref=SimpleFunctionPE(square, {})
 #Uncomment this line to associate this PE to the mycluster provenance-cluster 
-squaref=SimpleFunctionPE(square,{'prov_cluster':'mycluster'})
+squaref=SimpleFunctionPE(square, {"prov_cluster": "mycluster"})
 
 
 #Initialise and compose the workflow graph
 graph = WorkflowGraph()
-graph.connect(sc,'output',squaref,'input')
-graph.connect(sc,'output',crossp,'input1')
-graph.connect(squaref,'output',crossp,'input2')
-graph.connect(crossp,'output',divf,'input')
+graph.connect(sc, "output", squaref, "input")
+graph.connect(sc, "output", crossp, "input1")
+graph.connect(squaref, "output", crossp, "input2")
+graph.connect(crossp, "output", divf, "input")
 
 
 #Declare workflow inputs:
@@ -183,14 +182,14 @@ input_data = {"PE_source": [{"input": [10]}]}
 # In[2]:
 
 #Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder subtypes
-ProvenanceRecorder.REPOS_URL='http://localhost/prov/workflow/insert'
+ProvenanceRecorder.REPOS_URL="http://localhost/prov/workflow/insert"
 
 
 
 
 class ProvenanceRecorderToService(ProvenanceRecorder):
 
-    def __init__(self, name='ProvenanceRecorderToService', toW3C=False):
+    def __init__(self, name="ProvenanceRecorderToService", toW3C=False):
         ProvenanceRecorder.__init__(self)
         self.name = name
         self.convertToW3C = toW3C
@@ -217,7 +216,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
         else:
             out = prov
 
-        params = urllib.urlencode({'prov': json.dumps(out)})
+        params = urllib.urlencode({"prov": json.dumps(out)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
             "Accept": "application/json"}
@@ -277,10 +276,10 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
 
             
             
-        self.write(self.porttopemap[prov['name']], "FEEDBACK MESSAGGE FROM RECORDER")
+        self.write(self.porttopemap[prov["name"]], "FEEDBACK MESSAGGE FROM RECORDER")
 
         self.bulk.append(out)
-        params = urllib.urlencode({'prov': json.dumps(self.bulk)})
+        params = urllib.urlencode({"prov": json.dumps(self.bulk)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
             "Accept": "application/json"}
@@ -308,40 +307,40 @@ class DivFeedback(GenericPE):
 
     def __init__(self):
         GenericPE.__init__(self)
-        self._add_input('input')
-        self._add_output('output')
+        self._add_input("input")
+        self._add_output("output")
         
         #Uncomment this line to associate this PE to the mycluster provenance-cluster 
         #self.prov_cluster ='mycluster'self.prov_cluster='mycluster'
          
          
         
-    def _process_feedback(self,data):
+    def _process_feedback(self, data):
         print "FEEEEDBACK: "+str(data)
     
-    def _process(self,data):
+    def _process(self, data):
         self.log("DIIIIV: "+str(data)) 
-        val = data['input'][0]/data['input'][1]
-        self.write('output',val,metadata={'val':val})
+        val = data["input"][0]/data["input"][1]
+        self.write("output", val, metadata={"val": val})
 # Instantiates the Workflow Components        
 
 sc = Source()
-sc.name='PE_source'
+sc.name="PE_source"
 divf=DivFeedback()
-divf.name='PE_DivFeedback'
-divf.prov_cluster='mycluster'
+divf.name="PE_DivFeedback"
+divf.prov_cluster="mycluster"
 crossp = CrossProd()
 #squaref=SimpleFunctionPE(square,{})
 #Uncomment this line to associate this PE to the mycluster provenance-cluster 
-squaref=SimpleFunctionPE(square,{'prov_cluster':'mycluster'})
+squaref=SimpleFunctionPE(square, {"prov_cluster": "mycluster"})
 
 
 #Initialise and compose the workflow graph
 graph = WorkflowGraph()
-graph.connect(sc,'output',squaref,'input')
-graph.connect(sc,'output',crossp,'input1')
-graph.connect(squaref,'output',crossp,'input2')
-graph.connect(crossp,'output',divf,'input')
+graph.connect(sc, "output", squaref, "input")
+graph.connect(sc, "output", crossp, "input1")
+graph.connect(squaref, "output", crossp, "input2")
+graph.connect(crossp, "output", divf, "input")
 
 
 #Declare workflow inputs:
@@ -349,13 +348,13 @@ input_data = {"PE_source": [{"input": [10]}]}
 
 # Preparing the workflow graph for provenance production, pre-analysis and storage
 # Ranomdly generated unique identifier for the current run
-rid='RDWD_'+getUniqueId()
+rid="RDWD_"+getUniqueId()
 
 # if ProvenanceRecorderToFile is used, this path will contains all the resulting JSON documents
-os.environ['PROV_PATH']="./prov-files/"
+os.environ["PROV_PATH"]="./prov-files/"
 
 # Finally, provenance enhanced graph is prepared:
-InitiateNewRun(graph,ProvenanceRecorderToFileBulk,provImpClass=ProvenancePE,username='aspinuso',runId=rid,w3c_prov=False,workflowName="test_rdwd",workflowId="xx",clustersRecorders={'mycluster':ProvenanceRecorderToFileBulk},feedbackPEs=['PE_DivFeedback'])
+InitiateNewRun(graph, ProvenanceRecorderToFileBulk, provImpClass=ProvenancePE, username="aspinuso", runId=rid, w3c_prov=False, workflowName="test_rdwd", workflowId="xx", clustersRecorders={"mycluster": ProvenanceRecorderToFileBulk}, feedbackPEs=["PE_DivFeedback"])
 
 
 

@@ -1,21 +1,15 @@
 # from internal_extinction.int_ext_graph import read, graph
 
+import argparse
+import copy
+import json
+import time
+from multiprocessing import Process, Value
+
+from dispel4py.core import WRITER
 from dispel4py.new.dyn_redis_config import connect
 from dispel4py.new.logger import logger
-
-from multiprocessing import Process, Queue, TimeoutError, Value
-
-
-import types
-import json
-import copy
-import time
-import argparse
-
-from dispel4py.new.processor import GenericWrapper, get_inputs, simpleLogger
-from dispel4py.core import GenericPE, WRITER
-from queue import Empty
-
+from dispel4py.new.processor import get_inputs
 
 DISPEL4PY_REDIS_PREFIX = "DISPEL4PY_DYN"
 STREAM_KEY = DISPEL4PY_REDIS_PREFIX + "_STREAM"
@@ -35,7 +29,7 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to dynamic auto redis processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int
+        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
     )
     parser.add_argument(
         "-n",
@@ -49,8 +43,7 @@ def parse_args(args, namespace):
     # parser.add_argument('-it', '--idle', metavar='idle_time',
     #                     type=int, help='idle time threshold for auto-scaling', default=100)
 
-    result = parser.parse_args(args, namespace)
-    return result
+    return parser.parse_args(args, namespace)
 
 
 class TimerDecorator:
@@ -89,7 +82,7 @@ class RedisWriter:
                 self.redis.xadd(STREAM_KEY, payload, "*")
 
 
-class DynamicWrapper(object):
+class DynamicWrapper:
     def __init__(self, pe, provided_inputs):
         self.pe = pe
         self.provided_inputs = provided_inputs
@@ -151,7 +144,7 @@ class DynamicRedisWorker:
 
                         destinations = self._get_destination(node, output_name)
                         pe.outputconnections[output_name][WRITER] = RedisWriter(
-                            redis, destinations
+                            redis, destinations,
                         )
 
                     output = pe.process(data)
@@ -164,8 +157,8 @@ class DynamicRedisWorker:
                                     # logger.debug(f"dest_id = {dest_id!r}, input_name = {input_name!r}")
                                     payload = {
                                         FIELD_KEY: json.dumps(
-                                            (dest_id, {input_name: output_value})
-                                        )
+                                            (dest_id, {input_name: output_value}),
+                                        ),
                                     }
                                     redis.xadd(STREAM_KEY, payload, "*")
 
@@ -183,7 +176,6 @@ class DynamicRedisWorker:
 
             except Exception as e:
                 logger.error(f"Exception = {e!r}")
-                pass
 
     def _get_destination(self, node, output_name):
         """

@@ -16,13 +16,12 @@
 Counts words produced by RandomWordProducer and filtered by RandomFilter.
 """
 
-from dispel4py.workflow_graph import WorkflowGraph
-
 from dispel4py.examples.graph_testing.testing_PEs import (
     RandomFilter,
     RandomWordProducer,
     WordCounter,
 )
+from dispel4py.workflow_graph import WorkflowGraph
 
 words = RandomWordProducer()
 words.numprocesses = 1

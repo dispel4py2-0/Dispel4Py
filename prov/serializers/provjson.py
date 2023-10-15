@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 __author__ = "Trung Dong Huynh"
 __email__ = "trungdong@donggiang.com"
@@ -7,23 +6,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from collections import defaultdict
 import datetime
 import io
 import json
+from collections import defaultdict
 
-from prov.serializers import Serializer, Error
 from prov.constants import *
 from prov.model import (
-    Literal,
     Identifier,
-    QualifiedName,
+    Literal,
     Namespace,
-    ProvDocument,
     ProvBundle,
+    ProvDocument,
+    QualifiedName,
     first,
     parse_xsd_datetime,
 )
+from prov.serializers import Error, Serializer
 
 
 class ProvJSONException(Error):
@@ -45,7 +44,7 @@ class AnonymousIDGenerator:
 # Reverse map for prov.model.XSD_DATATYPE_PARSERS
 LITERAL_XSDTYPE_MAP = {
     float: "xsd:double",
-    int: "xsd:int"
+    int: "xsd:int",
     # boolean, string values are supported natively by PROV-JSON
     # datetime values are converted separately
 }
@@ -115,12 +114,12 @@ class ProvJSONEncoder(json.JSONEncoder):
         if isinstance(o, ProvDocument):
             return encode_json_document(o)
         else:
-            return super(ProvJSONEncoder, self).encode(o)
+            return super().encode(o)
 
 
 class ProvJSONDecoder(json.JSONDecoder):
     def decode(self, s, *args, **kwargs):
-        container = super(ProvJSONDecoder, self).decode(s, *args, **kwargs)
+        container = super().decode(s, *args, **kwargs)
         document = ProvDocument()
         decode_json_document(container, document)
         return document
@@ -130,8 +129,7 @@ class ProvJSONDecoder(json.JSONDecoder):
 def valid_qualified_name(bundle, value):
     if value is None:
         return None
-    qualified_name = bundle.valid_qualified_name(value)
-    return qualified_name
+    return bundle.valid_qualified_name(value)
 
 
 def encode_json_document(document):
@@ -154,9 +152,8 @@ def encode_json_container(bundle):
         container["prefix"] = prefixes
 
     id_generator = AnonymousIDGenerator()
-    real_or_anon_id = lambda r: (
-        r._identifier if r._identifier else id_generator.get_anon_id(r)
-    )
+    def real_or_anon_id(r):
+        return r._identifier if r._identifier else id_generator.get_anon_id(r)
 
     for record in bundle._records:
         rec_type = record.get_type()
@@ -178,13 +175,13 @@ def encode_json_container(bundle):
                     if len(values) == 1:
                         # single value
                         record_json[attr_name] = encode_json_representation(
-                            first(values)
+                            first(values),
                         )
                     else:
                         # multiple values
-                        record_json[attr_name] = list(
+                        record_json[attr_name] = [
                             encode_json_representation(value) for value in values
-                        )
+                        ]
         # Check if the container already has the id of the record
         if identifier not in container[rec_label]:
             # this is the first instance, just put in the new record
@@ -203,7 +200,7 @@ def encode_json_container(bundle):
 
 
 def decode_json_document(content, document):
-    bundles = dict()
+    bundles = {}
     if "bundle" in content:
         bundles = content["bundle"]
         del content["bundle"]
@@ -237,7 +234,7 @@ def decode_json_container(jc, bundle):
                 elements = content
 
             for element in elements:
-                attributes = dict()
+                attributes = {}
                 other_attributes = []
                 # this is for the multiple-entity membership hack to come
                 membership_extra_members = None
@@ -292,7 +289,7 @@ def decode_json_container(jc, bundle):
                         else:
                             # single value
                             other_attributes.append(
-                                (attr, decode_json_representation(values, bundle))
+                                (attr, decode_json_representation(values, bundle)),
                             )
                 bundle.new_record(rec_type, rec_id, attributes, other_attributes)
                 # HACK: creating extra (unidentified) membership relations
@@ -300,7 +297,7 @@ def decode_json_container(jc, bundle):
                     collection = attributes[PROV_ATTR_COLLECTION]
                     for member in membership_extra_members:
                         bundle.membership(
-                            collection, valid_qualified_name(bundle, member)
+                            collection, valid_qualified_name(bundle, member),
                         )
 
 

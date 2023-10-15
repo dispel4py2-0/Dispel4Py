@@ -27,9 +27,8 @@ Using nose (https://nose.readthedocs.org/en/latest/) run as follows::
 import argparse
 
 from dispel4py.examples.graph_testing import testing_PEs as t
-from dispel4py.workflow_graph import WorkflowGraph
 from dispel4py.new.multi_process import process
-
+from dispel4py.workflow_graph import WorkflowGraph
 
 args = argparse.Namespace
 args.num = 5
@@ -66,7 +65,6 @@ def testSquare():
 def testTee():
     graph = WorkflowGraph()
     prod = t.TestProducer()
-    prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     graph.connect(prod, "output", cons1, "input")

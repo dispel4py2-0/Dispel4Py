@@ -81,7 +81,7 @@ def parse_args(args, namespace):
     )
 
     parser.add_argument(
-        "-ri", "--redis-ip", required=True, help="IP address of external redis server"
+        "-ri", "--redis-ip", required=True, help="IP address of external redis server",
     )
 
     parser.add_argument(
@@ -100,8 +100,7 @@ def parse_args(args, namespace):
         help="number of processes to run",
     )
 
-    result = parser.parse_args(args, namespace)
-    return result
+    return parser.parse_args(args, namespace)
 
 
 def _get_destination(graph, node, output_name, output_value):
@@ -109,7 +108,7 @@ def _get_destination(graph, node, output_name, output_value):
     This function is to get the destinations of a certain node in the graph
     """
     result = set()
-    pe_id = node.getContainedObject().id
+    pe_id = node.get_contained_object().id
 
     for edge in graph.edges(node, data=True):
         direction = edge[2]["DIRECTION"]
@@ -134,7 +133,7 @@ def _get_destination(graph, node, output_name, output_value):
                 elif grouping_type == "nature":
                     # Randomly choose one instance
                     result.add(
-                        (dest.id, dest_input, random.randint(0, dest.numprocesses - 1))
+                        (dest.id, dest_input, random.randint(0, dest.numprocesses - 1)),
                     )
             else:
                 result.add((dest.id, dest_input, -1))
@@ -155,7 +154,7 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
 
         for o in pe.outputconnections:
             pe.outputconnections[o]["writer"] = GenericWriter(
-                r, node, o, workflow, redis_stream_name, proc
+                r, node, o, workflow, redis_stream_name, proc,
             )
 
         output = pe.process(data)
@@ -164,12 +163,12 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
             for output_name, output_value in output.items():
                 # get the destinations of the PE
                 destinations = _get_destination(
-                    workflow.graph, node, output_name, output_value
+                    workflow.graph, node, output_name, output_value,
                 )
                 # if the PE has no destinations, then print the data
                 if not destinations:
                     print(
-                        f"Output collected from {pe_id}: {output_value} in process {proc}"
+                        f"Output collected from {pe_id}: {output_value} in process {proc}",
                     )
                 # otherwise, put the data in the destinations to the queue
                 else:
@@ -180,8 +179,8 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                                 f"{redis_stream_name}_{dest_id}_{dest_instance}",
                                 {
                                     REDIS_STREAM_DATA_DICT_KEY: json.dumps(
-                                        (dest_id, {input_name: output_value})
-                                    )
+                                        (dest_id, {input_name: output_value}),
+                                    ),
                                 },
                             )
                         else:
@@ -189,14 +188,13 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
                                 redis_stream_name,
                                 {
                                     REDIS_STREAM_DATA_DICT_KEY: json.dumps(
-                                        (dest_id, {input_name: output_value})
-                                    )
+                                        (dest_id, {input_name: output_value}),
+                                    ),
                                 },
                             )
 
     except Exception as e:
         print(e)
-        pass
 
 
 def _redis_lock(r, stateful_instance_id):
@@ -269,7 +267,7 @@ def process_stateful(
 
 
 def process_stateless(
-    r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow
+    r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow,
 ):
     """
     Read and process stateless data from redis
@@ -308,13 +306,13 @@ class GenericWriter:
         output_value = data
         # get the destinations of the PE
         destinations = _get_destination(
-            self.workflow.graph, self.node, self.output_name, data
+            self.workflow.graph, self.node, self.output_name, data,
         )
 
         # if the PE has no destinations, then print the data
         if not destinations:
             print(
-                f"Output collected from {self.node.getContainedObject().id}: {output_value} in process {self.proc}"
+                f"Output collected from {self.node.get_contained_object().id}: {output_value} in process {self.proc}",
             )
         # otherwise, put the data in the destinations to the queue
         else:
@@ -325,8 +323,8 @@ class GenericWriter:
                         f"{self.redis_stream_name}_{dest_id}_{dest_instance}",
                         {
                             REDIS_STREAM_DATA_DICT_KEY: json.dumps(
-                                (dest_id, {input_name: output_value})
-                            )
+                                (dest_id, {input_name: output_value}),
+                            ),
                         },
                     )
                 else:
@@ -334,8 +332,8 @@ class GenericWriter:
                         self.redis_stream_name,
                         {
                             REDIS_STREAM_DATA_DICT_KEY: json.dumps(
-                                (dest_id, {input_name: output_value})
-                            )
+                                (dest_id, {input_name: output_value}),
+                            ),
                         },
                     )
 
@@ -354,21 +352,20 @@ def _process_worker(
     This function is to process the workflow in a certain process
     """
     pes = {
-        node.getContainedObject().id: node.getContainedObject()
+        node.get_contained_object().id: node.get_contained_object()
         for node in workflow.graph.nodes()
     }
-    nodes = {node.getContainedObject().id: node for node in workflow.graph.nodes()}
+    nodes = {node.get_contained_object().id: node for node in workflow.graph.nodes()}
 
     # connect to redis
     r = redis.Redis(redis_ip, redis_port)
     print(
-        f"process:{proc} for instance:{stateful_instance_id} redis connection created."
+        f"process:{proc} for instance:{stateful_instance_id} redis connection created.",
     )
 
     # Lock if process stateful
-    if stateful:
-        if not _redis_lock(r, stateful_instance_id):
-            return f"Cannot acquire distributed lock for {stateful_instance_id}."
+    if stateful and not _redis_lock(r, stateful_instance_id):
+        return f"Cannot acquire distributed lock for {stateful_instance_id}."
 
     last_renew_time = time.time()
     # for auto terminate, save the last process data time
@@ -392,7 +389,7 @@ def _process_worker(
                 ):
                     _release_redis_lock(r, stateful_instance_id)
                     print(
-                        f"TERMINATED: stateful process:{proc} for instance:{stateful_instance_id} ends now"
+                        f"TERMINATED: stateful process:{proc} for instance:{stateful_instance_id} ends now",
                     )
                     break
             else:
@@ -452,7 +449,6 @@ def process(workflow, inputs, args):
     """
     This function is to process the workflow with given inputs and args
     """
-    elapsed_time = 0
     start_time = time.time()
     jobid = str(uuid.uuid1())
 
@@ -470,7 +466,7 @@ def process(workflow, inputs, args):
 
     # create consumer group, read FIFO, auto create stream
     redis_connection.xgroup_create(
-        default_redis_stream_name, redis_stream_group_name, "$", True
+        default_redis_stream_name, redis_stream_group_name, "$", True,
     )
 
     # register exit hook to clean redis stream
@@ -479,11 +475,10 @@ def process(workflow, inputs, args):
     # process size
     size = args.num
 
-    has_provided_input = False
     stateful_nodes = []
     for node in workflow.graph.nodes():
         # find stateful nodes
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
 
         # handle stateful, both natural & grouping
         if hasattr(pe, "stateful"):
@@ -496,7 +491,7 @@ def process(workflow, inputs, args):
 
     # check if process number >=  minimal require of stateful pes
     minimal_stateful_process = sum(
-        map(lambda x: x.getContainedObject().numprocesses, stateful_nodes)
+        x.get_contained_object().numprocesses for x in stateful_nodes
     )
     if size < minimal_stateful_process:
         raise Exception("Process number less than minimal requirement of graph")
@@ -513,7 +508,7 @@ def process(workflow, inputs, args):
 
     # stateful jobs
     for node in stateful_nodes:
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         # create redis stream for each instance
         for i in range(pe.numprocesses):
             instance_id = f"{pe.id}_{i}"
@@ -556,7 +551,7 @@ def process(workflow, inputs, args):
         jobs.append(p)
 
     for node in workflow.graph.nodes():
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         # handle provided input
         provided_inputs = processor.get_inputs(pe, inputs)
         if provided_inputs is not None:
@@ -589,7 +584,7 @@ def process(workflow, inputs, args):
     if AUTO_TERMINATE_ENABLE:
         print(
             f"ELAPSED TIME(minus {PROCESS_AUTO_TERMINATE_MAX_IDLE} second(s) for AUTO_TERMINATE): "
-            + str(time.time() - start_time - PROCESS_AUTO_TERMINATE_MAX_IDLE)
+            + str(time.time() - start_time - PROCESS_AUTO_TERMINATE_MAX_IDLE),
         )
     else:
         print("ELAPSED TIME: " + str(time.time() - start_time))

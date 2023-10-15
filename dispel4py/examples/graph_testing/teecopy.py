@@ -73,7 +73,6 @@ def testTee():
     """
     graph = WorkflowGraph()
     prod = t.TestProducer()
-    prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     graph.connect(prod, "output", cons1, "input")

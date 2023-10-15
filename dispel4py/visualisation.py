@@ -21,8 +21,9 @@ For example, to visualise a graph named 'pipeline'::
     display(pipeline)
 
 """
-from dispel4py.workflow_graph import drawDot
 from IPython.core.display import display_png
+
+from dispel4py.workflow_graph import drawDot
 
 
 def display(graph):

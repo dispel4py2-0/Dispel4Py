@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Union
-
 import argparse
 from importlib import import_module
+from typing import List, Union
 
 
 def main(args: Union[None, argparse.Namespace, List[str]] = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Submit a dispel4py graph for processing."
+        description="Submit a dispel4py graph for processing.",
     )
     parser.add_argument("target", help="target execution platform")
     args, remaining = parser.parse_known_args()
@@ -33,7 +32,7 @@ def main(args: Union[None, argparse.Namespace, List[str]] = None) -> None:
         # it is a proper module name - fingers crossed...
         target = args.target
     try:
-        process = getattr(import_module(target), "main")
+        process = import_module(target).main
     except:
         print(f"Unknown target: {target}")
         return

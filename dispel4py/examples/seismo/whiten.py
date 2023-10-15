@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Apr 07 09:30:46 2014
 
 @author: abell5
 """
 
-from numpy import arange, sqrt, abs, multiply, conjugate, real
+import copy
+
+from numpy import abs, arange, conjugate, multiply, real, sqrt
 from obspy.signal.util import nextpow2
 from scipy.fftpack import fft, ifft
-import copy
 
 
 def spectralwhitening(stream):
@@ -63,5 +63,4 @@ def spectralwhitening_smooth(stream, N):
 
 def smooth(spec_ampl, N):
     # ....
-    spec_ampl_2 = spec_ampl
-    return spec_ampl_2
+    return spec_ampl

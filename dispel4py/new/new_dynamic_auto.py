@@ -1,31 +1,23 @@
 import argparse
 import copy
-import types
 import time
 from multiprocessing import (
-    Process,
-    Queue,
-    TimeoutError,
-    Pool,
-    Value,
     Condition,
     Manager,
+    Pool,
+    Value,
 )
-
-# from dispel4py.new import processor
-
-from dispel4py.new.processor import GenericWrapper, get_inputs
-
-
 from queue import Empty
 
-from dispel4py.core import GenericPE, WRITER
+from dispel4py.core import WRITER
 
 # from test_workflow import producer, graph
 # from dispel4py.examples.internal_extinction.int_ext_graph import read, graph
 # from internal_extinction.int_ext_graph import read, graph
+from dispel4py.new.logger import logger
 
-from dispel4py.new.logger import logger, print_stack_trace
+# from dispel4py.new import processor
+from dispel4py.new.processor import get_inputs
 
 TIMEOUT_IN_SECONDS = 1
 MAX_RETRIES = 2
@@ -42,7 +34,7 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to zeromq multi processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int
+        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
     )
     parser.add_argument(
         "-n",
@@ -62,8 +54,7 @@ def parse_args(args, namespace):
         default=10,
     )
 
-    result = parser.parse_args(args, namespace)
-    return result
+    return parser.parse_args(args, namespace)
 
 
 class GenericWriter:
@@ -81,7 +72,7 @@ def simpleLogger(instance, message):
     print(f"Instance ID: {instance.id}, Message: {message}")
 
 
-class DynamicWrapper(object):
+class DynamicWrapper:
     def __init__(self, pe, provided_inputs):
         self.pe = pe
         self.provided_inputs = provided_inputs
@@ -124,7 +115,6 @@ class DynamicWroker:
         """
         Function to process a worker in the workflow.
         """
-        pass
 
     def _get_destination(self, node, output_name):
         """
@@ -183,7 +173,7 @@ class AutoDynamicWroker(DynamicWroker):
                 for output_name in pe.outputconnections:
                     destinations = self._get_destination(node, output_name)
                     pe.outputconnections[output_name][WRITER] = GenericWriter(
-                        self.queue, destinations
+                        self.queue, destinations,
                     )
 
                 # logger.debug(f"outputconnections = {pe.outputconnections}")
@@ -246,7 +236,7 @@ class AutoScaler:
     def grow(self, size_to_grow):
         with self.active_size.get_lock():
             self.active_size.value = min(
-                self.max_pool_size, self.active_size.value + size_to_grow
+                self.max_pool_size, self.active_size.value + size_to_grow,
             )
 
         # logger.info(f"Grow: active size = {self.active_size.value}")
@@ -267,7 +257,7 @@ class AutoScaler:
 
             if self.queue.empty() and self.active_count.value == 0:
                 # print("queue is empty")
-                task_results = [result.get() for result in results]
+                [result.get() for result in results]
                 break
 
             else:
@@ -355,7 +345,7 @@ def process(workflow, inputs=None, args=None):
             # logger.debug(f"provided_inputs = {provided_inputs}")
 
             if isinstance(provided_inputs, int):
-                for i in range(provided_inputs):
+                for _i in range(provided_inputs):
                     queue.put((node.obj.id, {}))
             else:
                 for d in provided_inputs:

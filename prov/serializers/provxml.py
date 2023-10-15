@@ -1,31 +1,30 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 __author__ = "Lion Krischer"
 __email__ = "krischer@geophysik.uni-muenchen.de"
 
 import datetime
-import logging
-from lxml import etree
 import io
+import logging
 import warnings
+
 import six
+from lxml import etree
 
 logger = logging.getLogger(__name__)
 
 import prov
 import prov.identifier
-from prov.model import DEFAULT_NAMESPACES, sorted_attributes
 from prov.constants import *  # NOQA
-
+from prov.model import DEFAULT_NAMESPACES, sorted_attributes
 
 # Create a dictionary containing all top-level PROV XML elements for an easy
 # mapping.
 FULL_NAMES_MAP = dict(PROV_N_MAP)
 FULL_NAMES_MAP.update(ADDITIONAL_N_MAP)
 # Inverse mapping.
-FULL_PROV_RECORD_IDS_MAP = dict(
-    (FULL_NAMES_MAP[rec_type_id], rec_type_id) for rec_type_id in FULL_NAMES_MAP
-)
+FULL_PROV_RECORD_IDS_MAP = {
+    FULL_NAMES_MAP[rec_type_id]: rec_type_id for rec_type_id in FULL_NAMES_MAP
+}
 
 XML_XSD_URI = "http://www.w3.org/2001/XMLSchema"
 
@@ -55,7 +54,7 @@ class ProvXMLSerializer(prov.serializers.Serializer):
         xml_root = self.serialize_bundle(bundle=self.document, force_types=force_types)
         for bundle in self.document.bundles:
             self.serialize_bundle(
-                bundle=bundle, element=xml_root, force_types=force_types
+                bundle=bundle, element=xml_root, force_types=force_types,
             )
         # No encoding must be specified when writing to String object which
         # does not have the concept of an encoding as it should already
@@ -64,8 +63,8 @@ class ProvXMLSerializer(prov.serializers.Serializer):
         if isinstance(stream, io.TextIOBase):
             stream.write(
                 etree.tostring(et, xml_declaration=True, pretty_print=True).decode(
-                    "utf-8"
-                )
+                    "utf-8",
+                ),
             )
         else:
             et.write(stream, pretty_print=True, xml_declaration=True, encoding="UTF-8")
@@ -87,17 +86,17 @@ class ProvXMLSerializer(prov.serializers.Serializer):
         """
         # Build the namespace map for lxml and attach it to the root XML
         # element. No dictionary comprehension in Python 2.6!
-        nsmap = dict(
-            (ns.prefix, ns.uri)
+        nsmap = {
+            ns.prefix: ns.uri
             for ns in self.document._namespaces.get_registered_namespaces()
-        )
+        }
         if self.document._namespaces._default:
             nsmap[None] = self.document._namespaces._default.uri
         for namespace in bundle.namespaces:
             if namespace not in nsmap:
                 nsmap[namespace.prefix] = namespace.uri
 
-        for key, value in DEFAULT_NAMESPACES.items():
+        for value in DEFAULT_NAMESPACES.values():
             uri = value.uri
             if value.prefix == "xsd":
                 # The XSD namespace for some reason has no hash at the end
@@ -107,7 +106,7 @@ class ProvXMLSerializer(prov.serializers.Serializer):
 
         if element is not None:
             xml_bundle_root = etree.SubElement(
-                element, _ns_prov("bundleContent"), nsmap=nsmap
+                element, _ns_prov("bundleContent"), nsmap=nsmap,
             )
         else:
             xml_bundle_root = etree.Element(_ns_prov("document"), nsmap=nsmap)
@@ -121,10 +120,7 @@ class ProvXMLSerializer(prov.serializers.Serializer):
                 six.text_type(record._identifier) if record._identifier else None
             )
 
-            if identifier:
-                attrs = {_ns_prov("id"): identifier}
-            else:
-                attrs = None
+            attrs = {_ns_prov("id"): identifier} if identifier else None
 
             # Derive the record label from its attributes which is sometimes
             # needed.
@@ -135,11 +131,11 @@ class ProvXMLSerializer(prov.serializers.Serializer):
 
             for attr, value in sorted_attributes(rec_type, attributes):
                 subelem = etree.SubElement(
-                    elem, _ns(attr.namespace.uri, attr.localpart)
+                    elem, _ns(attr.namespace.uri, attr.localpart),
                 )
                 if isinstance(value, prov.model.Literal):
                     if value.datatype not in [None, PROV["InternationalizedString"]]:
-                        subelem.attrib[_ns_xsi("type")] = "%s:%s" % (
+                        subelem.attrib[_ns_xsi("type")] = "{}:{}".format(
                             value.datatype.namespace.prefix,
                             value.datatype.localpart,
                         )
@@ -258,7 +254,7 @@ class ProvXMLSerializer(prov.serializers.Serializer):
             qname = etree.QName(element)
             if qname.namespace != DEFAULT_NAMESPACES["prov"].uri:
                 raise ProvXMLException(
-                    "Non PROV element discovered in " "document or bundle."
+                    "Non PROV element discovered in document or bundle.",
                 )
             # Ignore the <prov:other> element storing non-PROV information.
             if qname.localname == "other":
@@ -290,7 +286,7 @@ class ProvXMLSerializer(prov.serializers.Serializer):
 
             if _ns_xsi("type") in element.attrib:
                 value = xml_qname_to_QualifiedName(
-                    element, element.attrib[_ns_xsi("type")]
+                    element, element.attrib[_ns_xsi("type")],
                 )
                 attributes.append((PROV["type"], value))
 
@@ -334,7 +330,7 @@ def _extract_attributes(element):
     for subel in element:
         sqname = etree.QName(subel)
         _t = xml_qname_to_QualifiedName(
-            subel, "%s:%s" % (subel.prefix, sqname.localname)
+            subel, f"{subel.prefix}:{sqname.localname}",
         )
 
         for key, value in subel.attrib.items():
@@ -350,10 +346,9 @@ def _extract_attributes(element):
                 _v = prov.model.Literal(subel.text, langtag=value)
             else:
                 warnings.warn(
-                    "The element '%s' contains an attribute %s='%s' "
+                    "The element '{}' contains an attribute {}='{}' "
                     "which is not representable in the prov module's "
-                    "internal data model and will thus be ignored."
-                    % (_t, six.text_type(key), six.text_type(value)),
+                    "internal data model and will thus be ignored.".format(_t, six.text_type(key), six.text_type(value)),
                     UserWarning,
                 )
 
@@ -385,12 +380,12 @@ def xml_qname_to_QualifiedName(element, qname_str):
         return ns[qname_str]
     # no default namespace
     raise ProvXMLException(
-        'Could not create a valid QualifiedName for "%s"' % qname_str
+        'Could not create a valid QualifiedName for "%s"' % qname_str,
     )
 
 
 def _ns(ns, tag):
-    return "{%s}%s" % (ns, tag)
+    return f"{{{ns}}}{tag}"
 
 
 def _ns_prov(tag):

@@ -106,9 +106,8 @@ def testPipeline(graph):
     """
     prod = t.TestProducer()
     prev = prod
-    part1 = [prod]
     part2 = []
-    for i in range(5):
+    for _i in range(5):
         cons = t.TestOneInOneOut()
         part2.append(cons)
         graph.connect(prev, "output", cons, "input")

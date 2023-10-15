@@ -1,19 +1,15 @@
 import argparse
 import copy
-import types
 
 # import multiprocessing
 import time
-from multiprocessing import Process, Queue, TimeoutError, Value, Manager
-
-# from dispel4py.new import processor
-
-from dispel4py.new.processor import GenericWrapper, get_inputs, simpleLogger
-
-
+from multiprocessing import Manager, Process, Value
 from queue import Empty
 
-from dispel4py.core import GenericPE, WRITER
+from dispel4py.core import WRITER
+
+# from dispel4py.new import processor
+from dispel4py.new.processor import get_inputs
 
 TIMEOUT_IN_SECONDS = 1
 MAX_RETRIES = 2
@@ -25,7 +21,7 @@ MULTI_TIMEOUT = TIMEOUT_IN_SECONDS
 # from dispel4py.examples.internal_extinction.int_ext_graph import read, graph
 # from internal_extinction.int_ext_graph import read, graph
 
-from dispel4py.new.logger import logger, print_stack_trace
+from dispel4py.new.logger import logger
 
 
 class TimerDecorator:
@@ -59,7 +55,7 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to zeromq multi processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int
+        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
     )
     parser.add_argument(
         "-n",
@@ -70,8 +66,7 @@ def parse_args(args, namespace):
         help="number of processes to run",
     )
 
-    result = parser.parse_args(args, namespace)
-    return result
+    return parser.parse_args(args, namespace)
 
 
 class GenericWriter:
@@ -85,7 +80,7 @@ class GenericWriter:
                 self.queue.put((dest_id, {input_name: data}))
 
 
-class DynamicWrapper(object):
+class DynamicWrapper:
     def __init__(self, pe, provided_inputs):
         self.pe = pe
         self.provided_inputs = provided_inputs
@@ -100,7 +95,7 @@ class DynamicWrapper(object):
             f"self.pe = {self.pe!r}\n \
                         self.pe.wrapper = {self.pe.wrapper!r}\n \
                         self.provided_inputs = {self.provided_inputs!r}\n \
-                        self.pe.outputconnections = {self.pe.outputconnections!r}"
+                        self.pe.outputconnections = {self.pe.outputconnections!r}",
         )
 
     def process(self, data):
@@ -146,7 +141,7 @@ class DynamicWroker:
                 for output_name in pe.outputconnections:
                     destinations = self._get_destination(node, output_name)
                     pe.outputconnections[output_name][WRITER] = GenericWriter(
-                        self.queue, destinations
+                        self.queue, destinations,
                     )
 
                 # logger.debug(f"outputconnections = {pe.outputconnections}")
@@ -182,7 +177,6 @@ class DynamicWroker:
 
             except Exception as e:
                 logger.error(f"Exception = {e}")
-                pass
 
         # self.queue.put('STOP')
 
@@ -236,7 +230,7 @@ def process(workflow, inputs=None, args=None):
             # logger.debug(f"provided_inputs = {provided_inputs}")
 
             if isinstance(provided_inputs, int):
-                for i in range(provided_inputs):
+                for _i in range(provided_inputs):
                     queue.put((node.obj.id, {}))
             else:
                 for d in provided_inputs:

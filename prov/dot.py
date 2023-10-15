@@ -11,13 +11,13 @@ References:
 
 .. moduleauthor:: Trung Dong Huynh <trungdong@donggiang.com>
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 __author__ = "Trung Dong Huynh"
 __email__ = "trungdong@donggiang.com"
 
 import cgi
 from datetime import datetime
+
 import pydotplus as pydot
 import six
 
@@ -26,27 +26,26 @@ from prov.model import (
     PROV_AGENT,
     PROV_ALTERNATE,
     PROV_ASSOCIATION,
+    PROV_ATTRIBUTE_QNAMES,
     PROV_ATTRIBUTION,
     PROV_BUNDLE,
     PROV_COMMUNICATION,
-    PROV_DERIVATION,
     PROV_DELEGATION,
+    PROV_DERIVATION,
+    PROV_END,
     PROV_ENTITY,
     PROV_GENERATION,
     PROV_INFLUENCE,
     PROV_INVALIDATION,
-    PROV_END,
     PROV_MEMBERSHIP,
     PROV_MENTION,
     PROV_SPECIALIZATION,
     PROV_START,
     PROV_USAGE,
     Identifier,
-    PROV_ATTRIBUTE_QNAMES,
-    sorted_attributes,
     ProvException,
+    sorted_attributes,
 )
-
 
 # Visual styles for various elements (nodes) and relations (edges)
 # see http://graphviz.org/content/attrs
@@ -131,7 +130,7 @@ ANNOTATION_END_ROW = "    </TABLE>>"
 def htlm_link_if_uri(value):
     try:
         uri = value.uri
-        return '<a href="%s">%s</a>' % (uri, six.text_type(value))
+        return f'<a href="{uri}">{six.text_type(value)}</a>'
     except AttributeError:
         return six.text_type(value)
 
@@ -167,11 +166,11 @@ def prov_to_dot(
     def _bundle_to_dot(dot, bundle):
         def _attach_attribute_annotation(node, record):
             # Adding a node to show all attributes
-            attributes = list(
+            attributes = [
                 (attr_name, value)
                 for attr_name, value in record.attributes
                 if attr_name not in PROV_ATTRIBUTE_QNAMES
-            )
+            ]
 
             if not attributes:
                 return  # No attribute to display
@@ -189,7 +188,7 @@ def prov_to_dot(
                     cgi.escape(
                         six.text_type(value)
                         if not isinstance(value, datetime)
-                        else six.text_type(value.isoformat())
+                        else six.text_type(value.isoformat()),
                     ),
                 )
                 for attr, value in attributes
@@ -197,7 +196,7 @@ def prov_to_dot(
             ann_rows.append(ANNOTATION_END_ROW)
             count[3] += 1
             annotations = pydot.Node(
-                "ann%d" % count[3], label="\n".join(ann_rows), **ANNOTATION_STYLE
+                "ann%d" % count[3], label="\n".join(ann_rows), **ANNOTATION_STYLE,
             )
             dot.add_node(annotations)
             dot.add_edge(pydot.Edge(annotations, node, **ANNOTATION_LINK_STYLE))
@@ -205,7 +204,7 @@ def prov_to_dot(
         def _add_bundle(bundle):
             count[2] += 1
             subdot = pydot.Cluster(
-                graph_name="c%d" % count[2], URL='"%s"' % bundle.identifier.uri
+                graph_name="c%d" % count[2], URL='"%s"' % bundle.identifier.uri,
             )
             if use_labels:
                 if bundle.label == bundle.identifier:
@@ -330,7 +329,7 @@ def prov_to_dot(
 
                 # the first segment
                 dot.add_edge(
-                    pydot.Edge(_get_node(nodes[0]), bnode, arrowhead="none", **style)
+                    pydot.Edge(_get_node(nodes[0]), bnode, arrowhead="none", **style),
                 )
                 style = dict(style)  # copy the style
                 del style["label"]  # not showing label in the second segment
@@ -346,7 +345,7 @@ def prov_to_dot(
             else:
                 # show a simple binary relations with no annotation
                 dot.add_edge(
-                    pydot.Edge(_get_node(nodes[0]), _get_node(nodes[1]), **style)
+                    pydot.Edge(_get_node(nodes[0]), _get_node(nodes[1]), **style),
                 )
 
     try:

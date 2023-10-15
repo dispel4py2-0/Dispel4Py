@@ -1,5 +1,5 @@
+from dispel4py.core import NAME
 from dispel4py.seismo.seismo import SeismoPE
-from dispel4py.core import GenericPE, NAME
 
 
 class StreamProducer(SeismoPE):

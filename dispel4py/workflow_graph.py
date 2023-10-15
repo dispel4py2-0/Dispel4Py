@@ -16,8 +16,9 @@
 The dispel4py workflow graph.
 """
 
-import networkx as nx
 import sys
+
+import networkx as nx
 
 from dispel4py.core import GenericPE
 
@@ -44,35 +45,35 @@ class WorkflowNode:
             WorkflowNode.node_counter += 1
             self.nodeType = self.WORKFLOW_NODE_PE
 
-            for i in obj.inputconnections.values():
+            for _i in obj.inputconnections.values():
                 # Empty for the time being - only the index matters
                 self.inputs.append({})
 
-            for i in obj.outputconnections.values():
+            for _i in obj.outputconnections.values():
                 self.outputs.append({})
         elif isinstance(obj, WorkflowGraph):
             self.nodeType = self.WORKFLOW_NODE_CP
             try:
-                for i in obj.inputmappings:
+                for _i in obj.inputmappings:
                     self.inputs.append({})
             except AttributeError:
                 pass
             try:
-                for i in obj.outputmappings:
+                for _i in obj.outputmappings:
                     self.outputs.append({})
             except AttributeError:
                 pass
         else:
             sys.stderr.write(
                 f"Error: Unknown type of object passed as a \
-                              Workflow Node: {type(obj)}\n"
+                              Workflow Node: {type(obj)}\n",
             )
             raise Exception(
                 f"Unknown type of object passed as a \
-                             Workflow Node: {type(obj)}"
+                             Workflow Node: {type(obj)}",
             )
 
-    def getContainedObject(self):
+    def get_contained_object(self):
         """Returns the wrapped PE or function."""
         return self.obj
 
@@ -83,7 +84,7 @@ TO_CONNECTION = "to_connection"
 DIRECTION = "direction"
 
 
-class WorkflowGraph(object):
+class WorkflowGraph:
     """
     A graph representing the workflow and related methods
     """
@@ -130,7 +131,7 @@ class WorkflowGraph(object):
 
         if self.graph.has_edge(from_wf_node, to_wf_node):
             self.graph[from_wf_node][to_wf_node]["ALL_CONNECTIONS"].append(
-                (from_connection, to_connection)
+                (from_connection, to_connection),
             )
 
         else:
@@ -145,8 +146,8 @@ class WorkflowGraph(object):
                 },
             )
 
-    def getContainedObjects(self):
-        nodes = [node.getContainedObject() for node in self.graph.nodes()]
+    def get_contained_objects(self):
+        nodes = [node.get_contained_object() for node in self.graph.nodes()]
         return sorted(nodes, key=lambda x: x.id)
 
     def propagate_types(self):
@@ -161,7 +162,7 @@ class WorkflowGraph(object):
                 self.__assign_types(node, visited)
 
     def __assign_types(self, node, visited):
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         inputTypes = {}
         for edge in self.graph[node].values():
             if pe == edge["DIRECTION"][1]:
@@ -189,7 +190,7 @@ class WorkflowGraph(object):
                 if node.nodeType == WorkflowNode.WORKFLOW_NODE_CP:
                     hasComposites = True
                     toRemove.add(node)
-                    wfGraph = node.getContainedObject()
+                    wfGraph = node.get_contained_object()
                     subgraph = wfGraph.graph
                     self.graph.add_nodes_from(subgraph.nodes(data=True))
                     self.graph.add_edges_from(subgraph.edges(data=True))
@@ -234,16 +235,16 @@ def _create_dot(graph, instance_names=None, counter=0):
     # Assign unique names
     for node in graph.graph.nodes():
         try:
-            name = node.getContainedObject().id, counter
-        except Exception as e:
-            name = node.getContainedObject().__class__.__name__, counter
+            name = node.get_contained_object().id, counter
+        except Exception:
+            name = node.get_contained_object().__class__.__name__, counter
         instance_names[node] = name
         counter += 1
 
     # Now add all the nodes and their input and output connections
     cluster_index = 0
     for node in graph.graph.nodes():
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         if isinstance(pe, WorkflowGraph):
             dot += _create_cluster(pe, cluster_index, instance_names, counter)
             cluster_index += 1
@@ -275,7 +276,7 @@ def _create_dot(graph, instance_names=None, counter=0):
 
     # connect the inputs and outputs
     for node in graph.graph.nodes():
-        pe = node.getContainedObject()
+        pe = node.get_contained_object()
         for edge in graph.graph[node].values():
             if pe == edge["DIRECTION"][0]:
                 if isinstance(pe, WorkflowGraph):
@@ -320,9 +321,8 @@ def draw(graph):
     """
     Creates a representation of the workflow graph in the dot language.
     """
-    dot = f"digraph request\n{{\nnode [shape=Mrecord, \
+    return f"digraph request\n{{\nnode [shape=Mrecord, \
            style=filled, fillcolor=white];\n{_create_dot(graph)}}}\n"
-    return dot
 
 
 def drawDot(graph, img_type="png"):  # pragma: no cover
@@ -332,7 +332,7 @@ def drawDot(graph, img_type="png"):  # pragma: no cover
     See https://graphviz.gitlab.io/_pages/doc/info/output.html for supported
     output types.
     """
-    from subprocess import Popen, PIPE
+    from subprocess import PIPE, Popen
 
     dot = draw(graph)
 

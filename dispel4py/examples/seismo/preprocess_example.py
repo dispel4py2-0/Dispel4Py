@@ -11,13 +11,15 @@ or::
 
 """
 
-from dispel4py.core import GenericPE
-from dispel4py.base import IterativePE, ConsumerPE, create_iterative_chain
-from dispel4py.workflow_graph import WorkflowGraph
+import contextlib
 
-from whiten import spectralwhitening
 from normalization import mean_norm
 from obspy.core import read as obread
+from whiten import spectralwhitening
+
+from dispel4py.base import ConsumerPE, IterativePE, create_iterative_chain
+from dispel4py.core import GenericPE
+from dispel4py.workflow_graph import WorkflowGraph
 
 # These are the file locations
 ROOT_DIR = "/Users/akrause/VERCE/data/Terracorrelator/"
@@ -45,7 +47,7 @@ class StreamProducer(GenericPE):
         self.count = 0
 
     def process(self, inputs):
-        for i in range(NREPEATS):
+        for _i in range(NREPEATS):
             self._read_stream(IN1, R1)
             self._read_stream(IN2, R2)
 
@@ -103,7 +105,9 @@ def filter(str1, freqmin=0.01, freqmax=1.0, corners=4, zerophase=False):
 
 
 class PreTaskPE(IterativePE):
-    def __init__(self, compute_fn, params={}):
+    def __init__(self, compute_fn, params=None):
+        if params is None:
+            params = {}
         IterativePE.__init__(self)
         self.compute_fn = compute_fn
         self.params = params
@@ -114,10 +118,8 @@ class PreTaskPE(IterativePE):
         rf = data[2]
         # this is an odd one - need to put one of the tuple values into the parameters list
         # not sure how to handle this in general, hard coded for now
-        try:
+        with contextlib.suppress(KeyError):
             self.params["seedresp"]["filename"] = rf
-        except KeyError:
-            pass
         result = self.compute_fn(str1, **self.params)
         self.log(f"{count}: done processing: {self.compute_fn.__name__}")
         return [count, result, rf]
@@ -152,5 +154,5 @@ graph.connect(streamProducer, StreamProducer.OUTPUT_NAME, preTask, "input")
 graph.connect(preTask, "output", streamToFile, StreamToFile.INPUT_NAME)
 graph.connect(preTask, "output", whiten, IterativePE.INPUT_NAME)
 graph.connect(
-    whiten, IterativePE.OUTPUT_NAME, streamToFileWhitened, StreamToFile.INPUT_NAME
+    whiten, IterativePE.OUTPUT_NAME, streamToFileWhitened, StreamToFile.INPUT_NAME,
 )

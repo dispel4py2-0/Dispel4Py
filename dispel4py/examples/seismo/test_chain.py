@@ -1,5 +1,6 @@
-from dispel4py.core import GenericPE, NAME, TYPE
 from obspy.core import read
+
+from dispel4py.core import NAME, TYPE, GenericPE
 
 
 def PEMeanSub(pe, stream):
@@ -20,12 +21,12 @@ class TestProducer(GenericPE):
     def __init__(self):
         GenericPE.__init__(self)
         self.outputconnections = {
-            "output": {NAME: "output", TYPE: ["timestamp", "location", "stream"]}
+            "output": {NAME: "output", TYPE: ["timestamp", "location", "stream"]},
         }
 
     def process(self, inputs):
         stream = read(
-            "/Users/akrause/VERCE/data/laquila/20100501-20120930_fseed/TERO/20100501.fseed"
+            "/Users/akrause/VERCE/data/laquila/20100501-20120930_fseed/TERO/20100501.fseed",
         )
         return {"output": [{}, {}, {"data": stream}]}
 
@@ -35,14 +36,12 @@ from dispel4py.workflow_graph import WorkflowGraph
 controlParameters = {"runId": "12345", "username": "amyrosa", "outputdest": "./"}
 
 from dispel4py.seismo.obspy_stream import (
-    createProcessingComposite,
     INPUT_NAME,
-    OUTPUT_NAME,
+    createProcessingComposite,
 )
 
 chain = []
-chain.append(PEMeanSub)
-chain.append(PEDetrend)
+chain.extend((PEMeanSub, PEDetrend))
 composite = createProcessingComposite(chain, controlParameters=controlParameters)
 
 producer = TestProducer()

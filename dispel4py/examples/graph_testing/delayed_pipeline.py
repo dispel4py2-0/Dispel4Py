@@ -52,8 +52,8 @@ Execution:
 """
 
 from dispel4py.examples.graph_testing import testing_PEs as t
-from dispel4py.workflow_graph import WorkflowGraph
 from dispel4py.new.monitoring import ProcessTimingPE
+from dispel4py.workflow_graph import WorkflowGraph
 
 prod = t.TestProducer()
 cons1 = t.TestOneInOneOut()

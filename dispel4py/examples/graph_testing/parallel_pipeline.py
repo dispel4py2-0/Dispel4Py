@@ -75,7 +75,6 @@ def testParallelPipeline():
     """
     graph = WorkflowGraph()
     prod = t.TestProducer()
-    prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     cons3 = t.TestOneInOneOut()

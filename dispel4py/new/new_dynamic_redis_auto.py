@@ -1,15 +1,14 @@
 # from internal_extinction.int_ext_graph import read, graph
 
+import argparse
+import json
+import time
+from multiprocessing import Condition, Pool, Value
+
+from dispel4py.core import WRITER
 from dispel4py.new.dyn_redis_config import connect
 from dispel4py.new.logger import logger
-from multiprocessing import Process, Queue, TimeoutError, Pool, Value, Condition
-import json
-import argparse
-import time
-
-from dispel4py.new.processor import GenericWrapper, get_inputs
-from dispel4py.core import GenericPE, WRITER
-
+from dispel4py.new.processor import get_inputs
 
 DISPEL4PY_REDIS_AUTO_PREFIX = "DISPEL4PY_DYN_AUTO"
 
@@ -38,7 +37,7 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to dynamic auto redis processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int
+        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
     )
     parser.add_argument(
         "-n",
@@ -58,8 +57,7 @@ def parse_args(args, namespace):
         default=1000,
     )
 
-    result = parser.parse_args(args, namespace)
-    return result
+    return parser.parse_args(args, namespace)
 
 
 def reset_redis(redis):
@@ -107,7 +105,7 @@ class RedisWriter:
                 self.redis.xadd(STREAM_KEY, payload, "*")
 
 
-class DynamicWrapper(object):
+class DynamicWrapper:
     def __init__(self, pe, provided_inputs):
         self.pe = pe
         self.provided_inputs = provided_inputs
@@ -141,7 +139,6 @@ class DynamicRedisWroker:
         """
         Function to process a worker in the workflow.
         """
-        pass
 
     def _get_destination(self, node, output_name):
         """
@@ -207,7 +204,7 @@ class AutoDynamicRedisWorker(DynamicRedisWroker):
                 retries += 1
                 if retries == MAX_RETRIES:
                     worker_redis.hset(
-                        MANAGER_KEY, MANAGER_TERMIATE_FIELD, MANAGER_TERMIATE_YES
+                        MANAGER_KEY, MANAGER_TERMIATE_FIELD, MANAGER_TERMIATE_YES,
                     )
                     # logger.debug(f"worker_{self.rank} is exiting and terminating the workflow")
                     # logger.debug(f"worker_{self.rank} is exiting")
@@ -225,7 +222,7 @@ class AutoDynamicRedisWorker(DynamicRedisWroker):
                 for output_name in pe.outputconnections:
                     destinations = self._get_destination(node, output_name)
                     pe.outputconnections[output_name][WRITER] = RedisWriter(
-                        worker_redis, destinations
+                        worker_redis, destinations,
                     )
 
                 output = pe.process(data)
@@ -237,8 +234,8 @@ class AutoDynamicRedisWorker(DynamicRedisWroker):
                             for dest_id, input_name in destinations:
                                 payload = {
                                     FIELD_KEY: json.dumps(
-                                        (dest_id, {input_name: output_value})
-                                    )
+                                        (dest_id, {input_name: output_value}),
+                                    ),
                                 }
                                 worker_redis.xadd(STREAM_KEY, payload, "*")
 
@@ -289,7 +286,7 @@ class AutoScaler:
     def grow(self, size_to_grow):
         with self.active_size.get_lock():
             self.active_size.value = min(
-                self.max_pool_size, self.active_size.value + size_to_grow
+                self.max_pool_size, self.active_size.value + size_to_grow,
             )
 
         # logger.info(f"Grow: active size = {self.active_size.value}")
@@ -309,6 +306,7 @@ class AutoScaler:
             == MANAGER_TERMIATE_YES
         ):
             return True
+        return None
 
         # return False
 
@@ -363,7 +361,7 @@ class AutoScaler:
         #     total_idle_for_active_workers += consumer['idle']
 
         # logger.info(f"avg_idle_for_active_workers = {total_idle_for_active_workers/self.active_size.value}")
-        avg_idle_for_active_workers = (
+        (
             total_idle_for_active_workers / self.active_size.value
         )
         # if total_idle_for_active_workers/self.active_count.value > self.idle_time_threshold:

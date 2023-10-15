@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 __author__ = "Trung Dong Huynh"
 __email__ = "trungdong@donggiang.com"
@@ -7,7 +6,7 @@ import six
 
 
 @six.python_2_unicode_compatible
-class Identifier(object):
+class Identifier:
     """Base class for all identifiers and also represents xsd:anyURI"""
 
     # TODO: make Identifier an "abstract" base class and move xsd:anyURI
@@ -30,7 +29,7 @@ class Identifier(object):
         return hash((self.uri, self.__class__))
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, self._uri)
+        return f"<{self.__class__.__name__}: {self._uri}>"
 
     def provn_representation(self):
         return '"%s" %%%% xsd:anyURI' % self._uri
@@ -39,11 +38,11 @@ class Identifier(object):
 @six.python_2_unicode_compatible
 class QualifiedName(Identifier):
     def __init__(self, namespace, localpart):
-        Identifier.__init__(self, "".join([namespace.uri, localpart]))
+        Identifier.__init__(self, f"{namespace.uri}{localpart}")
         self._namespace = namespace
         self._localpart = localpart
         self._str = (
-            ":".join([namespace.prefix, localpart]) if namespace.prefix else localpart
+            f"{namespace.prefix}:{localpart}" if namespace.prefix else localpart
         )
 
     @property
@@ -58,7 +57,7 @@ class QualifiedName(Identifier):
         return self._str
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, self._str)
+        return f"<{self.__class__.__name__}: {self._str}>"
 
     def __hash__(self):
         return hash(self.uri)
@@ -67,11 +66,11 @@ class QualifiedName(Identifier):
         return "'%s'" % self._str
 
 
-class Namespace(object):
+class Namespace:
     def __init__(self, prefix, uri):
         self._prefix = prefix
         self._uri = uri
-        self._cache = dict()
+        self._cache = {}
 
     @property
     def uri(self):
@@ -96,7 +95,7 @@ class Namespace(object):
             else (identifier.uri if isinstance(identifier, Identifier) else None)
         )
         if uri and uri.startswith(self._uri):
-            return QualifiedName(self, uri[len(self._uri) :])
+            return QualifiedName(self, uri[len(self._uri):])
         else:
             return None
 
@@ -118,7 +117,7 @@ class Namespace(object):
         return hash((self._uri, self._prefix))
 
     def __repr__(self):
-        return "<%s: %s {%s}>" % (self.__class__.__name__, self._prefix, self._uri)
+        return f"<{self.__class__.__name__}: {self._prefix} {{{self._uri}}}>"
 
     def __getitem__(self, localpart):
         if localpart in self._cache:

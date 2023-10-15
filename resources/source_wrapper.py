@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import storm
+import pickle
 import traceback
 from importlib import import_module
-import pickle
+
+import storm
 from output_writer import OutputWriter
 
 
@@ -37,8 +38,7 @@ class SourceWrapper(storm.Spout):
             self.script = getattr(mod, self.scriptname)()
             for key, value in scriptconfig.iteritems():
                 storm.log(
-                    "Dispel4Py ------> %s: setting attribute %s"
-                    % (self.scriptname, key)
+                    f"Dispel4Py ------> {self.scriptname}: setting attribute {key}",
                 )
                 setattr(self.script, key, value)
             storm.log("Dispel4Py ------> loaded script %s" % self.scriptname)
@@ -50,15 +50,11 @@ class SourceWrapper(storm.Spout):
             # pre-processing if required
             self.script.preprocess()
             storm.log(
-                "Dispel4Py ------> %s: preprocess() completed." % (self.scriptname,)
+                f"Dispel4Py ------> {self.scriptname}: preprocess() completed.",
             )
         except:
             storm.log(
-                "Dispel4Py ------> %s: %s"
-                % (
-                    self.scriptname,
-                    traceback.format_exc(),
-                )
+                f"Dispel4Py ------> {self.scriptname}: {traceback.format_exc()}",
             )
             raise
 
@@ -75,11 +71,7 @@ class SourceWrapper(storm.Spout):
                 # static input is empty - no more processing
                 return
             storm.log(
-                "Dispel4Py ------> %s: input %s"
-                % (
-                    self.scriptname,
-                    input_tuple,
-                )
+                f"Dispel4Py ------> {self.scriptname}: input {input_tuple}",
             )
             outputs = self.script.process(input_tuple)
             if outputs is None:
@@ -88,18 +80,13 @@ class SourceWrapper(storm.Spout):
                 result = output if isinstance(output, list) else [output]
                 storm.emit(result, stream=streamname, id=self.counter)
                 storm.log(
-                    "Dispel4Py ------> %s: emitted tuple %s to stream %s"
-                    % (self.script.id, result, streamname)
+                    "Dispel4Py ------> {}: emitted tuple {} to stream {}".format(self.script.id, result, streamname),
                 )
                 self.counter += 1
         except:
             # logging the error but it should be passed to client somehow
             storm.log(
-                "Dispel4Py ------> %s: %s"
-                % (
-                    self.scriptname,
-                    traceback.format_exc(),
-                )
+                f"Dispel4Py ------> {self.scriptname}: {traceback.format_exc()}",
             )
 
 

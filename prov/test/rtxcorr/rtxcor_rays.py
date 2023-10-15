@@ -1,4 +1,3 @@
-# coding: utf-8
 
 # ## Cross-correlation exmple with Active-Provenance in dispel4py:
 #
@@ -46,30 +45,22 @@
 # In[1]:
 
 
-from dispel4py.workflow_graph import WorkflowGraph
-from dispel4py.provenance import *
-from dispel4py.new.processor import *
-from dispel4py.visualisation import *
-import time
 import random
-import numpy
-import traceback
-from dispel4py.base import (
-    create_iterative_chain,
-    GenericPE,
-    ConsumerPE,
-    IterativePE,
-    SimpleFunctionPE,
-)
-from dispel4py.new.simple_process import process_and_return
+import time
 
-import IPython
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.stats.stats import pearsonr
-import networkx as nx
 
+from dispel4py.base import (
+    GenericPE,
+)
+from dispel4py.new.processor import *
+from dispel4py.provenance import *
+from dispel4py.visualisation import *
+from dispel4py.workflow_graph import WorkflowGraph
 
 sns.set(style="white")
 
@@ -156,7 +147,7 @@ class CompMatrix(GenericPE):
             if data[x][1] not in self.data:
                 # prepares the data to visualise the xcor matrix of a specific batch number.
                 self.data[data[x][1]] = {}
-                self.data[data[x][1]]["matrix"] = numpy.identity(self.size)
+                self.data[data[x][1]]["matrix"] = np.identity(self.size)
                 self.data[data[x][1]]["ro_count"] = 0
 
             self.data[data[x][1]]["matrix"][(data[x][2][1], data[x][2][0])] = data[x][0]
@@ -167,11 +158,11 @@ class CompMatrix(GenericPE):
                 matrix = self.data[data[x][1]]["matrix"]
 
                 d = pd.DataFrame(
-                    data=matrix, columns=range(0, self.size), index=range(0, self.size)
+                    data=matrix, columns=range(self.size), index=range(self.size),
                 )
 
-                mask = numpy.zeros_like(d, dtype=numpy.bool)
-                mask[numpy.triu_indices_from(mask)] = True
+                mask = np.zeros_like(d, dtype=np.bool)
+                mask[np.triu_indices_from(mask)] = True
 
                 # Set up the matplotlib figure
                 f, ax = plt.subplots(figsize=(11, 9))
@@ -216,7 +207,6 @@ class CorrCoef(GenericPE):
         self.batchnum = 0
 
     def _process(self, inputs):
-        index = None
         val = None
 
         try:
@@ -241,9 +231,9 @@ class CorrCoef(GenericPE):
             )
 
         if len(self.batch2) >= self.size and len(self.batch1) >= self.size:
-            array1 = numpy.array(self.batch1[0 : self.size])
-            array2 = numpy.array(self.batch2[0 : self.size])
-            ro = numpy.corrcoef([array1, array2])
+            array1 = np.array(self.batch1[0: self.size])
+            array2 = np.array(self.batch2[0: self.size])
+            ro = np.corrcoef([array1, array2])
             # stream out the correlation coefficient, the sequence number of the batch and the indexes of the sources.
             self.write(
                 "output",
@@ -258,8 +248,8 @@ class CorrCoef(GenericPE):
                 dep=["batch1", "batch2"],
             )
             self.batchnum += 1
-            self.batch1 = self.batch1[(self.size) : len(self.batch1)]
-            self.batch2 = self.batch2[(self.size) : len(self.batch2)]
+            self.batch1 = self.batch1[(self.size): len(self.batch1)]
+            self.batch2 = self.batch2[(self.size): len(self.batch2)]
 
 
 class MaxClique(GenericPE):
@@ -390,10 +380,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
 
-        if self.convertToW3C:
-            out = toW3Cprov(prov)
-        else:
-            out = prov
+        out = toW3Cprov(prov) if self.convertToW3C else prov
 
         params = urllib.urlencode({"prov": json.dumps(out)})
         headers = {
@@ -411,7 +398,6 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
             response.read(),
         )
         self.connection.close()
-        return None
 
     def postprocess(self):
         self.connection.close()
@@ -442,10 +428,7 @@ class ProvenanceRecorderToFileWithFeedback(ProvenanceRecorder):
 
         self.write(self.porttopemap[prov["name"]], "FEEDBACK MESSAGGE FROM RECORDER")
 
-        if self.convertToW3C:
-            out = toW3Cprov(prov)
-        else:
-            out = prov
+        out = toW3Cprov(prov) if self.convertToW3C else prov
 
         filep = open(os.environ["PROV_PATH"] + "/" + prov["_id"], "wr")
         json.dump(out, filep)
@@ -474,10 +457,7 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
 
-        if self.convertToW3C:
-            out = toW3Cprov(prov)
-        else:
-            out = prov
+        out = toW3Cprov(prov) if self.convertToW3C else prov
 
         self.write(self.porttopemap[prov["name"]], "FEEDBACK MESSAGGE FROM RECORDER")
 
@@ -491,10 +471,9 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
         response = self.connection.getresponse()
         self.log(
             "progress: "
-            + str((response.status, response.reason, response, response.read()))
+            + str((response.status, response.reason, response, response.read())),
         )
 
-        return None
 
 
 # ### Preparing the clusters, recorders and feedback
@@ -522,10 +501,10 @@ def createWf():
         3: {"name": "microsoft"},
     }
 
-    for i in range(0, variables_number):
+    for i in range(variables_number):
         sources[i] = Source(sampling_rate, i, inputs_stock[i]["name"])
         sources[i].prov_cluster = "sources_cluster"
-    for h in range(0, variables_number):
+    for h in range(variables_number):
         graph.connect(start, "output", sources[h], "iterations")
         for j in range(h + 1, variables_number):
             cc = CorrCoef(batch_size, (h, j))

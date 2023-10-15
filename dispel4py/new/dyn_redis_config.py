@@ -1,5 +1,6 @@
 import os
-from redis import Redis, RedisError
+
+from redis import Redis
 
 
 def connect(name=None):

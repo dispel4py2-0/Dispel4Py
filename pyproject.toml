@@ -1,0 +1,30 @@
+[tool.ruff]
+# 1. Enable flake8-bugbear (`B`) rules, in addition to the defaults.
+# Enable these when I'm ready to face stronger demons:
+# ["ERA", "PTH", "SLF"]
+# ERA - commented code
+# PTH - use new Path API instead of os.path (high effort due to there being a lot of it)
+# SLF - private member access
+select = ["E", "F", "B", "I", "N", "UP",
+    "A", "COM", "C4", "ISC001", "ISC002",
+    "ICN", "G", "INP", "PIE", "Q", "RSE",
+    "RET", "SIM", "ARG",
+    "FIX", "PL", "TRY", "FLY", "PERF",
+    "FURB", "RUF"]
+
+# 2. Avoid enforcing line-length violations (`E501`)
+# E402 (import not on top of file) Ignored for now
+# (ToDo: figure out what to do with it)
+# F405 (undefined or defined from star imports) ignored for now
+# (ToDo: is it related to dynamic imports?)
+ignore = ["E501", "E402", "F405"]
+
+# 3. Unfixable rules
+# ERA: Don't autoremove all commented code, I may actually need it
+unfixable = ["ERA"]
+
+# 4. Ignore `E402` (import violations) in all `__init__.py` files, and in `path/to/file.py`.
+#[tool.ruff.per-file-ignores]
+#"__init__.py" = ["E402"]
+#"path/to/file.py" = ["E402"]
+#"**/{tests,docs,tools}/*" = ["E402"]

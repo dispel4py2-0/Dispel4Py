@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 from setuptools import setup
 
 
@@ -48,7 +49,7 @@ setup(
     entry_points={
         "console_scripts": [
             "dispel4py = dispel4py.new.processor:main",
-        ]
+        ],
     },
     classifiers=[
         "Development Status :: 4 - Beta",

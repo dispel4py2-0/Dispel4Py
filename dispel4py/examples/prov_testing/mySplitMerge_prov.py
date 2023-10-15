@@ -3,13 +3,13 @@ This is a dispel4py graph which produces a workflow that splits the data,
 sends it to different nodes
 and merges the output of those with another node.
 """
+import copy
 import math
 
-import copy
-from dispel4py.workflow_graph import WorkflowGraph
-from dispel4py.core import GenericPE, NAME, TYPE
-from dispel4py.base import SimpleFunctionPE, BasePE
+from dispel4py.base import SimpleFunctionPE
+from dispel4py.core import NAME, TYPE, GenericPE
 from dispel4py.provenance import *
+from dispel4py.workflow_graph import WorkflowGraph
 
 
 def read_in(filename):
@@ -47,7 +47,6 @@ class splitPE(GenericPE):
         # create output chunk dict
         self.num_outputs = num_outputs
         for i in range(num_outputs):
-            name = f"{BasePE.OUTPUT_NAME}{i}"
             self.outputconnections[f"output{i}"] = {
                 NAME: f"output{i}",
                 TYPE: ["number"],
@@ -58,7 +57,7 @@ class splitPE(GenericPE):
         # split into sublists of about same length
         n = math.ceil(len(self.nos) / self.num_outputs)
         n = int(n)
-        self.chunks = [self.nos[x : x + n] for x in range(0, len(self.nos), n)]
+        self.chunks = [self.nos[x: x + n] for x in range(0, len(self.nos), n)]
 
         result = {}
         count = 0
@@ -110,6 +109,7 @@ class mergePE(GenericPE):
             out = copy.copy(self.result)
             self.result = []
             return {"output": out}
+        return None
 
 
 class fwritePE(GenericPE):

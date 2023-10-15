@@ -5,16 +5,19 @@ These are composite PEs that are automatically parallelised if the mapping
 supports this.
 """
 
-from dispel4py.workflow_graph import WorkflowGraph
-from dispel4py.core import GenericPE
 import math
+
+from dispel4py.core import GenericPE
+from dispel4py.workflow_graph import WorkflowGraph
 
 
 class AggregatePE(GenericPE):
     INPUT_NAME = "input"
     OUTPUT_NAME = "output"
 
-    def __init__(self, indexes=[0]):
+    def __init__(self, indexes=None):
+        if indexes is None:
+            indexes = [0]
         GenericPE.__init__(self)
         self._add_input(self.INPUT_NAME)
         self._add_output(self.OUTPUT_NAME)
@@ -29,7 +32,9 @@ class ContinuousReducePE(GenericPE):
     INPUT_NAME = "input"
     OUTPUT_NAME = "output"
 
-    def __init__(self, indexes=[0]):
+    def __init__(self, indexes=None):
+        if indexes is None:
+            indexes = [0]
         GenericPE.__init__(self)
         self._add_input(self.INPUT_NAME)
         self._add_output(self.OUTPUT_NAME)
@@ -50,7 +55,9 @@ class CountPE(AggregatePE):
 
 
 class MaxPE(AggregatePE):
-    def __init__(self, indexes=[0]):
+    def __init__(self, indexes=None):
+        if indexes is None:
+            indexes = [0]
         AggregatePE.__init__(self, indexes)
 
     def _process(self, inputs):
@@ -59,7 +66,9 @@ class MaxPE(AggregatePE):
 
 
 class MinPE(AggregatePE):
-    def __init__(self, indexes=[0]):
+    def __init__(self, indexes=None):
+        if indexes is None:
+            indexes = [0]
         AggregatePE.__init__(self, indexes)
         self.value = [None for i in self.indexes]
 
@@ -72,7 +81,9 @@ class MinPE(AggregatePE):
 
 
 class SumPE(AggregatePE):
-    def __init__(self, indexes=[0]):
+    def __init__(self, indexes=None):
+        if indexes is None:
+            indexes = [0]
         AggregatePE.__init__(self, indexes)
 
     def _process(self, inputs):
@@ -147,7 +158,7 @@ class StdDevPE(GenericPE):
     def _postprocess(self):
         std_dev = math.sqrt(
             (self.count * self.sum_squared - self.sum * self.sum)
-            / (self.count * (self.count - 1))
+            / (self.count * (self.count - 1)),
         )
         self.write(self.OUTPUT_NAME, (std_dev, self.count, self.sum, self.sum_squared))
 
@@ -173,7 +184,7 @@ class StdDevReducePE(GenericPE):
     def _postprocess(self):
         std_dev = math.sqrt(
             (self.count * self.sum_squared - self.sum * self.sum)
-            / (self.count * (self.count - 1))
+            / (self.count * (self.count - 1)),
         )
         self.write(self.OUTPUT_NAME, (std_dev, self.count, self.sum, self.sum_squared))
 
@@ -201,27 +212,33 @@ def parallelCount():
     return parallel_aggregate(CountPE(), pe_sum)
 
 
-def parallelSum(indexes=[0]):
+def parallelSum(indexes=None):
     """
     Creates a SUM composite PE that can be parallelised using a
     map-reduce pattern.
     """
+    if indexes is None:
+        indexes = [0]
     return parallel_aggregate(SumPE(indexes), SumPE(indexes))
 
 
-def parallelMin(indexes=[0]):
+def parallelMin(indexes=None):
     """
     Creates a MIN composite PE that can be parallelised using a
     map-reduce pattern.
     """
+    if indexes is None:
+        indexes = [0]
     return parallel_aggregate(MinPE(indexes), MinPE(indexes))
 
 
-def parallelMax(indexes=[0]):
+def parallelMax(indexes=None):
     """
     Creates a MAX composite PE that can be parallelised using a
     map-reduce pattern.
     """
+    if indexes is None:
+        indexes = [0]
     return parallel_aggregate(MaxPE(indexes), MaxPE(indexes))
 
 
@@ -248,7 +265,7 @@ def parallelStdDev(index=0):
     parStdDev = StdDevPE(index)
     reduceStdDev = StdDevReducePE()
     composite.connect(
-        parStdDev, parStdDev.OUTPUT_NAME, reduceStdDev, reduceStdDev.INPUT_NAME
+        parStdDev, parStdDev.OUTPUT_NAME, reduceStdDev, reduceStdDev.INPUT_NAME,
     )
     composite.inputmappings = {"input": (parStdDev, parStdDev.INPUT_NAME)}
     composite.outputmappings = {"output": (reduceStdDev, reduceStdDev.OUTPUT_NAME)}

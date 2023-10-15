@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 __author__ = "Trung Dong Huynh"
 __email__ = "trungdong@donggiang.com"
@@ -10,7 +9,6 @@ __all__ = ["Error", "model", "read"]
 class Error(Exception):
     """Base class for all errors in this package."""
 
-    pass
 
 
 def read(source, format=None):
@@ -28,7 +26,6 @@ def read(source, format=None):
     """
     # Lazy imports to not globber the namespace.
     from prov.model import ProvDocument
-
     from prov.serializers import Registry
 
     Registry.load_serializers()
@@ -46,5 +43,5 @@ def read(source, format=None):
         raise TypeError(
             "Could not read from the source. To get a proper "
             "error message, specify the format with the 'format' "
-            "parameter."
+            "parameter.",
         )

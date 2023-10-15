@@ -1,15 +1,12 @@
-from dispel4py.provenance import *
-from dispel4py.core import NAME, TYPE, GenericPE
+import contextlib
 import uuid
-import traceback
-from obspy.core import Trace, Stream
-from dispel4py.base import SimpleFunctionPE
-import traceback
 
-try:
+from obspy.core import Stream, Trace
+
+from dispel4py.provenance import *
+
+with contextlib.suppress(ImportError):
     from obspy.core.utcdatetime import UTCDateTime
-except ImportError:
-    pass
 
 
 class SeismoPE(ProvenanceType):
@@ -32,7 +29,7 @@ class SeismoPE(ProvenanceType):
 
             else:
                 st = data
-            streammeta = list()
+            streammeta = []
             for tr in st:
                 metadic = {}
                 metadic.update({"prov:type": "waveform"})
@@ -65,7 +62,7 @@ class SeismoPE(ProvenanceType):
         except Exception:
             self.log("Applying default metadata extraction")
             # self.error=self.error+"Extract Metadata error: "+str(traceback.format_exc())
-            return super(SeismoPE, self).extractItemMetadata(data)
+            return super().extractItemMetadata(data)
 
 
 class SeismoSimpleFunctionPE(ProvenanceType):

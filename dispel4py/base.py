@@ -31,8 +31,8 @@ class BasePE(GenericPE):
 
     def __init__(
         self,
-        inputs: List[str] = [],
-        outputs: List[str] = [],
+        inputs: Optional[List[str]] = None,
+        outputs: Optional[List[str]] = None,
         num_inputs: int = 0,
         num_outputs: int = 0,
     ):
@@ -44,6 +44,10 @@ class BasePE(GenericPE):
         :param numInputs: number of outputs; the outputs are generated as
         'output0' to 'output`n`' where `n` is the number of outputs (optional)
         """
+        if outputs is None:
+            outputs = []
+        if inputs is None:
+            inputs = []
         GenericPE.__init__(self)
 
         for i in range(num_inputs):
@@ -85,6 +89,7 @@ class IterativePE(GenericPE):
         result = self._process(data)
         if result is not None:
             return {self.OUTPUT_NAME: result}
+        return None
 
     def _process(self, data):
         """
@@ -92,7 +97,7 @@ class IterativePE(GenericPE):
         :param data: the input data
         :returns: an output data block or None
         """
-        return None
+        return
 
 
 class ProducerPE(GenericPE):
@@ -116,6 +121,7 @@ class ProducerPE(GenericPE):
         result = self._process(inputs)
         if result is not None:
             return {self.OUTPUT_NAME: result}
+        return None
 
 
 class ConsumerPE(GenericPE):
@@ -148,8 +154,10 @@ class SimpleFunctionPE(IterativePE):
     def __init__(
         self,
         compute_fn: Optional[Callable[[Any], Any]] = None,
-        params: Dict[Any, Any] = {},
+        params: Optional[Dict[Any, Any]] = None,
     ) -> None:
+        if params is None:
+            params = {}
         IterativePE.__init__(self)
         if compute_fn:
             self.name = f"PE_{compute_fn.__name__}"
@@ -167,7 +175,7 @@ from dispel4py.workflow_graph import WorkflowGraph
 
 
 def create_iterative_chain(
-    functions, FunctionPE_class=SimpleFunctionPE, name_prefix="PE_", name_suffix=""
+    functions, FunctionPE_class=SimpleFunctionPE, name_prefix="PE_", name_suffix="",
 ):
     """
     Creates a composite PE wrapping a pipeline that processes obspy streams.
@@ -244,12 +252,14 @@ class CompositePE(WorkflowGraph):
                 CompositePE.__init__(self, create_graph, limit)
     """
 
-    def __init__(self, create_graph=None, params={}):
+    def __init__(self, create_graph=None, params=None):
         """
         Instantiate and populate the graph, if the function provided.
         Otherwise, the graph must be populated explicitly by the subclass or
         after instantiating the object.
         """
+        if params is None:
+            params = {}
         WorkflowGraph.__init__(self)
         self.inputmappings = {}
         self.outputmappings = {}

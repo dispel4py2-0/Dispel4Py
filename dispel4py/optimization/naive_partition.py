@@ -1,8 +1,8 @@
 # import libraries
-import pandas as pd
-import json
-import re
 import math
+import re
+
+import pandas as pd
 
 
 # This function is to get the communication time among PEs
@@ -21,20 +21,19 @@ def communication_time(df):
     read_logs = df.loc[df["method"] == "read"][["PE", "rank", "start", "end", "data"]]
     rcols = read_logs["data"].apply(eval).map(lambda d: d["input"]).apply(pd.Series)
     read_logs["data_id"] = rcols[0].map(
-        lambda t: t[1] if isinstance(t, tuple) else None
+        lambda t: t[1] if isinstance(t, tuple) else None,
     )
     read_logs = read_logs[read_logs["data_id"].notnull()]
     read_logs = read_logs.drop(columns=["data"])
 
     jdf = read_logs.set_index("data_id").join(
-        write_logs.set_index("data_id"), lsuffix="_r", rsuffix="_w"
+        write_logs.set_index("data_id"), lsuffix="_r", rsuffix="_w",
     )
     jdf["t_comm"] = jdf[["end_w", "end_r"]].max(axis=1) - jdf[
         ["start_r", "start_w"]
     ].max(axis=1)
     communication_times = jdf[["PE_w", "rank_w", "PE_r", "rank_r", "t_comm"]]
-    ct = communication_times[["PE_w", "PE_r", "t_comm"]].groupby(["PE_w", "PE_r"]).max()
-    return ct
+    return communication_times[["PE_w", "PE_r", "t_comm"]].group_by(["PE_w", "PE_r"]).max()
 
 
 # This function is to get the processing time of each PE
@@ -42,8 +41,7 @@ def processing_times(df):
     pl = df.loc[df["method"] == "process"][["PE", "rank", "start", "end"]]
     pl["t_proc"] = pl["end"] - pl["start"]
     processing_times = pl.drop(columns=["start", "end"])
-    pt = processing_times[["PE", "t_proc"]].groupby(["PE"]).max()
-    return pt
+    return processing_times[["PE", "t_proc"]].group_by(["PE"]).max()
 
 
 # This function is to check if two PEs should be placed one partition or not

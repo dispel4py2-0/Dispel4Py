@@ -1,23 +1,23 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Apr 07 09:23:16 2014
 
 @author: abell5
 """
-from scipy.signal import triang
-from numpy import (
-    sign,
-    arange,
-    zeros,
-    absolute,
-    true_divide,
-    sum,
-    floor,
-    convolve,
-    amax,
-    logical_and,
-)
 import copy
+
+from numpy import (
+    absolute,
+    amax,
+    arange,
+    convolve,
+    floor,
+    logical_and,
+    sign,
+    sum,
+    true_divide,
+    zeros,
+)
+from scipy.signal import triang
 
 
 def onebit_norm(stream):
@@ -42,11 +42,11 @@ def mean_norm(stream, N):
 
         for n in arange(len(data)):
             if n < N:
-                tw = absolute(data[0 : n + N])
+                tw = absolute(data[0: n + N])
             elif logical_and(n >= N, n < (len(data) - N)):
-                tw = absolute(data[n - N : n + N])
+                tw = absolute(data[n - N: n + N])
             elif n >= (len(data) - N):
-                tw = absolute(data[n - N : len(data)])
+                tw = absolute(data[n - N: len(data)])
 
             w[n] = true_divide(1, 2 * N + 1) * (sum(tw))
 
@@ -63,7 +63,7 @@ def gain_norm(stream, N):
         data = stream2[trace].data
 
         dt = 1.0 / (stream2[trace].stats.sampling_rate)
-        L = floor((N / dt + 1.0 / 2.0))
+        L = floor(N / dt + 1.0 / 2.0)
         h = triang(2.0 * L + 1.0)
 
         e = data**2.0

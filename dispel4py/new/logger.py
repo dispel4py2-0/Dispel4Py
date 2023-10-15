@@ -1,4 +1,6 @@
-import logging, coloredlogs
+import logging
+
+import coloredlogs
 
 # import os
 
@@ -31,12 +33,12 @@ def print_stack_trace():
     # print(f"Current process ID: {pid}")
     for frame in stack:
         print(
-            f"Function '{frame.function}' called from file '{frame.filename}' at line {frame.lineno}"
+            f"Function '{frame.function}' called from file '{frame.filename}' at line {frame.lineno}",
         )
 
 
 def simpleLogger(self, msg):
     try:
-        print("%s (rank %s): %s" % (self.id, self.rank, msg))
+        print(f"{self.id} (rank {self.rank}): {msg}")
     except:
-        print("%s: %s" % (self.id, msg))
+        print(f"{self.id}: {msg}")

@@ -15,9 +15,8 @@
 The core module for dispel4py.
 """
 
-from typing import Any, Dict, List, Optional
-
 import uuid
+from typing import Any, Dict, List, Optional
 
 # Connection-level dict elements
 NAME = "name"
@@ -28,7 +27,7 @@ GROUPING = "grouping"
 WRITER = "writer"
 
 
-class GenericPE(object):
+class GenericPE:
     """
     Base class for Dispel4Py processing elements (PEs). Custom PEs are expected to
     extend this class and override the 'process' function.
@@ -175,7 +174,6 @@ class GenericPE(object):
             pe.setInputTypes({'input1':['t1', 't2', 't3'], \
                               'input2':['t4', 't5']})
         """
-        pass
 
     def getOutputTypes(self) -> Dict[str, List[str]]:
         """
@@ -214,7 +212,6 @@ class GenericPE(object):
         Subclasses may override this method for variable and data
         initialisation before data processing commences.
         """
-        pass
 
     def preprocess(self) -> None:
         """
@@ -237,7 +234,6 @@ class GenericPE(object):
         during processing using the :py:func:`~dispel4py.core.GenericPE.write`
         method.
         """
-        pass
 
     def process(self, inputs: Dict[str, Any]):
         """
@@ -286,5 +282,5 @@ class GenericPE(object):
         except KeyError:
             raise Exception(
                 "Can't write data: Unknown output connection "
-                f"{name} for PE {type(self).__name__}"
+                f"{name} for PE {type(self).__name__}",
             )

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Dispel4Py documentation build configuration file, created by
 # sphinx-quickstart on Mon Mar 24 11:35:17 2014.
@@ -12,8 +11,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
+import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -246,7 +245,7 @@ man_pages = [
         "dispel4py Documentation",
         ["The University of Edinburgh"],
         1,
-    )
+    ),
 ]
 
 # If true, show URL addresses after external links.

@@ -17,8 +17,9 @@
 Example PEs for test workflows, implementing various patterns.
 """
 
-from dispel4py.core import GenericPE, NAME, TYPE, GROUPING
 from numpy import random
+
+from dispel4py.core import GROUPING, NAME, TYPE, GenericPE
 
 
 class TestProducer(GenericPE):
@@ -127,6 +128,7 @@ class TestTwoInOneOut(GenericPE):
                 result += str(inputs[inp])
         if result:
             return {"output": result}
+        return None
 
 
 class TestMultiProducer(GenericPE):
@@ -215,8 +217,7 @@ class RandomWordProducer(GenericPE):
 
     def process(self, inputs=None):
         word = random.choice(RandomWordProducer.words)
-        outputs = {"output": [word]}
-        return outputs
+        return {"output": [word]}
 
 
 import traceback

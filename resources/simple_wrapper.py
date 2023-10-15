@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import storm
+import pickle
 import traceback
 from importlib import import_module
-import pickle
-from output_writer import OutputWriter, encode_types, decode_types
+
+import storm
+from output_writer import OutputWriter, decode_types, encode_types
 
 
 class SimpleWrapper(storm.BasicBolt):
@@ -36,8 +37,7 @@ class SimpleWrapper(storm.BasicBolt):
             self.script = getattr(mod, self.scriptname)()
             for key, value in scriptconfig.iteritems():
                 storm.log(
-                    "Dispel4Py ------> %s: setting attribute %s"
-                    % (self.scriptname, key)
+                    f"Dispel4Py ------> {self.scriptname}: setting attribute {key}",
                 )
                 setattr(self.script, key, value)
             storm.log("Dispel4Py ------> loaded script %s" % self.scriptname)
@@ -47,20 +47,16 @@ class SimpleWrapper(storm.BasicBolt):
                 output["writer"] = OutputWriter(self.scriptname, outputname)
 
             self.boltId = (
-                "%s (%s)" % (self.scriptname, self.script.boltId)
+                f"{self.scriptname} ({self.script.boltId})"
                 if hasattr(self.script, "boltId")
                 else self.scriptname
             )
             # pre-processing if required
             self.script.preprocess()
-            storm.log("Dispel4Py ------> %s: preprocess() completed." % (self.boltId,))
+            storm.log(f"Dispel4Py ------> {self.boltId}: preprocess() completed.")
         except:
             storm.log(
-                "Dispel4Py ------> %s: %s"
-                % (
-                    self.scriptname,
-                    traceback.format_exc(),
-                )
+                f"Dispel4Py ------> {self.scriptname}: {traceback.format_exc()}",
             )
             raise
 
@@ -70,11 +66,10 @@ class SimpleWrapper(storm.BasicBolt):
         try:
             inputname = self.inputmapping[tup.component][tup.stream]
             storm.log(
-                "Dispel4Py ------> %s: Received block at input '%s'"
-                % (
+                "Dispel4Py ------> {}: Received block at input '{}'".format(
                     self.script.id,
                     inputname,
-                )
+                ),
             )
             # inputs = tup.values
             inputs = decode_types(tup.values)
@@ -89,27 +84,21 @@ class SimpleWrapper(storm.BasicBolt):
                 try:
                     storm.emit(result, stream=streamname)
                     storm.log(
-                        "Dispel4Py ------> %s: Emitted to stream %s: %s"
-                        % (self.script.id, streamname, str(result)[:200])
+                        "Dispel4Py ------> {}: Emitted to stream {}: {}".format(self.script.id, streamname, str(result)[:200]),
                     )
                 except TypeError:
                     # encode manually
                     encoded = encode_types(result)
                     storm.emit(encoded, stream=streamname)
                     storm.log(
-                        "Dispel4Py ------> %s: Emitted to stream %s"
-                        % (self.script.id, streamname)
+                        "Dispel4Py ------> {}: Emitted to stream {}".format(self.script.id, streamname),
                     )
                 # except:
                 #     storm.log("%s: %s"
                 #               % (self.script.id, traceback.format_exc()))
         except:
             storm.log(
-                "Dispel4Py ------> %s: %s"
-                % (
-                    self.script.id,
-                    traceback.format_exc(),
-                )
+                f"Dispel4Py ------> {self.script.id}: {traceback.format_exc()}",
             )
 
 

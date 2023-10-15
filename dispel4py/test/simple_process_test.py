@@ -30,7 +30,7 @@ def testPipeline():
     graph.connect(prod, "output", cons1, "input")
     graph.connect(cons1, "output", cons2, "input")
     results = simple_process.process_and_return(
-        graph, inputs={prod: [{}, {}, {}, {}, {}]}
+        graph, inputs={prod: [{}, {}, {}, {}, {}]},
     )
     assert {cons2.id: {"output": [1, 2, 3, 4, 5]}} == results
 
@@ -52,7 +52,6 @@ def testSquare():
 def testTee():
     graph = WorkflowGraph()
     prod = t.TestProducer()
-    prev = prod
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
     graph.connect(prod, "output", cons1, "input")
@@ -67,7 +66,6 @@ def testTee():
 def testWriter():
     graph = WorkflowGraph()
     prod = t.TestProducer()
-    prev = prod
     cons1 = t.TestOneInOneOutWriter()
     graph.connect(prod, "output", cons1, "input")
     results = simple_process.process_and_return(graph, {prod: [{}, {}, {}, {}, {}]})
