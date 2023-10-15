@@ -225,9 +225,9 @@ def _assign_processes(workflow, size):
     totalProcesses = 0
     numSources = 0
     sources = []
+
     for node in graph.nodes():
         pe = node.getContainedObject()
-        # if pe.inputconnections:
         if _getConnectedInputs(node, graph):
             totalProcesses = totalProcesses + pe.numprocesses
         else:
@@ -243,13 +243,13 @@ def _assign_processes(workflow, size):
         node_counter = 0
         for node in graph.nodes():
             pe = node.getContainedObject()
-            prcs = (
-                1
-                if pe.id in sources or (hasattr(pe, "single") and pe.single == True)
-                else _getNumProcesses(size, numSources, pe.numprocesses, totalProcesses)
-            )
-            processes[pe.id] = range(node_counter, node_counter + prcs)
-            node_counter = node_counter + prcs
+
+            num_processes = 1
+            if not ((pe.id in sources) or (hasattr(pe, "single") and pe.single == True)):
+                num_processes = _getNumProcesses(size, numSources, pe.numprocesses, totalProcesses)
+
+            processes[pe.id] = range(node_counter, node_counter + num_processes)
+            node_counter = node_counter + num_processes
     return success, sources, processes
 
 
@@ -901,30 +901,33 @@ def main():  # pragma: no cover
 
     args, remaining = parse_common_args()
 
-    graph, inputs = load_graph_and_inputs(
-        args,
-    )
+    graph, inputs = load_graph_and_inputs(args)
     if graph is None:
         return
 
     try:
+        # ToDo: 'config' literally does not exist - dead code?
         # see if platform is in the mappings file as a simple name
         target = config[args.target]
     except KeyError:
         # it is a proper module name - fingers crossed...
         target = args.target
+
     try:
-        parse_args = getattr(import_module(target), "parse_args")
+        mod = import_module(target)
+        parse_args = getattr(mod, "parse_args")
         args = parse_args(remaining, args)
     except SystemExit:
         # the sub parser raised an error
         raise
-    except:
+    except Exception:
         # no other arguments required for target
         pass
+
     print("RUN ARGS: ")
     print(args)
     print("==========")
+
     process = getattr(import_module(target), "process")
     elapsed_time = 0
     start_time = time.time()

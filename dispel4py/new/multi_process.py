@@ -95,6 +95,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
     size = args.num
     success = True
     nodes = [node.getContainedObject() for node in workflow.graph.nodes()]
+
     if not args.simple:
         try:
             result = processor.assign_and_connect(workflow, size)
@@ -105,6 +106,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
 
     if args.simple or not success:
         ubergraph = processor.create_partitioned(workflow)
+
         print(
             "Partitions: {}".format(
                 ", ".join(
@@ -117,6 +119,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
                 )
             )
         )
+
         for node in ubergraph.graph.nodes():
             wrapperPE = node.getContainedObject()
             pes = [n.getContainedObject().id for n in wrapperPE.workflow.graph.nodes()]
@@ -129,6 +132,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
                     "dispel4py.multi_process: "
                     "Not enough processes for execution of graph"
                 )
+
             processes, inputmappings, outputmappings = result
             inputs = processor.map_inputs_to_partitions(ubergraph, inputs)
             success = True
@@ -143,17 +147,25 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
             )
 
     print(f"Processes: {processes}")
-    # print(f'Result: {result}')
+    print(f'Result: {result}')
 
     process_pes = {}
     queues = {}
-    result_queue = multiprocessing.Queue()
+
+    #result_queue = multiprocessing.Queue()
+    result_queue = None
+    try:
+        if args.results:
+            result_queue = multiprocessing.Queue()
+    except AttributeError:
+        pass
+
     for pe in nodes:
         provided_inputs = processor.get_inputs(pe, inputs)
         for proc in processes[pe.id]:
             cp = copy.deepcopy(pe)
             cp.rank = proc
-            # cp.log = types.MethodType(simpleLogger, cp)
+            cp.log = types.MethodType(simpleLogger, cp)
             wrapper = MultiProcessingWrapper(proc, cp, provided_inputs)
             process_pes[proc] = wrapper
             wrapper.input_queue = multiprocessing.Queue()
@@ -181,7 +193,9 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
     for j in jobs:
         j.join()
 
-    result_queue.put(STATUS_TERMINATED)
+    if result_queue:
+        result_queue.put(STATUS_TERMINATED)
+
     return result_queue
 
 
