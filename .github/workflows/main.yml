@@ -20,9 +20,11 @@ jobs:
 
       - name: Setup venv for the current project
         run: |
+          cd dispel4py
           python3 -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
+          cd ..
 
       - name: Checkout old dispel4py repo
         uses: actions/checkout@v2
@@ -36,19 +38,28 @@ jobs:
 
       - name: Setup venv for the old version of dispel4py
         run: |
+          cd dispel4py_autoscaling
           python3 -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
+          cd ..
 
-      - name: Test multi mapping
+      - name: Test multi mapping for this version of dispelpy
         run: |
+          cd dispel4py
           source venv/bin/activate
           python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.pipeline_test -i 20 -n 10  > output_new_multi.txt
           deactivate
-          cd ../dispel4py_autoscaling
+          cd ..
+
+      - name: Test multi mapping for old version of dispelpy
+        run: |
+          cd dispel4py_autoscaling
           source venv/bin/activate
-          python main.py > output_old_multi.txt
+          python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.pipeline_test -i 20 -n 10 > output_old_multi.txt
+          deactivate
+          cd ..
 
       - name: Diff outputs for multi mapping
         run: |
-          diff ../dispel4py_autoscaling/output_new_multi.txt output_old_multi.txt
+          diff dispel4py_autoscaling/output_new_multi.txt dispel4py/output_old_multi.txt
