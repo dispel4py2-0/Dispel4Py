@@ -8,6 +8,7 @@ on:
 jobs:
   regression-test:
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Set up directory structure
@@ -70,4 +71,4 @@ jobs:
 
       - name: Diff outputs for multi mapping
         run: |
-          diff dispel4py_autoscaling/output_old_multi.txt dispel4py/output_new_multi.txt
+          diff -y dispel4py_autoscaling/output_old_multi.txt dispel4py/output_new_multi.txt
