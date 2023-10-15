@@ -1,0 +1,54 @@
+name: Run Python Scripts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  regression-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v2
+
+      - name: Setup Python 3.10 for current repo
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+
+      - name: Setup venv for the current project
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Checkout old dispel4py repo
+        uses: actions/checkout@v2
+        with:
+          repository: NoPuzzle/dispel4py_autoscaling # Could also try comparing with old dispel4py (Python 2)
+
+      - name: Setup Python 3.7 for old dispel4py repo
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Setup venv for the old version of dispel4py
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Test multi mapping
+        run: |
+          source venv/bin/activate
+          python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.pipeline_test -i 20 -n 10  > output_new_multi.txt
+          deactivate
+          cd ../dispel4py_autoscaling
+          source venv/bin/activate
+          python main.py > output_old_multi.txt
+
+      - name: Diff outputs for multi mapping
+        run: |
+          diff ../dispel4py_autoscaling/output_new_multi.txt output_old_multi.txt
