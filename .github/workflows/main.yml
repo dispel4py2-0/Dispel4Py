@@ -10,11 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up directory structure
+      - name: Set up dir for new d4py
         run: |
           mkdir dispel4py # New version
-          mkdir dispel4py_autoscaling # Old version
-          ls .
+          tree
           cd dispel4py
           
       - name: Checkout current repo
@@ -30,17 +29,14 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install -r ./requirements.txt
-          ls .
-
-      - name: Go back to root dir
+          tree
+          
+      - name: Set up old d4p dir
         run: |
           cd ..
-          ls .
-
-      - name: Go to old d4p dir
-        run: |
-          cd dispel4py_autoscaling
-          ls .
+          mkdir dispel4py-autoscaling
+          tree
+          cd dispel4py-autoscaling
 
       - name: Checkout old dispel4py repo
         uses: actions/checkout@v2
