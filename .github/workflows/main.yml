@@ -70,4 +70,4 @@ jobs:
 
       - name: Diff outputs for multi mapping
         run: |
-          diff dispel4py_autoscaling/output_new_multi.txt dispel4py/output_old_multi.txt
+          diff dispel4py_autoscaling/output_old_multi.txt dispel4py/output_new_multi.txt
