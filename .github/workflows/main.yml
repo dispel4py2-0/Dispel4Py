@@ -52,7 +52,11 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
+
+      - name: Check directory structure
+        run: |
           cd ..
+          tree -L 2
 
       - name: Test multi mapping for this version of dispelpy
         run: |
