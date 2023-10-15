@@ -10,14 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up dir for new d4py
+      - name: Set up directory structure
         run: |
           mkdir dispel4py # New version
+          mkdir dispel4py_autoscaling # old version
           tree -L 2
-          cd dispel4py
           
       - name: Checkout current repo
         uses: actions/checkout@v2
+        with:
+          path: ./dispel4py
 
       - name: Setup Python 3.10.13 for current repo
         uses: actions/setup-python@v2
@@ -25,21 +27,16 @@ jobs:
           python-version: 3.10.13
 
       - name: Setup venv for the current project
+        working-directory: ./dispel4py
         run: |
-          python3 -m venv venv
+          python3.10 -m venv venv
           source venv/bin/activate
           pip install -r ./requirements.txt
-          
-      - name: Set up old d4p dir
-        run: |
-          cd ..
-          mkdir dispel4py-autoscaling
-          tree -L 2
-          cd dispel4py-autoscaling
 
       - name: Checkout old dispel4py repo
         uses: actions/checkout@v2
         with:
+          path: ./dispel4py_autoscaling
           repository: NoPuzzle/dispel4py_autoscaling # Could also try comparing with old dispel4py (Python 2)
 
       - name: Setup Python 3.7 for old dispel4py repo
@@ -48,15 +45,14 @@ jobs:
           python-version: 3.7
 
       - name: Setup venv for the old version of dispel4py
+        working-directory: ./dispel4py_autoscaling
         run: |
-          python3 -m venv venv
+          python3.7 -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
 
       - name: Check directory structure
-        run: |
-          cd ..
-          tree -L 2
+        run: tree -L 2
 
       - name: Test multi mapping for this version of dispelpy
         run: |
@@ -64,7 +60,6 @@ jobs:
           source venv/bin/activate
           python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.pipeline_test -i 20 -n 10  > output_new_multi.txt
           deactivate
-          cd ..
 
       - name: Test multi mapping for old version of dispelpy
         run: |
@@ -72,7 +67,6 @@ jobs:
           source venv/bin/activate
           python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.pipeline_test -i 20 -n 10 > output_old_multi.txt
           deactivate
-          cd ..
 
       - name: Diff outputs for multi mapping
         run: |
