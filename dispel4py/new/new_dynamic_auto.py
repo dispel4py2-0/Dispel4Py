@@ -10,6 +10,7 @@ from multiprocessing import (
 from queue import Empty
 
 from dispel4py.core import WRITER
+from dispel4py.new.logger import simpleLogger
 
 # from test_workflow import producer, graph
 # from dispel4py.examples.internal_extinction.int_ext_graph import read, graph
@@ -69,10 +70,6 @@ class GenericWriter:
         if self.destinations:
             for dest_id, input_name in self.destinations:
                 self.queue.put((dest_id, {input_name: data}))
-
-
-def simpleLogger(instance, message):
-    print(f"Instance ID: {instance.id}, Message: {message}")
 
 
 class DynamicWrapper:

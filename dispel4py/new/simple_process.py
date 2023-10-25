@@ -76,10 +76,7 @@ import types
 
 from dispel4py.new import processor
 from dispel4py.new.processor import GenericWrapper, SimpleProcessingPE
-
-
-def simpleLogger(self, msg):
-    print(f"{self.id}: {msg}")
+from dispel4py.new.logger import simpleLogger
 
 
 def process_and_return(workflow, inputs, resultmappings=None):

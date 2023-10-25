@@ -1,11 +1,12 @@
 [tool.ruff]
 # 1. Enable flake8-bugbear (`B`) rules, in addition to the defaults.
 # Enable these when I'm ready to face stronger demons:
-# ["ERA", "PTH", "SLF"]
+# ["ERA", "PTH", "SLF", "N"]
 # ERA - commented code
 # PTH - use new Path API instead of os.path (high effort due to there being a lot of it)
 # SLF - private member access
-select = ["E", "F", "B", "I", "N", "UP",
+# N - naming
+select = ["E", "F", "B", "I", "UP",
     "A", "COM", "C4", "ISC001", "ISC002",
     "ICN", "G", "INP", "PIE", "Q", "RSE",
     "RET", "SIM", "ARG",
@@ -17,7 +18,10 @@ select = ["E", "F", "B", "I", "N", "UP",
 # (ToDo: figure out what to do with it)
 # F405 (undefined or defined from star imports) ignored for now
 # (ToDo: is it related to dynamic imports?)
-ignore = ["E501", "E402", "F405"]
+# E265 - block comments
+# E226, E225 - missing whitespace around operator
+# F403 - undefined names
+ignore = ["E501", "E402", "F405", "E265", "E226", "F403", "E225"]
 
 # 3. Unfixable rules
 # ERA: Don't autoremove all commented code, I may actually need it

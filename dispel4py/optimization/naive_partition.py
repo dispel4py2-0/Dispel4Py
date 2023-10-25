@@ -133,7 +133,7 @@ def map_partitions(filename):
     partitions_list = partition_all_pes(order_ct, pt)
 
     source_pe = order_ct.index[len(order_ct) - 1][0]
-    ## HACK: change the name of the workflow
+    # HACK: change the name of the workflow
     num_processor = int(re.findall(r"corr_.+_n(\d+)_?", filename)[0])
 
     partitions_proc = {}

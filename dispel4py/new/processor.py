@@ -482,10 +482,11 @@ def create_partitioned(workflow_all):
         partition_pe = SimpleProcessingPE(input_mappings, _outputmappings, proc_to_pe)
 
         # use number of processes if specified in graph
-        try:
+        try:  # ToDo WorkflowGraph has no such attribute, so number of processes will always be one
             partition_pe.numprocesses = workflow_all.numprocesses[partition_id]
         except KeyError:
-            # use default assignment of processes
+            pass
+        except AttributeError:
             pass
 
         partition_pe.workflow = workflow

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 import prov
 import prov.identifier
-from prov.constants import *  # NOQA
+from prov.constants import *
 from prov.model import DEFAULT_NAMESPACES, sorted_attributes
 
 # Create a dictionary containing all top-level PROV XML elements for an easy

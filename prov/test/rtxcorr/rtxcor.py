@@ -459,7 +459,7 @@ class DivFeedback(GenericPE):
          
         
     def _process_feedback(data):
-        print "FEEEEDBACK: "+str(data)
+        print("FEEEEDBACK: " + str(data))
     
     def _process(self, data):
         self.log("DIIIIV: "+str(data)) 

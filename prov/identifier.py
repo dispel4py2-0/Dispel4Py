@@ -92,7 +92,7 @@ class Namespace:
             else (identifier.uri if isinstance(identifier, Identifier) else None)
         )
         if uri and uri.startswith(self._uri):
-            return QualifiedName(self, uri[len(self._uri) :])
+            return QualifiedName(self, uri[len(self._uri):])
         else:
             return None
 

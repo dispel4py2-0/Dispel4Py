@@ -104,7 +104,7 @@ def PEXCorr2(st1, st2, maxlag):
     corr = data
     corr = np.conj(corr[couples[0]]) * corr[couples[1]]
     corr = np.real(scipy.fftpack.ifft(corr)) / Nt
-    corr = np.concatenate((corr[-Nt + 1 :], corr[: Nt + 1]))
+    corr = np.concatenate((corr[-Nt + 1:], corr[: Nt + 1]))
     E = np.sqrt(np.mean(scipy.fftpack.ifft(data, axis=1) ** 2, axis=1))
     normFact = E[0] * E[1]
     if normalized:

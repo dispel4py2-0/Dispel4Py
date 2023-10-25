@@ -53,7 +53,7 @@ class splitPE(GenericPE):
         # split into sublists of about same length
         n = math.ceil(len(self.nos) / self.num_outputs)
         n = int(n)
-        self.chunks = [self.nos[x : x + n] for x in range(0, len(self.nos), n)]
+        self.chunks = [self.nos[x: x + n] for x in range(0, len(self.nos), n)]
 
         result = {}
         count = 0

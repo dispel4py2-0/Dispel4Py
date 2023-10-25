@@ -42,11 +42,11 @@ def mean_norm(stream, N):
 
         for n in arange(len(data)):
             if n < N:
-                tw = absolute(data[0 : n + N])
+                tw = absolute(data[0: n + N])
             elif logical_and(n >= N, n < (len(data) - N)):
-                tw = absolute(data[n - N : n + N])
+                tw = absolute(data[n - N: n + N])
             elif n >= (len(data) - N):
-                tw = absolute(data[n - N : len(data)])
+                tw = absolute(data[n - N: len(data)])
 
             w[n] = true_divide(1, 2 * N + 1) * (sum(tw))
 

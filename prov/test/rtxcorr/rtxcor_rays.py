@@ -232,8 +232,8 @@ class CorrCoef(GenericPE):
             )
 
         if len(self.batch2) >= self.size and len(self.batch1) >= self.size:
-            array1 = np.array(self.batch1[0 : self.size])
-            array2 = np.array(self.batch2[0 : self.size])
+            array1 = np.array(self.batch1[0: self.size])
+            array2 = np.array(self.batch2[0: self.size])
             ro = np.corrcoef([array1, array2])
             # stream out the correlation coefficient, the sequence number of the batch and the indexes of the sources.
             self.write(
@@ -249,8 +249,8 @@ class CorrCoef(GenericPE):
                 dep=["batch1", "batch2"],
             )
             self.batchnum += 1
-            self.batch1 = self.batch1[(self.size) : len(self.batch1)]
-            self.batch2 = self.batch2[(self.size) : len(self.batch2)]
+            self.batch1 = self.batch1[(self.size): len(self.batch1)]
+            self.batch2 = self.batch2[(self.size): len(self.batch2)]
 
 
 class MaxClique(GenericPE):
@@ -526,7 +526,7 @@ print("Preparing for: " + str(iterations / batch_size) + " projections")
 ProvenanceRecorder.REPOS_URL = "http://localhost:8080/workflow/insert"
 
 
-def createGraphWithProv():
+def create_graph_with_prov():
     graph = createWf()
     # Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder subtypes
 
@@ -553,7 +553,7 @@ def createGraphWithProv():
     return graph
 
 
-graph = createGraphWithProv()
+graph = create_graph_with_prov()
 display(graph)
 
 global gtime

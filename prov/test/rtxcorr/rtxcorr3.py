@@ -2,7 +2,9 @@ import os
 import random
 import time
 import traceback
+import urllib
 
+import httplib
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -246,8 +248,8 @@ class CorrCoef(GenericPE):
         # self.addToProvState(None,,ignore_dep=False)
 
         if len(self.batch2) >= self.size and len(self.batch1) >= self.size:
-            array1 = np.array(self.batch1[0 : self.size])
-            array2 = np.array(self.batch2[0 : self.size])
+            array1 = np.array(self.batch1[0: self.size])
+            array2 = np.array(self.batch2[0: self.size])
             ro = np.corrcoef([array1, array2])
 
             # stream out the correlation coefficient, the sequence number of the batch and the indexes of the sources.
@@ -271,8 +273,8 @@ class CorrCoef(GenericPE):
             self.batchnum += 1
             # self.log(self.batchnum)
 
-            self.batch1 = self.batch1[(self.size) : len(self.batch1)]
-            self.batch2 = self.batch2[(self.size) : len(self.batch2)]
+            self.batch1 = self.batch1[(self.size): len(self.batch1)]
+            self.batch2 = self.batch2[(self.size): len(self.batch2)]
 
 
 # number of projections = iterations/batch_size at speed defined by sampling rate
@@ -376,13 +378,13 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
         ProvenanceRecorder.__init__(self)
         self.name = name
         self.numprocesses = 2
-        self.convertToW3C = toW3C
+        self.convert_to_w3c = toW3C
 
     def _preprocess(self):
         self.provurl = urlparse(ProvenanceRecorder.REPOS_URL)
         self.connection = httplib.HTTPConnection(self.provurl.netloc)
 
-    def sendToService(self, prov):
+    def send_to_service(self, prov):
         params = urllib.urlencode({"prov": ujson.dumps(prov)})
         headers = {
             "Content-type": "application/x-www-form-urlencoded",
@@ -405,7 +407,7 @@ class ProvenanceRecorderToService(ProvenanceRecorder):
                     prov = prov["_d4p"]
                     self.log(prov)
 
-                self.sendToService(prov)
+                self.send_to_service(prov)
 
         except:
             self.log(traceback.format_exc())
@@ -420,7 +422,6 @@ class ProvenanceRecorderToFile(ProvenanceRecorder):
 
     def process(self, inputs):
         try:
-            None
             for x in inputs:
                 # self.log(x)
                 prov = inputs[x]
@@ -431,21 +432,20 @@ class ProvenanceRecorderToFile(ProvenanceRecorder):
                 if "_d4p" in prov:
                     prov = prov["_d4p"]
 
-                filep = open(os.environ["PROV_PATH"] + "/bulk_" + getUniqueId(), "wr")
-                ujson.dump(prov, filep)
-
-                filep.close()
+                with open(os.environ["PROV_PATH"] + "/bulk_" + getUniqueId(), "wr") as filep:
+                    ujson.dump(prov, filep)
+                    filep.close()
 
         except:
             self.log(traceback.format_exc())
 
 
 class ProvenanceSummaryToService(ProvenanceRecorderToService):
-    def __init__(self, name="ProvenanceSummaryToService", toW3C=False):
+    def __init__(self, name="ProvenanceSummaryToService", to_w3c=False):
         ProvenanceRecorderToService.__init__(self)
         self.name = name
         # self.numprocesses=3
-        self.convertToW3C = toW3C
+        self.convert_to_w3c = to_w3c
         self.doc_count = 0
         self.document = {}
         self.streamsstart = []
@@ -465,7 +465,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
 
     def postprocess(self):
         if self.update > 0:
-            self.sendToService(self.document)
+            self.send_to_service(self.document)
 
     def process(self, inputs):
         try:
@@ -477,7 +477,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
             elif "_d4p" in prov:
                 prov = prov["_d4p"]
                 # self.log(x)
-                self.sendToService(prov)
+                self.send_to_service(prov)
                 return
             elif "provenance" in prov:
                 prov = prov["provenance"]
@@ -530,13 +530,13 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                             self.derivationIndex.update({d["prov_cluster"]: derivation})
 
             for d in self.streamsstart:
-                if "location" in d and d["location"] != "":
+                if "location" in d and d["location"]:
                     self.locationss.append(d["location"])
                 for c in d["content"]:
                     self.contents.append(c)
 
             for d in self.streamsend:
-                if "location" in d and d["location"] != "":
+                if "location" in d and d["location"]:
                     self.locationse.append(d["location"])
                 for c in d["content"]:
                     self.contente.append(c)
@@ -579,7 +579,7 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
                 # Self.log(self.document)
                 #    del  self.document['streamsstart']
                 #    del  self.document['streamsend']
-                self.sendToService(self.document)
+                self.send_to_service(self.document)
                 self.update = False
                 self.contente = []
                 self.contents = []
@@ -610,13 +610,10 @@ class ProvenanceRecorderToFileBulk(ProvenanceRecorder):
     def postprocess(self):
         try:
             if len(self.bulk) > 0:
-                filep = open(os.environ["PROV_PATH"] + "/bulk_" + getUniqueId(), "wr")
-                ujson.dump(self.bulk, filep)
-                filep.close()
+                with open(os.environ["PROV_PATH"] + "/bulk_" + getUniqueId(), "wr") as filep:
+                    ujson.dump(self.bulk, filep)
+                    filep.close()
                 self.bulk[:] = []
-            # del self.bulk[:]
-            # self.bulk = []
-            return None
         except Exception as e:
             self.log(
                 f"Dispel4Py ------> Exception {e},"
