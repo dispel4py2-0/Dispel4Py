@@ -20,7 +20,7 @@ from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
 
-def testGrouping():
+def test_grouping():
     """
     Creates the test graph.
     """
@@ -39,4 +39,4 @@ def testGrouping():
     return graph
 
 
-graph = testGrouping()
+graph = test_grouping()

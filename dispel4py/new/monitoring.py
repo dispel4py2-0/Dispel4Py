@@ -33,7 +33,9 @@ class Timer:
 class MonitoringWrapper:
     def __init__(self, baseObject: object) -> None:
         self.__class__ = type(
-            baseObject.__class__.__name__, (self.__class__, baseObject.__class__), {},
+            baseObject.__class__.__name__,
+            (self.__class__, baseObject.__class__),
+            {},
         )
         self.__dict__ = baseObject.__dict__
         self.baseObject = baseObject

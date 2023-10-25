@@ -1,4 +1,3 @@
-
 # ## Cross-correlation exmple with Active-Provenance in dispel4py:
 #
 #
@@ -158,7 +157,9 @@ class CompMatrix(GenericPE):
                 matrix = self.data[data[x][1]]["matrix"]
 
                 d = pd.DataFrame(
-                    data=matrix, columns=range(self.size), index=range(self.size),
+                    data=matrix,
+                    columns=range(self.size),
+                    index=range(self.size),
                 )
 
                 mask = np.zeros_like(d, dtype=np.bool)
@@ -231,8 +232,8 @@ class CorrCoef(GenericPE):
             )
 
         if len(self.batch2) >= self.size and len(self.batch1) >= self.size:
-            array1 = np.array(self.batch1[0: self.size])
-            array2 = np.array(self.batch2[0: self.size])
+            array1 = np.array(self.batch1[0 : self.size])
+            array2 = np.array(self.batch2[0 : self.size])
             ro = np.corrcoef([array1, array2])
             # stream out the correlation coefficient, the sequence number of the batch and the indexes of the sources.
             self.write(
@@ -248,8 +249,8 @@ class CorrCoef(GenericPE):
                 dep=["batch1", "batch2"],
             )
             self.batchnum += 1
-            self.batch1 = self.batch1[(self.size): len(self.batch1)]
-            self.batch2 = self.batch2[(self.size): len(self.batch2)]
+            self.batch1 = self.batch1[(self.size) : len(self.batch1)]
+            self.batch2 = self.batch2[(self.size) : len(self.batch2)]
 
 
 class MaxClique(GenericPE):
@@ -473,7 +474,6 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
             "progress: "
             + str((response.status, response.reason, response, response.read())),
         )
-
 
 
 # ### Preparing the clusters, recorders and feedback

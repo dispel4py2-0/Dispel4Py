@@ -189,17 +189,17 @@ class StdDevReducePE(GenericPE):
         self.write(self.OUTPUT_NAME, (std_dev, self.count, self.sum, self.sum_squared))
 
 
-def parallel_aggregate(instPE, reducePE):
+def parallel_aggregate(inst_pe, reduce_pe):
     composite = WorkflowGraph()
-    reducePE.inputconnections[AggregatePE.INPUT_NAME]["grouping"] = "global"
-    reducePE.numprocesses = 1
-    composite.connect(instPE, AggregatePE.OUTPUT_NAME, reducePE, AggregatePE.INPUT_NAME)
-    composite.inputmappings = {"input": (instPE, AggregatePE.INPUT_NAME)}
-    composite.outputmappings = {"output": (reducePE, AggregatePE.OUTPUT_NAME)}
+    reduce_pe.inputconnections[AggregatePE.INPUT_NAME]["grouping"] = "global"
+    reduce_pe.numprocesses = 1
+    composite.connect(inst_pe, AggregatePE.OUTPUT_NAME, reduce_pe, AggregatePE.INPUT_NAME)
+    composite.inputmappings = {"input": (inst_pe, AggregatePE.INPUT_NAME)}
+    composite.outputmappings = {"output": (reduce_pe, AggregatePE.OUTPUT_NAME)}
     return composite
 
 
-def parallelCount():
+def parallel_count():
     """
     Creates a counter composite PE that is parallelisable using a
     map-reduce pattern.
@@ -212,7 +212,7 @@ def parallelCount():
     return parallel_aggregate(CountPE(), pe_sum)
 
 
-def parallelSum(indexes=None):
+def parallel_sum(indexes=None):
     """
     Creates a SUM composite PE that can be parallelised using a
     map-reduce pattern.
@@ -222,7 +222,7 @@ def parallelSum(indexes=None):
     return parallel_aggregate(SumPE(indexes), SumPE(indexes))
 
 
-def parallelMin(indexes=None):
+def parallel_min(indexes=None):
     """
     Creates a MIN composite PE that can be parallelised using a
     map-reduce pattern.
@@ -232,7 +232,7 @@ def parallelMin(indexes=None):
     return parallel_aggregate(MinPE(indexes), MinPE(indexes))
 
 
-def parallelMax(indexes=None):
+def parallel_max(indexes=None):
     """
     Creates a MAX composite PE that can be parallelised using a
     map-reduce pattern.
@@ -242,7 +242,7 @@ def parallelMax(indexes=None):
     return parallel_aggregate(MaxPE(indexes), MaxPE(indexes))
 
 
-def parallelAvg(index=0):
+def parallel_avg(index=0):
     """
     Creates an AVG composite PE that can be parallelised using a
     map-reduce pattern.
@@ -256,17 +256,22 @@ def parallelAvg(index=0):
     return composite
 
 
-def parallelStdDev(index=0):
+def parallel_std_dev(index=0):
     """
     Creates a STDDEV composite PE that can be parallelised using a
     map-reduce pattern.
     """
     composite = WorkflowGraph()
-    parStdDev = StdDevPE(index)
-    reduceStdDev = StdDevReducePE()
+    par_std_dev = StdDevPE(index)
+    reduce_std_dev = StdDevReducePE()
+
     composite.connect(
-        parStdDev, parStdDev.OUTPUT_NAME, reduceStdDev, reduceStdDev.INPUT_NAME,
+        par_std_dev,
+        par_std_dev.OUTPUT_NAME,
+        reduce_std_dev,
+        reduce_std_dev.INPUT_NAME,
     )
-    composite.inputmappings = {"input": (parStdDev, parStdDev.INPUT_NAME)}
-    composite.outputmappings = {"output": (reduceStdDev, reduceStdDev.OUTPUT_NAME)}
+    
+    composite.inputmappings = {"input": (par_std_dev, par_std_dev.INPUT_NAME)}
+    composite.outputmappings = {"output": (reduce_std_dev, reduce_std_dev.OUTPUT_NAME)}
     return composite

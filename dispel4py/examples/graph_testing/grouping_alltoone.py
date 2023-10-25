@@ -90,7 +90,7 @@ from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
 
-def testAlltoOne():
+def test_all_to_one():
     """
     Creates a graph with two consumer nodes and a global grouping.
 
@@ -109,4 +109,4 @@ def testAlltoOne():
 
 
 """ important: this is the graph_variable """
-graph = testAlltoOne()
+graph = test_all_to_one()

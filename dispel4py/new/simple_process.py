@@ -99,7 +99,8 @@ def process_and_return(workflow, inputs, resultmappings=None):
         numnodes += 1
         node.get_contained_object().numprocesses = 1
     processes, inputmappings, outputmappings = processor.assign_and_connect(
-        workflow, numnodes,
+        workflow,
+        numnodes,
     )
     # print 'Processes: %s' % processes
     # print inputmappings

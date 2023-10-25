@@ -31,12 +31,12 @@ from dispel4py.examples.graph_testing.testing_PEs import NumberProducer
 from dispel4py.new import simple_process
 from dispel4py.new.aggregate import (
     ContinuousReducePE,
-    parallelAvg,
-    parallelCount,
-    parallelMax,
-    parallelMin,
-    parallelStdDev,
-    parallelSum,
+    parallel_avg,
+    parallel_count,
+    parallel_max,
+    parallel_min,
+    parallel_std_dev,
+    parallel_sum,
 )
 from dispel4py.workflow_graph import WorkflowGraph
 
@@ -44,7 +44,7 @@ from dispel4py.workflow_graph import WorkflowGraph
 def graph_sum():
     prod = NumberProducer(1000)
     prod.name = "NumberProducer"
-    s = parallelSum()
+    s = parallel_sum()
     graph = WorkflowGraph()
     graph.connect(prod, "output", s, "input")
     return graph
@@ -52,7 +52,7 @@ def graph_sum():
 
 def graph_avg():
     prod = NumberProducer(1000)
-    a = parallelAvg()
+    a = parallel_avg()
     graph = WorkflowGraph()
     graph.connect(prod, "output", a, "input")
     return graph
@@ -60,8 +60,8 @@ def graph_avg():
 
 def graph_min_max():
     prod = NumberProducer(1000)
-    mi = parallelMin()
-    ma = parallelMax()
+    mi = parallel_min()
+    ma = parallel_max()
     graph = WorkflowGraph()
     graph.connect(prod, "output", mi, "input")
     graph.connect(prod, "output", ma, "input")
@@ -70,7 +70,7 @@ def graph_min_max():
 
 def graph_count():
     prod = NumberProducer(1000)
-    c = parallelCount()
+    c = parallel_count()
     graph = WorkflowGraph()
     graph.connect(prod, "output", c, "input")
     return graph
@@ -78,7 +78,7 @@ def graph_count():
 
 def graph_stddev():
     prod = NumberProducer(1000)
-    std = parallelStdDev()
+    std = parallel_std_dev()
     graph = WorkflowGraph()
     graph.connect(prod, "output", std, "input")
     return graph
@@ -107,7 +107,8 @@ def testStdDev():
     stddev_wf = graph_stddev()
     stddev_wf.flatten()
     results = simple_process.process_and_return(
-        stddev_wf, inputs={"NumberProducer": [{}]},
+        stddev_wf,
+        inputs={"NumberProducer": [{}]},
     )
     tools.eq_(1, len(results))
     for key in results:
@@ -120,7 +121,8 @@ def testCount():
     count_wf = graph_count()
     count_wf.flatten()
     results = simple_process.process_and_return(
-        count_wf, inputs={"NumberProducer": [{}]},
+        count_wf,
+        inputs={"NumberProducer": [{}]},
     )
     tools.eq_(1, len(results))
     for key in results:
@@ -131,7 +133,8 @@ def testMinMax():
     min_max_wf = graph_min_max()
     min_max_wf.flatten()
     results = simple_process.process_and_return(
-        min_max_wf, inputs={"NumberProducer": [{}]},
+        min_max_wf,
+        inputs={"NumberProducer": [{}]},
     )
     tools.eq_(2, len(results))
     for key in results:

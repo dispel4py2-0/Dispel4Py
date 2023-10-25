@@ -21,7 +21,7 @@ from output_writer import OutputWriter
 
 
 class SourceWrapper(storm.Spout):
-    def initialize(self, conf, context):
+    def initialize(self, conf):
         try:
             self.counter = 0
             self.modname = conf["dispel4py.module"]
@@ -52,13 +52,14 @@ class SourceWrapper(storm.Spout):
             storm.log(
                 f"Dispel4Py ------> {self.scriptname}: preprocess() completed.",
             )
-        except:
+        except Exception as e:
             storm.log(
-                f"Dispel4Py ------> {self.scriptname}: {traceback.format_exc()}",
+                f"Dispel4Py ------> {self.scriptname}: Exception {e},"
+                f"Traceback: {traceback.format_exc()}",
             )
             raise
 
-    def nextTuple(self):
+    def next_tuple(self):
         try:
             input_tuple = None
             try:
@@ -80,13 +81,16 @@ class SourceWrapper(storm.Spout):
                 result = output if isinstance(output, list) else [output]
                 storm.emit(result, stream=streamname, id=self.counter)
                 storm.log(
-                    "Dispel4Py ------> {}: emitted tuple {} to stream {}".format(self.script.id, result, streamname),
+                    "Dispel4Py ------> {}: emitted tuple {} to stream {}".format(
+                        self.script.id, result, streamname,
+                    ),
                 )
                 self.counter += 1
-        except:
+        except Exception as e:
             # logging the error but it should be passed to client somehow
             storm.log(
-                f"Dispel4Py ------> {self.scriptname}: {traceback.format_exc()}",
+                f"Dispel4Py ------> {self.scriptname}: Exception {e},"
+                f"Traceback: {traceback.format_exc()}",
             )
 
 

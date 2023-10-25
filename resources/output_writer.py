@@ -25,14 +25,18 @@ class OutputWriter:
         try:
             storm.emit(result, stream=self.streamname)
             storm.log(
-                "Dispel4Py ------> {}: Emitted to stream {}.".format(self.scriptname, self.streamname),
+                "Dispel4Py ------> {}: Emitted to stream {}.".format(
+                    self.scriptname, self.streamname,
+                ),
             )
         except TypeError:
             # encode manually
             encoded = encode_types(result)
             storm.emit(encoded, stream=self.streamname)
             storm.log(
-                "Dispel4Py ------> {}: Emitted to stream {}.".format(self.scriptname, self.streamname),
+                "Dispel4Py ------> {}: Emitted to stream {}.".format(
+                    self.scriptname, self.streamname,
+                ),
             )
 
 

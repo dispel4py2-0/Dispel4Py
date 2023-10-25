@@ -156,7 +156,7 @@ class GenericPE:
         if tuple_type:
             self.outputconnections[name][TYPE] = tuple_type
 
-    def setInputTypes(self, types: List[str]) -> None:
+    def set_input_types(self, types: List[str]) -> None:
         """
         Sets the input types of this PE, in the form of a dictionary.
         It is meant to be overridden, e.g. if output types depend on input.
@@ -175,7 +175,7 @@ class GenericPE:
                               'input2':['t4', 't5']})
         """
 
-    def getOutputTypes(self) -> Dict[str, List[str]]:
+    def get_output_types(self) -> Dict[str, List[str]]:
         """
         Returns the output types of this PE, in the form of a dictionary.
         This method may be overridden if output types are not static and
@@ -201,10 +201,12 @@ class GenericPE:
         ret = {}
         # print '%s: %s' % (self.id, self.outputconnections)
         for name, output in self.outputconnections.items():
-            try:
+            try:  # ToDo: solve or ignore: PERF203 `try`-`except` within a loop incurs performance overhead
                 ret[name] = output[TYPE]
             except KeyError:
-                raise Exception(f"{self.id}: No output type defined for '{name}'")
+                raise KeyError(
+                    f"{self.id}: No output type defined for '{name}'",
+                ) from KeyError
         return ret
 
     def _preprocess(self) -> None:
@@ -280,7 +282,7 @@ class GenericPE:
             output = self.outputconnections[name]
             output[WRITER].write(data)
         except KeyError:
-            raise Exception(
+            raise KeyError(
                 "Can't write data: Unknown output connection "
                 f"{name} for PE {type(self).__name__}",
-            )
+            ) from KeyError

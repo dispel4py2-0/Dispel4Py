@@ -41,7 +41,8 @@ def test_flake8():
 
     # Get the style checker with the default style.
     flake8_style = flake8.get_style_guide(
-        parse_argv=False, config_file=flake8.main.DEFAULT_CONFIG,
+        parse_argv=False,
+        config_file=flake8.main.DEFAULT_CONFIG,
     )
     flake8_style.options.ignore = tuple(
         set(flake8_style.options.ignore).union(set(FLAKE8_IGNORE_CODES)),

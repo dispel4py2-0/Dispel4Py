@@ -24,10 +24,10 @@ class ObspyStreamPE(SeismoPE):
             params = {}
         self.compute_fn = compute_fn, dict(params)
 
-    def setInputTypes(self, types):
+    def set_input_types(self, types):
         self.inout_types = {OUTPUT_NAME: types[INPUT_NAME]}
 
-    def getOutputTypes(self):
+    def get_output_types(self):
         # output = input
         return self.inout_types
 
@@ -55,7 +55,10 @@ from dispel4py.workflow_graph import WorkflowGraph
 
 
 def createProcessingComposite(
-    chain, suffix="", controlParameters=None, provRecorder=None,
+    chain,
+    suffix="",
+    controlParameters=None,
+    provRecorder=None,
 ):
     """
     Creates a composite PE wrapping a pipeline that processes obspy streams.

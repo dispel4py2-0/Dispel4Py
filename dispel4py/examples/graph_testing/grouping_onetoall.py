@@ -80,7 +80,7 @@ from dispel4py.examples.graph_testing import testing_PEs as t
 from dispel4py.workflow_graph import WorkflowGraph
 
 
-def testOnetoAll():
+def test_one_to_all():
     graph = WorkflowGraph()
     prod = t.TestProducer()
     cons = t.TestOneInOneOut()
@@ -91,4 +91,4 @@ def testOnetoAll():
 
 
 """ important: this is the graph_variable """
-graph = testOnetoAll()
+graph = test_one_to_all()

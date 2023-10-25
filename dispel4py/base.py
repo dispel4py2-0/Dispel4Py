@@ -14,7 +14,7 @@
 """
 Base PEs implementing typical processing patterns.
 """
-
+from abc import abstractmethod
 from typing import Any, Callable, Dict, List, Optional
 
 from dispel4py.core import NAME, GenericPE
@@ -91,6 +91,7 @@ class IterativePE(GenericPE):
             return {self.OUTPUT_NAME: result}
         return None
 
+    @abstractmethod
     def _process(self, data):
         """
         Processes a data block.
@@ -156,9 +157,12 @@ class SimpleFunctionPE(IterativePE):
         compute_fn: Optional[Callable[[Any], Any]] = None,
         params: Optional[Dict[Any, Any]] = None,
     ) -> None:
+
         if params is None:
             params = {}
+
         IterativePE.__init__(self)
+
         if compute_fn:
             self.name = f"PE_{compute_fn.__name__}"
         self.compute_fn = compute_fn
@@ -167,24 +171,26 @@ class SimpleFunctionPE(IterativePE):
     def _process(self, data) -> Optional[Any]:
         if self.compute_fn:
             return self.compute_fn(data, **self.params)
-        else:
-            return None
+        return None
 
 
 from dispel4py.workflow_graph import WorkflowGraph
 
 
 def create_iterative_chain(
-    functions, FunctionPE_class=SimpleFunctionPE, name_prefix="PE_", name_suffix="",
+    functions,
+    function_pe_class=SimpleFunctionPE,
+    name_prefix="PE_",
+    name_suffix="",
 ):
     """
     Creates a composite PE wrapping a pipeline that processes obspy streams.
-    :param chain: list of functions that process data iteratively. The function
+    :param functions: list of functions that process data iteratively. The function
     accepts one input parameter, data, and returns an output data block
-    (or None).
-    :param requestId: id of the request that the stream is associated with
-    :param controlParameters: environment parameters for the processing
-    elements
+    (or None)
+    :param name_prefix - prefix for PE names
+    :param name_suffix - suffix for PE names
+    :param function_pe_class - class of function PE's
     :rtype: dictionary inputs and outputs of the composite PE that was created
     """
 
@@ -200,7 +206,7 @@ def create_iterative_chain(
             fn = fn_desc
             params = {}
 
-        pe = FunctionPE_class()
+        pe = function_pe_class()
         pe.compute_fn = fn
         pe.params = params
         pe.name = name_prefix + fn.__name__ + name_suffix

@@ -32,14 +32,14 @@ if sys.version_info == (3,):
     xrange = range
 
 
-def simpleLogger(self, msg):
+def simple_logger(self, msg):
     print(f"{self.id}: {msg}")
 
 
 class PEWrapper:
     def __init__(self, pe):
         self.pe = pe
-        self.pe.log = types.MethodType(simpleLogger, pe)
+        self.pe.log = types.MethodType(simple_logger, pe)
         self.pe.preprocess()
 
     def process(self, data):
@@ -51,7 +51,7 @@ class PEWrapper:
         written = []
         if result is not None:
             written.append(result)
-        for output, desc in self.pe.outputconnections.items():
+        for desc in self.pe.outputconnections.values():
             written.extend(desc["writer"].data)
         # self.pe.log('writing: %s' % written)
         return written
@@ -75,7 +75,10 @@ def parse_args():
         help="module that creates a dispel4py graph (python module or file name)",
     )
     parser.add_argument(
-        "-a", "--attr", metavar="attribute", help="name of graph variable in the module",
+        "-a",
+        "--attr",
+        metavar="attribute",
+        help="name of graph variable in the module",
     )
     parser.add_argument(
         "-f",
@@ -84,7 +87,10 @@ def parse_args():
         help="file containing input dataset in JSON format",
     )
     parser.add_argument(
-        "-d", "--data", metavar="inputdata", help="input dataset in JSON format",
+        "-d",
+        "--data",
+        metavar="inputdata",
+        help="input dataset in JSON format",
     )
     parser.add_argument(
         "-i",
@@ -116,8 +122,7 @@ class Projection:
                 result[o] = data[o]
         if result:
             return [result]
-        else:
-            return []
+        return []
 
 
 class Rename:
@@ -132,8 +137,7 @@ class Rename:
                 result[i] = data[o]
         if result:
             return [result]
-        else:
-            return []
+        return []
 
 
 def process(sc, workflow, inputs, args):
@@ -197,7 +201,7 @@ def process(sc, workflow, inputs, args):
 
         else:
             pe_input = inputs[pe.id]
-            if type(pe_input) is list:
+            if isinstance(pe_input, list):
                 # only one slice so there no repetitions - not the best
                 start_rdd = sc.parallelize(pe_input, 1)
             elif isinstance(pe_input, int):
@@ -205,6 +209,7 @@ def process(sc, workflow, inputs, args):
             else:
                 # fingers crossed it's a string and the file exists!
                 start_rdd = sc.textFile(pe_input)
+
             out_rdd = start_rdd.flatMap(wrapper.process)
             if len(outs) == 1:
                 for output_name in outs:
@@ -223,8 +228,8 @@ def process(sc, workflow, inputs, args):
             if not outs:
                 result_rdd[proc] = out_rdd
     # print("RESULT PROCESSES: %s" % result_rdd.keys())
-    for p in result_rdd:
-        result = result_rdd[p].foreach(lambda x: None)
+    # for p in result_rdd:
+        # result = result_rdd[p].foreach(lambda x: None)
         # result = result_rdd[p].foreach(lambda x:
         #                                simpleLogger(process_to_pes[p], x))
         # print 'RESULT FROM %s: %s' % (p, result)
@@ -274,7 +279,12 @@ def main():
     if this_path.endswith("pyc"):
         this_path = this_path[:-1]
 
-    command = ["%s/bin/spark-submit" % spark_home, "--py-files=dist/dispel4py-1.0.1-py2.7.egg", this_path, *remaining]
+    command = [
+        "%s/bin/spark-submit" % spark_home,
+        "--py-files=dist/dispel4py-1.0.1-py2.7.egg",
+        this_path,
+        *remaining,
+    ]
     print(command)
     subprocess.call(command)
 

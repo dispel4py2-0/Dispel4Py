@@ -1,4 +1,3 @@
-
 __author__ = "Lion Krischer"
 __email__ = "krischer@geophysik.uni-muenchen.de"
 
@@ -54,7 +53,9 @@ class ProvXMLSerializer(prov.serializers.Serializer):
         xml_root = self.serialize_bundle(bundle=self.document, force_types=force_types)
         for bundle in self.document.bundles:
             self.serialize_bundle(
-                bundle=bundle, element=xml_root, force_types=force_types,
+                bundle=bundle,
+                element=xml_root,
+                force_types=force_types,
             )
         # No encoding must be specified when writing to String object which
         # does not have the concept of an encoding as it should already
@@ -106,7 +107,9 @@ class ProvXMLSerializer(prov.serializers.Serializer):
 
         if element is not None:
             xml_bundle_root = etree.SubElement(
-                element, _ns_prov("bundleContent"), nsmap=nsmap,
+                element,
+                _ns_prov("bundleContent"),
+                nsmap=nsmap,
             )
         else:
             xml_bundle_root = etree.Element(_ns_prov("document"), nsmap=nsmap)
@@ -131,7 +134,8 @@ class ProvXMLSerializer(prov.serializers.Serializer):
 
             for attr, value in sorted_attributes(rec_type, attributes):
                 subelem = etree.SubElement(
-                    elem, _ns(attr.namespace.uri, attr.localpart),
+                    elem,
+                    _ns(attr.namespace.uri, attr.localpart),
                 )
                 if isinstance(value, prov.model.Literal):
                     if value.datatype not in [None, PROV["InternationalizedString"]]:
@@ -286,7 +290,8 @@ class ProvXMLSerializer(prov.serializers.Serializer):
 
             if _ns_xsi("type") in element.attrib:
                 value = xml_qname_to_QualifiedName(
-                    element, element.attrib[_ns_xsi("type")],
+                    element,
+                    element.attrib[_ns_xsi("type")],
                 )
                 attributes.append((PROV["type"], value))
 
@@ -330,7 +335,8 @@ def _extract_attributes(element):
     for subel in element:
         sqname = etree.QName(subel)
         _t = xml_qname_to_QualifiedName(
-            subel, f"{subel.prefix}:{sqname.localname}",
+            subel,
+            f"{subel.prefix}:{sqname.localname}",
         )
 
         for key, value in subel.attrib.items():
@@ -348,7 +354,9 @@ def _extract_attributes(element):
                 warnings.warn(
                     "The element '{}' contains an attribute {}='{}' "
                     "which is not representable in the prov module's "
-                    "internal data model and will thus be ignored.".format(_t, six.text_type(key), six.text_type(value)),
+                    "internal data model and will thus be ignored.".format(
+                        _t, six.text_type(key), six.text_type(value),
+                    ),
                     UserWarning,
                 )
 

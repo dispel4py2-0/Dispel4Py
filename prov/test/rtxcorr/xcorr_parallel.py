@@ -1,4 +1,3 @@
-
 import seaborn as sns
 
 from dispel4py.base import (
@@ -24,11 +23,11 @@ class Read(GenericPE):
 
         self.log(inputs)
 
-        inputLocation = inputs["input"][0]
+        input_location = inputs["input"][0]
 
-        ds = xarray.open_dataset(inputLocation)
+        ds = xarray.open_dataset(input_location)
 
-        self.write("xarray", (ds, self.count), location=inputLocation)
+        self.write("xarray", (ds, self.count), location=input_location)
         self.count += 1
 
 
@@ -42,11 +41,11 @@ class Write(GenericPE):
     def _process(self, inputs):
         self.log("Write_Function")
         # self.log(inputs)
-        outputLocation = "data/new_" + str(self.count) + ".nc"
+        output_location = "data/new_" + str(self.count) + ".nc"
         self.count += 1
-        inputs["input"][0].to_netcdf(outputLocation)
-        # self.log(outputLocation)
-        self.write("location", outputLocation, location=outputLocation)
+        inputs["input"][0].to_netcdf(output_location)
+        # self.log(output_location)
+        self.write("location", output_location, location=output_location)
 
 
 class Analysis(GenericPE):
@@ -132,7 +131,7 @@ input_data = {"Start": [{"iterations": [iterations]}]}
 # and generates the graph based on parameters
 
 
-def createWf():
+def create_wf():
     graph = WorkflowGraph()
     mat = CorrMatrix(variables_number)
     mat.prov_cluster = "record2"
@@ -196,8 +195,8 @@ selrule1 = {"CorrCoef": {"rules": {"rho": {"$gt": 0}}}}
 selrule2 = {"Start": {"rules": {"iterations": {"$lt": 0}}}}
 
 
-def createGraphWithProv():
-    graph = createWf()
+def create_graph_with_prov():
+    graph = create_wf()
     # Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder subtypes
 
     # Ranomdly generated unique identifier for the current run
@@ -246,4 +245,4 @@ def createGraphWithProv():
 
 
 # graph=createWf()
-graph = createGraphWithProv()
+graph = create_graph_with_prov()

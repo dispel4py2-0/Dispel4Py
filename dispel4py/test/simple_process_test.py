@@ -30,7 +30,8 @@ def testPipeline():
     graph.connect(prod, "output", cons1, "input")
     graph.connect(cons1, "output", cons2, "input")
     results = simple_process.process_and_return(
-        graph, inputs={prod: [{}, {}, {}, {}, {}]},
+        graph,
+        inputs={prod: [{}, {}, {}, {}, {}]},
     )
     assert {cons2.id: {"output": [1, 2, 3, 4, 5]}} == results
 

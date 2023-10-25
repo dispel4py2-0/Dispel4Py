@@ -181,7 +181,12 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
 
         for o in pe.outputconnections:
             pe.outputconnections[o]["writer"] = GenericWriter(
-                r, node, o, workflow, redis_stream_name, proc,
+                r,
+                node,
+                o,
+                workflow,
+                redis_stream_name,
+                proc,
             )
 
         output = pe.process(data)
@@ -190,12 +195,17 @@ def _communicate(pes, nodes, value, proc, r, redis_stream_name, workflow):
             for output_name, output_value in output.items():
                 # get the destinations of the PE
                 destinations = _get_destination(
-                    workflow.graph, node, output_name, output_value,
+                    workflow.graph,
+                    node,
+                    output_name,
+                    output_value,
                 )
                 # if the PE has no destinations, then print the data
                 if not destinations:
                     print(
-                        "Output collected from {}: {} in process {}".format(pe_id, output_value, proc),
+                        "Output collected from {}: {} in process {}".format(
+                            pe_id, output_value, proc,
+                        ),
                     )
                 # otherwise, put the data in the destinations to the queue
                 else:
@@ -301,7 +311,13 @@ def process_stateful(
 
 
 def process_stateless(
-    r, redis_stream_name, redis_stream_group_name, proc, pes, nodes, workflow,
+    r,
+    redis_stream_name,
+    redis_stream_group_name,
+    proc,
+    pes,
+    nodes,
+    workflow,
 ):
     """
     Read and process stateless data from redis
@@ -340,13 +356,18 @@ class GenericWriter:
         output_value = data
         # get the destinations of the PE
         destinations = _get_destination(
-            self.workflow.graph, self.node, self.output_name, data,
+            self.workflow.graph,
+            self.node,
+            self.output_name,
+            data,
         )
 
         # if the PE has no destinations, then print the data
         if not destinations:
             print(
-                "Output collected from {}: {} in process {}".format(self.node.get_contained_object().id, output_value, self.proc),
+                "Output collected from {}: {} in process {}".format(
+                    self.node.get_contained_object().id, output_value, self.proc,
+                ),
             )
         # otherwise, put the data in the destinations to the queue
         else:
@@ -503,7 +524,10 @@ def process(workflow, inputs, args):
 
     # create consumer group, read FIFO, auto create stream
     redis_connection.xgroup_create(
-        default_redis_stream_name, redis_stream_group_name, "$", True,
+        default_redis_stream_name,
+        redis_stream_group_name,
+        "$",
+        True,
     )
 
     # register exit hook to clean redis stream

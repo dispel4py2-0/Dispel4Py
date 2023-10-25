@@ -1,4 +1,3 @@
-
 __author__ = "Trung Dong Huynh"
 __email__ = "trungdong@donggiang.com"
 
@@ -41,9 +40,7 @@ class QualifiedName(Identifier):
         Identifier.__init__(self, f"{namespace.uri}{localpart}")
         self._namespace = namespace
         self._localpart = localpart
-        self._str = (
-            f"{namespace.prefix}:{localpart}" if namespace.prefix else localpart
-        )
+        self._str = f"{namespace.prefix}:{localpart}" if namespace.prefix else localpart
 
     @property
     def namespace(self):
@@ -95,7 +92,7 @@ class Namespace:
             else (identifier.uri if isinstance(identifier, Identifier) else None)
         )
         if uri and uri.startswith(self._uri):
-            return QualifiedName(self, uri[len(self._uri):])
+            return QualifiedName(self, uri[len(self._uri) :])
         else:
             return None
 

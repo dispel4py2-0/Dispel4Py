@@ -29,7 +29,10 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to dynamic auto redis processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
+        "-ct",
+        "--consumer-timeout",
+        help="stop consumers after timeout in ms",
+        type=int,
     )
     parser.add_argument(
         "-n",
@@ -144,7 +147,8 @@ class DynamicRedisWorker:
 
                         destinations = self._get_destination(node, output_name)
                         pe.outputconnections[output_name][WRITER] = RedisWriter(
-                            redis, destinations,
+                            redis,
+                            destinations,
                         )
 
                     output = pe.process(data)

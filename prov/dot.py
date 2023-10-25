@@ -196,7 +196,9 @@ def prov_to_dot(
             ann_rows.append(ANNOTATION_END_ROW)
             count[3] += 1
             annotations = pydot.Node(
-                "ann%d" % count[3], label="\n".join(ann_rows), **ANNOTATION_STYLE,
+                "ann%d" % count[3],
+                label="\n".join(ann_rows),
+                **ANNOTATION_STYLE,
             )
             dot.add_node(annotations)
             dot.add_edge(pydot.Edge(annotations, node, **ANNOTATION_LINK_STYLE))
@@ -204,7 +206,8 @@ def prov_to_dot(
         def _add_bundle(bundle):
             count[2] += 1
             subdot = pydot.Cluster(
-                graph_name="c%d" % count[2], URL='"%s"' % bundle.identifier.uri,
+                graph_name="c%d" % count[2],
+                URL='"%s"' % bundle.identifier.uri,
             )
             if use_labels:
                 if bundle.label == bundle.identifier:

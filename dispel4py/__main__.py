@@ -33,7 +33,7 @@ def main(args: Union[None, argparse.Namespace, List[str]] = None) -> None:
         target = args.target
     try:
         process = import_module(target).main
-    except:
+    except (ValueError, ModuleNotFoundError):
         print(f"Unknown target: {target}")
         return
     process()

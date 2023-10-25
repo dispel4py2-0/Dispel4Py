@@ -151,7 +151,9 @@ class CompMatrix(GenericPE):
                 matrix = self.data[data[x][1]]["matrix"]
 
                 d = pd.DataFrame(
-                    data=matrix, columns=range(self.size), index=range(self.size),
+                    data=matrix,
+                    columns=range(self.size),
+                    index=range(self.size),
                 )
 
                 mask = np.zeros_like(d, dtype=np.bool)
@@ -244,8 +246,8 @@ class CorrCoef(GenericPE):
         # self.addToProvState(None,,ignore_dep=False)
 
         if len(self.batch2) >= self.size and len(self.batch1) >= self.size:
-            array1 = np.array(self.batch1[0: self.size])
-            array2 = np.array(self.batch2[0: self.size])
+            array1 = np.array(self.batch1[0 : self.size])
+            array2 = np.array(self.batch2[0 : self.size])
             ro = np.corrcoef([array1, array2])
 
             # stream out the correlation coefficient, the sequence number of the batch and the indexes of the sources.
@@ -269,8 +271,8 @@ class CorrCoef(GenericPE):
             self.batchnum += 1
             # self.log(self.batchnum)
 
-            self.batch1 = self.batch1[(self.size): len(self.batch1)]
-            self.batch2 = self.batch2[(self.size): len(self.batch2)]
+            self.batch1 = self.batch1[(self.size) : len(self.batch1)]
+            self.batch2 = self.batch2[(self.size) : len(self.batch2)]
 
 
 # number of projections = iterations/batch_size at speed defined by sampling rate
@@ -590,16 +592,19 @@ class ProvenanceSummaryToService(ProvenanceRecorderToService):
             #    self.document.update({'endTime':None})
             #    self.document.update({'derivationIds':[]})
 
-        except:
-            self.log(traceback.format_exc())
+        except Exception as e:
+            self.log(
+                f"Dispel4Py ------> Exception {e},"
+                f"Traceback: {traceback.format_exc()}",
+            )
 
 
 class ProvenanceRecorderToFileBulk(ProvenanceRecorder):
-    def __init__(self, name="ProvenanceRecorderToFileBulk", toW3C=False):
+    def __init__(self, name="ProvenanceRecorderToFileBulk", to_w3c=False):
         ProvenanceRecorder.__init__(self)
         self.name = name
         self.numprocesses = 3
-        self.convertToW3C = toW3C
+        self.convertToW3C = to_w3c
         self.bulk = []
 
     def postprocess(self):
@@ -611,9 +616,12 @@ class ProvenanceRecorderToFileBulk(ProvenanceRecorder):
                 self.bulk[:] = []
             # del self.bulk[:]
             # self.bulk = []
-            None
-        except:
-            self.log(traceback.format_exc())
+            return None
+        except Exception as e:
+            self.log(
+                f"Dispel4Py ------> Exception {e},"
+                f"Traceback: {traceback.format_exc()}",
+            )
 
     def process(self, inputs):
         try:
@@ -629,29 +637,34 @@ class ProvenanceRecorderToFileBulk(ProvenanceRecorder):
             # self.log(os.environ['PBS_NODEFILE'])
             # self.log(socket.gethostname())
             if len(self.bulk) == 100:
-                #:
-                #    None
-                filep = open(os.environ["PROV_PATH"] + "/bulk_" + getUniqueId(), "wr")
-                ujson.dump(self.bulk, filep)
-                #
-                filep.close()
+                # ToDo: fix magic value
+                with open(
+                    os.environ["PROV_PATH"] + "/bulk_" + getUniqueId(), "wr",
+                ) as filep:
+                    ujson.dump(self.bulk, filep)
+                    filep.close()
+
                 self.bulk[:] = []
         #                for x in self.bulk:
         #                    del x
-        except:
-            self.log(traceback.format_exc())
+        except Exception as e:
+            self.log(
+                f"Dispel4Py ------> Exception {e},"
+                f"Traceback: {traceback.format_exc()}",
+            )
 
 
-def createGraphWithProv():
-    graph = createWf()
-    # Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder subtypes
+def create_graph_with_prov():
+    return createWf()
+    # Location of the remote repository for runtime updates of the lineage traces. Shared among ProvenanceRecorder
+    # subtypes
 
     # Ranomdly generated unique identifier for the current run
-    os.environ["RUN_ID"]
+    # os.environ["RUN_ID"]
 
     # Finally, provenance enhanced graph is prepared:
 
-    ##Initialise provenance storage in files:
+    # Initialise provenance storage in files:
     # InitiateNewRun(graph,None,provImpClass=(ProvenancePE,),componentsType={'CorrCoef':(ProvenancePE,)},username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='file')
     # skip_rules={'CorrCoef':{'ro':{'$lt':0}}})
 
@@ -674,7 +687,6 @@ def createGraphWithProv():
     # InitiateNewRun(graph,provImpClass=ProvenancePE,componentsType={'Source':(ProvenanceStock,)},username='aspinuso',runId=rid,w3c_prov=False,description="provState",workflowName="test_rdwd",workflowId="xx",save_mode='service')
 
     #
-    return graph
 
 
 # .. and visualised..
@@ -692,7 +704,7 @@ num = 1
 # print("PROV TO SENSOR")
 print("PROV TO FILE")
 # print("NO PROV")
-graph = createGraphWithProv()
+graph = create_graph_with_prov()
 # graph = createWf()
 # global gtime
 # gtime = time.time()

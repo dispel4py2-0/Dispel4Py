@@ -68,7 +68,7 @@ class WorkflowNode:
                 f"Error: Unknown type of object passed as a \
                               Workflow Node: {type(obj)}\n",
             )
-            raise Exception(
+            raise TypeError(
                 f"Unknown type of object passed as a \
                              Workflow Node: {type(obj)}",
             )
@@ -171,9 +171,9 @@ class WorkflowGraph:
                 sourceNode = self.objToNode[source]
                 if sourceNode not in visited:
                     self.__assign_types(sourceNode, visited)
-                inType = source.getOutputTypes()[edge["FROM_CONNECTION"]]
+                inType = source.get_output_types()[edge["FROM_CONNECTION"]]
                 inputTypes[edge["TO_CONNECTION"]] = inType
-        pe.setInputTypes(inputTypes)
+        pe.set_input_types(inputTypes)
         visited.add(node)
 
     def flatten(self):

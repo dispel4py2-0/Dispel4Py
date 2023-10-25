@@ -186,10 +186,8 @@ class ProvException(Error):
     """Base class for PROV model exceptions."""
 
 
-
 class ProvWarning(Warning):
     """Base class for PROV model warnings."""
-
 
 
 @six.python_2_unicode_compatible
@@ -204,9 +202,7 @@ class ProvExceptionInvalidQualifiedName(ProvException):
 @six.python_2_unicode_compatible
 class ProvElementIdentifierRequired(ProvException):
     def __str__(self):
-        return (
-            "An identifier is missing. All PROV elements require a valid identifier."
-        )
+        return "An identifier is missing. All PROV elements require a valid identifier."
 
 
 #  PROV records
@@ -231,7 +227,9 @@ class ProvRecord:
         Return an exact copy of this record.
         """
         return PROV_REC_CLS[self.get_type()](
-            self._bundle, self.identifier, self.attributes,
+            self._bundle,
+            self.identifier,
+            self.attributes,
         )
 
     def get_type(self):
@@ -501,10 +499,20 @@ class ProvEntity(ProvElement):
         return self
 
     def wasDerivedFrom(
-        self, usedEntity, activity=None, generation=None, usage=None, attributes=None,
+        self,
+        usedEntity,
+        activity=None,
+        generation=None,
+        usage=None,
+        attributes=None,
     ):
         self._bundle.derivation(
-            self, usedEntity, activity, generation, usage, other_attributes=attributes,
+            self,
+            usedEntity,
+            activity,
+            generation,
+            usage,
+            other_attributes=attributes,
         )
         return self
 
@@ -644,7 +652,10 @@ class ProvAgent(ProvElement):
     # (formal) argument
     def actedOnBehalfOf(self, responsible, activity=None, attributes=None):
         self._bundle.delegation(
-            self, responsible, activity, other_attributes=attributes,
+            self,
+            responsible,
+            activity,
+            other_attributes=attributes,
         )
         return self
 
@@ -927,7 +938,8 @@ class ProvBundle:
         self._id_map = defaultdict(list)
         self._document = document
         self._namespaces = NamespaceManager(
-            namespaces, parent=(document._namespaces if document is not None else None),
+            namespaces,
+            parent=(document._namespaces if document is not None else None),
         )
         if records:
             for record in records:
@@ -1144,7 +1156,11 @@ class ProvBundle:
         self._records.append(record)
 
     def new_record(
-        self, record_type, identifier, attributes=None, other_attributes=None,
+        self,
+        record_type,
+        identifier,
+        attributes=None,
+        other_attributes=None,
     ):
         attr_list = []
         if attributes:
@@ -1160,7 +1176,9 @@ class ProvBundle:
                 else other_attributes,
             )
         new_record = PROV_REC_CLS[record_type](
-            self, self.valid_qualified_name(identifier), attr_list,
+            self,
+            self.valid_qualified_name(identifier),
+            attr_list,
         )
         self._add_record(new_record)
         return new_record
@@ -1188,7 +1206,12 @@ class ProvBundle:
         )
 
     def generation(
-        self, entity, activity=None, time=None, identifier=None, other_attributes=None,
+        self,
+        entity,
+        activity=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
     ):
         return self.new_record(
             PROV_GENERATION,
@@ -1202,7 +1225,12 @@ class ProvBundle:
         )
 
     def usage(
-        self, activity, entity=None, time=None, identifier=None, other_attributes=None,
+        self,
+        activity,
+        entity=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
     ):
         return self.new_record(
             PROV_USAGE,
@@ -1258,7 +1286,12 @@ class ProvBundle:
         )
 
     def invalidation(
-        self, entity, activity=None, time=None, identifier=None, other_attributes=None,
+        self,
+        entity,
+        activity=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
     ):
         return self.new_record(
             PROV_INVALIDATION,
@@ -1272,7 +1305,11 @@ class ProvBundle:
         )
 
     def communication(
-        self, informed, informant, identifier=None, other_attributes=None,
+        self,
+        informed,
+        informant,
+        identifier=None,
+        other_attributes=None,
     ):
         return self.new_record(
             PROV_COMMUNICATION,
@@ -1293,7 +1330,12 @@ class ProvBundle:
         )
 
     def association(
-        self, activity, agent=None, plan=None, identifier=None, other_attributes=None,
+        self,
+        activity,
+        agent=None,
+        plan=None,
+        identifier=None,
+        other_attributes=None,
     ):
         return self.new_record(
             PROV_ASSOCIATION,
@@ -1351,7 +1393,10 @@ class ProvBundle:
             PROV_ATTR_USAGE: usage,
         }
         return self.new_record(
-            PROV_DERIVATION, identifier, attributes, other_attributes,
+            PROV_DERIVATION,
+            identifier,
+            attributes,
+            other_attributes,
         )
 
     def revision(
@@ -1563,7 +1608,10 @@ class ProvBundle:
 class ProvDocument(ProvBundle):
     def __init__(self, records=None, namespaces=None):
         ProvBundle.__init__(
-            self, records=records, identifier=None, namespaces=namespaces,
+            self,
+            records=records,
+            identifier=None,
+            namespaces=namespaces,
         )
         self._bundles = {}
 
@@ -1734,7 +1782,8 @@ class ProvDocument(ProvBundle):
             scheme, netloc, path, params, _query, fragment = urlparse(location)
             if netloc != "":
                 print(
-                    "WARNING: not saving as location " + "is not a local file reference",
+                    "WARNING: not saving as location "
+                    + "is not a local file reference",
                 )
                 return None
             fd, name = tempfile.mkstemp()
@@ -1796,7 +1845,9 @@ def sorted_attributes(element, attributes):
     # first and then sorting by the text, also including the namespace
     # prefix if given.
     def sort_fct(x):
-        return six.text_type(x[0]), six.text_type(x[1].value if hasattr(x[1], "value") else x[1])
+        return six.text_type(x[0]), six.text_type(
+            x[1].value if hasattr(x[1], "value") else x[1],
+        )
 
     sorted_elements = []
     for item in order:

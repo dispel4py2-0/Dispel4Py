@@ -34,7 +34,8 @@ def findWorkflowGraph(mod, attr):
             attr = getattr(mod, i)
             if isinstance(attr, WorkflowGraph):
                 if not hasattr(attr, "inputmappings") and not hasattr(
-                    attr, "outputmappings",
+                    attr,
+                    "outputmappings",
                 ):
                     graph = attr
     return graph

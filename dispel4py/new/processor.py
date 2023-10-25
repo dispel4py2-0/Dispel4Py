@@ -85,7 +85,7 @@ def get_inputs(pe, inputs) -> Any | None:  # ToDo proper typing
     except (KeyError, AttributeError):
         pass
 
-    print(f"Could not find inputs in {inputs} for object {pe}")
+    # print(f"Could not find inputs in {inputs} for object {pe}")  ToDo optionally print (add a "verbose" flag)
     return None
 
 
@@ -265,11 +265,12 @@ def _assign_processes(workflow, size) -> Tuple[bool, list[str], dict[str, range]
             pe = node.get_contained_object()
 
             num_processes = 1
-            if not (
-                (pe.id in sources) or (hasattr(pe, "single") and pe.single)
-            ):
+            if not ((pe.id in sources) or (hasattr(pe, "single") and pe.single)):
                 num_processes = _get_num_processes(
-                    size, num_sources, pe.numprocesses, total_processes,
+                    size,
+                    num_sources,
+                    pe.numprocesses,
+                    total_processes,
                 )
 
             processes[pe.id] = range(node_counter, node_counter + num_processes)
@@ -285,7 +286,9 @@ def _get_communication(rank, source_processes, dest, dest_input, dest_processes)
             grouping_type = dest.inputconnections[dest_input][GROUPING]
             if isinstance(grouping_type, list):
                 communication = GroupByCommunication(
-                    dest_processes, dest_input, grouping_type,
+                    dest_processes,
+                    dest_input,
+                    grouping_type,
                 )
             elif grouping_type == "all":
                 communication = OneToAllCommunication(dest_processes)
@@ -324,7 +327,11 @@ def _create_connections(graph, node, processes):
             for i in processes[pe.id]:
                 for source_output, dest_input in all_connections:
                     communication = _get_communication(
-                        i, source_processes, dest, dest_input, dest_processes,
+                        i,
+                        source_processes,
+                        dest,
+                        dest_input,
+                        dest_processes,
                     )
                     try:
                         output_mappings[i][source_output].append(
@@ -356,8 +363,7 @@ def assign_and_connect(workflow, size) -> Tuple[dict[Any, range], dict, dict] | 
     if success:
         input_mappings, output_mappings = _connect(workflow, processes)
         return processes, input_mappings, output_mappings
-    else:
-        return None
+    return None
 
 
 import copy
@@ -413,7 +419,8 @@ def get_partitions_adv(workflow):
 
 def create_partitioned(workflow_all):
     processes_all, input_mappings_all, output_mappings_all = assign_and_connect(
-        workflow_all, len(workflow_all.graph.nodes()),
+        workflow_all,
+        len(workflow_all.graph.nodes()),
     )
     proc_to_pe_all = {v[0]: k for k, v in processes_all.items()}
     partitions = get_partitions(workflow_all)
@@ -438,7 +445,8 @@ def create_partitioned(workflow_all):
                 graph.remove_node(node)
 
         processes, input_mappings, _outputmappings = assign_and_connect(
-            workflow, len(graph.nodes()),
+            workflow,
+            len(graph.nodes()),
         )
         proc_to_pe = {}
 
@@ -507,7 +515,8 @@ def create_partitioned(workflow_all):
 
         partition_pes[source_partition]._add_output((source_id, source_output))
         partition_pes[dest_partition]._add_input(
-            (dest_id, dest_input), grouping=comm.name,
+            (dest_id, dest_input),
+            grouping=comm.name,
         )
         ubergraph.connect(
             partition_pes[source_partition],
@@ -533,7 +542,7 @@ def map_inputs_to_partitions(ubergraph, inputs):
             except Exception as exc:
                 raise Exception(
                     f'Could not map input name "{pe}" to a PE.'
-                    f'{exc.__class__.__name__}: {exc}',
+                    f"{exc.__class__.__name__}: {exc}",
                 ) from exc
 
         mapped_pe = ubergraph.partition_pes[partition_id]
@@ -651,7 +660,10 @@ class SimpleProcessingPE(GenericPE):
         for proc in self.ordered:
             pe = self.proc_to_pe[proc]
             pe.writer = SimpleWriter(
-                self, pe, self.output_mappings[proc], self.result_mappings,
+                self,
+                pe,
+                self.output_mappings[proc],
+                self.result_mappings,
             )
             pe._write = types.MethodType(_simple_write, pe)
             # if there was data produced in postprocessing
@@ -686,7 +698,10 @@ class SimpleProcessingPE(GenericPE):
         for proc in self.ordered:
             pe = self.proc_to_pe[proc]
             pe.writer = SimpleWriter(
-                self, pe, self.output_mappings[proc], self.result_mappings,
+                self,
+                pe,
+                self.output_mappings[proc],
+                self.result_mappings,
             )
             pe._write = types.MethodType(_simple_write, pe)
             provided_inputs = get_inputs(pe, inputs)
@@ -704,12 +719,7 @@ class SimpleProcessingPE(GenericPE):
                     _process_data(pe, {})
             else:
                 if provided_inputs is None:
-                    if not pe.inputconnections:
-                        # run at least once for a source of the graph
-                        provided_inputs = [{}]
-                    else:
-                        # no data
-                        provided_inputs = []
+                    provided_inputs = [{}] if not pe.inputconnections else []
 
                 for data in provided_inputs:
                     _process_data(pe, data)
@@ -790,7 +800,10 @@ def create_arg_parser():  # pragma: no cover
         help="module that creates a dispel4py graph (python module or file name)",
     )
     parser.add_argument(
-        "-a", "--attr", metavar="attribute", help="name of graph variable in the module",
+        "-a",
+        "--attr",
+        metavar="attribute",
+        help="name of graph variable in the module",
     )
     parser.add_argument(
         "-f",
@@ -799,7 +812,10 @@ def create_arg_parser():  # pragma: no cover
         help="file containing input dataset in JSON format \n(has priority over -d)",
     )
     parser.add_argument(
-        "-d", "--data", metavar="inputdata", help="input dataset in JSON format",
+        "-d",
+        "--data",
+        metavar="inputdata",
+        help="input dataset in JSON format",
     )
     parser.add_argument(
         "-i",

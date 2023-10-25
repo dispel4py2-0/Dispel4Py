@@ -63,7 +63,7 @@ from dispel4py.new.processor import (
 
 
 def simple_logger(self, msg):
-    print(f"{self.id}: {msg}")
+    print(f"{self.id} (rank {self.rank}): {msg}")
 
 
 def _process_worker(wrapper):
@@ -72,10 +72,14 @@ def _process_worker(wrapper):
 
 def parse_args(args, namespace):  # pragma: no cover
     parser = argparse.ArgumentParser(
-        prog="dispel4py", description="Submit a dispel4py graph to multiprocessing.",
+        prog="dispel4py",
+        description="Submit a dispel4py graph to multiprocessing.",
     )
     parser.add_argument(
-        "-s", "--simple", help="force simple processing", action="store_true",
+        "-s",
+        "--simple",
+        help="force simple processing",
+        action="store_true",
     )
     parser.add_argument(
         "-n",
@@ -113,24 +117,25 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
         print(
             "Partitions: {}".format(
                 ", ".join(
-                    
-                        "[{}]".format(
-                            ", ".join(pe.id for pe in part)
-                            for part in workflow.partitions
-                        ),
-                    
+                    "[{}]".format(
+                        ", ".join(pe.id for pe in part) for part in workflow.partitions
+                    ),
                 ),
             ),
         )
 
         for node in ubergraph.graph.nodes():
             wrapperPE = node.get_contained_object()
-            pes = [n.get_contained_object().id for n in wrapperPE.workflow.graph.nodes()]
+            pes = [
+                n.get_contained_object().id for n in wrapperPE.workflow.graph.nodes()
+            ]
             print(f"{wrapperPE.id} contains {pes}")
 
         result = processor.assign_and_connect(ubergraph, size)
         if result is None:
-            raise RuntimeError("dispel4py.multi_process: Not enough processes for execution of graph")
+            raise RuntimeError(
+                "dispel4py.multi_process: Not enough processes for execution of graph",
+            )
 
         processes, input_mappings, output_mappings = result
         inputs = processor.map_inputs_to_partitions(ubergraph, inputs)
@@ -163,6 +168,7 @@ def process(workflow, inputs, args) -> multiprocessing.Queue:
             queues[proc] = wrapper.input_queue
             wrapper.targets = output_mappings[proc]
             wrapper.sources = input_mappings[proc]
+
     for proc in process_pes:
         wrapper = process_pes[proc]
         wrapper.output_queues = {}
@@ -207,7 +213,6 @@ class MultiProcessingWrapper(GenericWrapper):
                 data, status = self.input_queue.get()
                 no_data = False
             except Exception as e:
-                # self.pe.log("Failed to read item from queue")
                 print(f'multi_process.py: Failed to read item from queue: "{e}"')
         while status == STATUS_TERMINATED:
             self.terminated += 1
@@ -223,8 +228,7 @@ class MultiProcessingWrapper(GenericWrapper):
 
     def _write(self, name, data):
         try:
-            # print(name)
-            # print(self.targets)
+            # print(f"Writing {data} to {name}, targets={self.targets}")  ToDo make a "verbose" flag to optionally print
             targets = self.targets[name]
         except KeyError:
             # print(traceback.format_exc())

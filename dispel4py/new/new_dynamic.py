@@ -55,7 +55,10 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to zeromq multi processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
+        "-ct",
+        "--consumer-timeout",
+        help="stop consumers after timeout in ms",
+        type=int,
     )
     parser.add_argument(
         "-n",
@@ -141,7 +144,8 @@ class DynamicWroker:
                 for output_name in pe.outputconnections:
                     destinations = self._get_destination(node, output_name)
                     pe.outputconnections[output_name][WRITER] = GenericWriter(
-                        self.queue, destinations,
+                        self.queue,
+                        destinations,
                     )
 
                 # logger.debug(f"outputconnections = {pe.outputconnections}")

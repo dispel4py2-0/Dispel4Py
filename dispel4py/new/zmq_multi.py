@@ -75,7 +75,7 @@ def process(workflow, inputs, args):
     jobs = []
     for proc, workflow in workers.items():
         p = multiprocessing.Process(
-            target=_processWorker,
+            target=_process_worker,
             args=(
                 topic,
                 proc,
@@ -125,7 +125,7 @@ class ZMQConsumer:
             value = msgpack.unpackb(message, encoding="utf-8")
             # print ("Unpacked: %s" %  value)
         except IndexError:
-            raise StopIteration
+            raise StopIteration from IndexError
         return value
 
 
@@ -136,6 +136,11 @@ class GenericWriter:
         self.output_name = output_name
 
     def write(self, data):
+        # FIXME:
+        #  There are variables coming from nowhere.
+        #  Clearly it's meant to be either an argument or attribute of the object
+        #  However, I have no idea what it's supposed to be
+        #  Issue: #15
         destinations = map_output(workflow.graph, self.pe_id, self.output_name)
         if not destinations:
             print(f"Output collected from {self.pe_id}: {data}")
@@ -143,24 +148,20 @@ class GenericWriter:
             self.producer.send(topic, value=(dest_id, {input_name: data}))
 
 
-def _processWorker(topic, proc, workflow):
+def _process_worker(topic, workflow) -> None:
     frontend_port = 5559
     backend_port = 5560
+    nodes = {node.get_contained_object().id: node for node in workflow.graph.nodes()}
+    producer = ZMQProducer(port=frontend_port)
+    consumer = ZMQConsumer(port=backend_port)
     pes = {
         node.get_contained_object().id: node.get_contained_object()
         for node in workflow.graph.nodes()
     }
-    nodes = {node.get_contained_object().id: node for node in workflow.graph.nodes()}
-    producer = ZMQProducer(port=frontend_port)
-    consumer = ZMQConsumer(port=backend_port)
+
     while True:
         try:
             value = next(consumer)
-            # print('Message from consumer ', value)
-        except StopIteration:
-            return
-
-        try:
             pe_id, data = value
             print(f"{pe_id} receiver input: {data}")
             pe = pes[pe_id]
@@ -174,6 +175,8 @@ def _processWorker(topic, proc, workflow):
                     print(f"Output collected from {pe_id}: {output_value}")
                 for dest_id, input_name in destinations:
                     producer.send(topic, value=(dest_id, {input_name: output_value}))
+        except StopIteration:
+            return
         except Exception as e:
             print(e)
 
@@ -184,7 +187,10 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to zeromq multi processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
+        "-ct",
+        "--consumer-timeout",
+        help="stop consumers after timeout in ms",
+        type=int,
     )
     parser.add_argument(
         "-n",

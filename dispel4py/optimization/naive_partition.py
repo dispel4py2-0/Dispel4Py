@@ -27,13 +27,17 @@ def communication_time(df):
     read_logs = read_logs.drop(columns=["data"])
 
     jdf = read_logs.set_index("data_id").join(
-        write_logs.set_index("data_id"), lsuffix="_r", rsuffix="_w",
+        write_logs.set_index("data_id"),
+        lsuffix="_r",
+        rsuffix="_w",
     )
     jdf["t_comm"] = jdf[["end_w", "end_r"]].max(axis=1) - jdf[
         ["start_r", "start_w"]
     ].max(axis=1)
     communication_times = jdf[["PE_w", "rank_w", "PE_r", "rank_r", "t_comm"]]
-    return communication_times[["PE_w", "PE_r", "t_comm"]].group_by(["PE_w", "PE_r"]).max()
+    return (
+        communication_times[["PE_w", "PE_r", "t_comm"]].group_by(["PE_w", "PE_r"]).max()
+    )
 
 
 # This function is to get the processing time of each PE

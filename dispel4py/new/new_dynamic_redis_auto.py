@@ -37,7 +37,10 @@ def parse_args(args, namespace):
         description="Submit a dispel4py graph to dynamic auto redis processing",
     )
     parser.add_argument(
-        "-ct", "--consumer-timeout", help="stop consumers after timeout in ms", type=int,
+        "-ct",
+        "--consumer-timeout",
+        help="stop consumers after timeout in ms",
+        type=int,
     )
     parser.add_argument(
         "-n",
@@ -204,7 +207,9 @@ class AutoDynamicRedisWorker(DynamicRedisWroker):
                 retries += 1
                 if retries == MAX_RETRIES:
                     worker_redis.hset(
-                        MANAGER_KEY, MANAGER_TERMIATE_FIELD, MANAGER_TERMIATE_YES,
+                        MANAGER_KEY,
+                        MANAGER_TERMIATE_FIELD,
+                        MANAGER_TERMIATE_YES,
                     )
                     # logger.debug(f"worker_{self.rank} is exiting and terminating the workflow")
                     # logger.debug(f"worker_{self.rank} is exiting")
@@ -222,7 +227,8 @@ class AutoDynamicRedisWorker(DynamicRedisWroker):
                 for output_name in pe.outputconnections:
                     destinations = self._get_destination(node, output_name)
                     pe.outputconnections[output_name][WRITER] = RedisWriter(
-                        worker_redis, destinations,
+                        worker_redis,
+                        destinations,
                     )
 
                 output = pe.process(data)
@@ -286,7 +292,8 @@ class AutoScaler:
     def grow(self, size_to_grow):
         with self.active_size.get_lock():
             self.active_size.value = min(
-                self.max_pool_size, self.active_size.value + size_to_grow,
+                self.max_pool_size,
+                self.active_size.value + size_to_grow,
             )
 
         # logger.info(f"Grow: active size = {self.active_size.value}")
@@ -361,9 +368,7 @@ class AutoScaler:
         #     total_idle_for_active_workers += consumer['idle']
 
         # logger.info(f"avg_idle_for_active_workers = {total_idle_for_active_workers/self.active_size.value}")
-        (
-            total_idle_for_active_workers / self.active_size.value
-        )
+        (total_idle_for_active_workers / self.active_size.value)
         # if total_idle_for_active_workers/self.active_count.value > self.idle_time_threshold:
         if (
             total_idle_for_active_workers / self.active_size.value

@@ -1,4 +1,3 @@
-
 __author__ = "Trung Dong Huynh"
 __email__ = "trungdong@donggiang.com"
 
@@ -152,6 +151,7 @@ def encode_json_container(bundle):
         container["prefix"] = prefixes
 
     id_generator = AnonymousIDGenerator()
+
     def real_or_anon_id(r):
         return r._identifier if r._identifier else id_generator.get_anon_id(r)
 
@@ -297,7 +297,8 @@ def decode_json_container(jc, bundle):
                     collection = attributes[PROV_ATTR_COLLECTION]
                     for member in membership_extra_members:
                         bundle.membership(
-                            collection, valid_qualified_name(bundle, member),
+                            collection,
+                            valid_qualified_name(bundle, member),
                         )
 
 

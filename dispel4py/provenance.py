@@ -84,8 +84,10 @@ def total_size(o, handlers=None, verbose=False):
     """
     if handlers is None:
         handlers = {}
+
     def dict_handler(d):
         return chain.from_iterable(d.items())
+
     all_handlers = {
         tuple: iter,
         list: iter,
@@ -314,7 +316,9 @@ def toW3Cprov(prov, format="w3c-prov-json"):
 
         c1 = bundle.collection(vc[x["id"]], other_attributes=parent_dic)
         bundle.wasGeneratedBy(
-            vc[x["id"]], vc[f"process_{prov['_id']}"], identifier=vc[f"wgb_{x['id']}"],
+            vc[x["id"]],
+            vc[f"process_{prov['_id']}"],
+            identifier=vc[f"wgb_{x['id']}"],
         )
 
         for d in prov["derivationIds"]:
@@ -472,7 +476,13 @@ class ProvenanceType(GenericPE):
         return data_id
 
     def apply_derivation_rule(
-        self, event, voidInvocation, oport=None, iport=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        oport=None,
+        iport=None,
+        data=None,
+        metadata=None,
     ):
         """
         In support of the implementation of a _ProvenanceType_ realising a lineage _Pattern type_. This method is invoked by the _ProvenanceType_ each iteration when a decision has to be made whether to ignore or discard the dependencies on the ingested stream
@@ -621,7 +631,10 @@ class ProvenanceType(GenericPE):
                 )
             else:
                 self.apply_derivation_rule(
-                    "end_invocation_event", self.void_invocation, iport=x, data=data,
+                    "end_invocation_event",
+                    self.void_invocation,
+                    iport=x,
+                    data=data,
                 )
 
     def addNamespacePrefix(self, prefix, url):
@@ -657,7 +670,8 @@ class ProvenanceType(GenericPE):
                 self.bulk_prov[:] = []
             elif self.save_mode == ProvenanceType.SAVE_MODE_FILE:
                 filep = open(
-                    ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "w",
+                    ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(),
+                    "w",
                 )
                 ujson.dump(self.bulk_prov, filep)
             elif self.save_mode == ProvenanceType.SAVE_MODE_SENSOR:
@@ -685,7 +699,6 @@ class ProvenanceType(GenericPE):
 
             self.bulk_prov[:] = []
 
-
     def sendProvToService(self, prov):
         if isinstance(prov, list) and "data" in prov[0]:
             prov = prov[0]["data"]
@@ -696,12 +709,13 @@ class ProvenanceType(GenericPE):
             self.sendProvRequestToService()
             self.bulk_prov[:] = []
 
-
     def sendProvRequestToService(self):
         params = urlencode(
             {
                 "prov": ujson.dumps(
-                    self.bulk_prov, encode_html_chars=True, reject_bytes=False,
+                    self.bulk_prov,
+                    encode_html_chars=True,
+                    reject_bytes=False,
                 ),
             },
         )
@@ -740,11 +754,11 @@ class ProvenanceType(GenericPE):
 
         if len(self.bulk_prov) == ProvenanceType.BULK_SIZE:
             filep = open(
-                ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(), "w",
+                ProvenanceType.PROV_PATH + "/bulk_" + self.makeProcessId(),
+                "w",
             )
             ujson.dump(self.bulk_prov, filep)
             self.bulk_prov[:] = []
-
 
     def flushData(self, data, metadata, port, **kwargs):
         trace = {}
@@ -861,7 +875,10 @@ class ProvenanceType(GenericPE):
                 self.extractProvenance(result, output_port=name, **meta)
             else:
                 self.extractProvenance(
-                    result, error=self.error, output_port=name, **meta,
+                    result,
+                    error=self.error,
+                    output_port=name,
+                    **meta,
                 )
 
         else:
@@ -917,7 +934,8 @@ class ProvenanceType(GenericPE):
 
                     if port == "_d4p_state":
                         self._updateState(
-                            kwargs["lookupterm"], trace["metadata"]["streams"][0]["id"],
+                            kwargs["lookupterm"],
+                            trace["metadata"]["streams"][0]["id"],
                         )
                         streamtransfer["lookupterm"] = kwargs["lookupterm"]
                         self.buildDerivation(streamtransfer, port="_d4p_state")
@@ -1048,7 +1066,6 @@ class ProvenanceType(GenericPE):
             "error": self.error,
         }
 
-
     """
     Imports Input metadata if available, the metadata will be
     available in the self.inMetaStreams property as a Dictionary
@@ -1094,7 +1111,11 @@ class ProvenanceType(GenericPE):
             else:
                 count = 0
                 for x in self.derivationIds:
-                    if x is not None and x["port"] != "_d4p_state" and count >= wlength - 1:
+                    if (
+                        x is not None
+                        and x["port"] != "_d4p_state"
+                        and count >= wlength - 1
+                    ):
                         self.derivationIds.remove(x)
                     count += 1
                 for x in self.derivationIds:
@@ -1122,7 +1143,11 @@ class ProvenanceType(GenericPE):
                 count = 0
                 for x in self.derivationIds:
                     # self.log("COUNT: "+str(count)+" WLENTGH: "+str(wlength))
-                    if x is not None and x["port"] != "_d4p_state" and count >= wlength - 1:
+                    if (
+                        x is not None
+                        and x["port"] != "_d4p_state"
+                        and count >= wlength - 1
+                    ):
                         # self.log("REMOVE: "+str(x['iterationIndex']))
                         del self.derivationIds[0]
                     count += 1
@@ -1185,7 +1210,12 @@ class ProvenanceType(GenericPE):
                                 port="_d4p_state",
                             )
                 self.extractProvenance(
-                    data, location, format, metadata, output_port="_d4p_state", **kwargs,
+                    data,
+                    location,
+                    format,
+                    metadata,
+                    output_port="_d4p_state",
+                    **kwargs,
                 )
 
         self.ignore_inputs = False
@@ -1295,7 +1325,11 @@ class ProvenanceType(GenericPE):
             )
         else:
             self.apply_derivation_rule(
-                "write", True, oport=name, iport=iport, data=data,
+                "write",
+                True,
+                oport=name,
+                iport=iport,
+                data=data,
             )
 
         self.endTime = datetime.datetime.utcnow()
@@ -1356,14 +1390,22 @@ class ProvenanceType(GenericPE):
                     if "$eq" in rules[key] and s[key] == rules[key]["$eq"]:
                         return True
                     elif "$gt" in rules[key] and "$lt" in rules[key]:
-                        return bool(s[key] > rules[key]["$gt"] and type(s[key]) is not list and s[key] < rules[key]["$lt"])
+                        return bool(
+                            s[key] > rules[key]["$gt"]
+                            and type(s[key]) is not list
+                            and s[key] < rules[key]["$lt"],
+                        )
                     elif (
                         "$gt" in rules[key]
                         and type(s[key]) is not list
                         and s[key] > rules[key]["$gt"]
                     ):
                         return True
-                    return bool("$lt" in rules[key] and type(s[key]) is not list and s[key] < rules[key]["$lt"])
+                    return bool(
+                        "$lt" in rules[key]
+                        and type(s[key]) is not list
+                        and s[key] < rules[key]["$lt"],
+                    )
         return self.provon
 
     def checkTransferRule(self, streammeta):
@@ -1551,7 +1593,13 @@ class AccumulateFlow(ProvenanceType):
         ProvenanceType.__init__(self)
 
     def apply_derivation_rule(
-        self, event, voidInvocation, oport=None, iport=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        oport=None,
+        iport=None,
+        data=None,
+        metadata=None,
     ):
         if event == "end_invocation_event" and voidInvocation is False:
             self.discardInFlow()
@@ -1569,7 +1617,13 @@ class Nby1Flow(ProvenanceType):
         self.ports_lookups = {}
 
     def apply_derivation_rule(
-        self, event, voidInvocation, oport=None, data=None, iport=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        oport=None,
+        data=None,
+        iport=None,
+        metadata=None,
     ):
         for i in self.inputs:
             iport = i
@@ -1608,7 +1662,13 @@ class SlideFlow(ProvenanceType):
         ProvenanceType.__init__(self)
 
     def apply_derivation_rule(
-        self, event, voidInvocation, iport=None, oport=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        iport=None,
+        oport=None,
+        data=None,
+        metadata=None,
     ):
         self.ignore_past_flow = False
         self.ignore_inputs = False
@@ -1629,7 +1689,13 @@ class ASTGrouped(ProvenanceType):
         ProvenanceType.__init__(self)
 
     def apply_derivation_rule(
-        self, event, voidInvocation, oport=None, iport=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        oport=None,
+        iport=None,
+        data=None,
+        metadata=None,
     ):
         iport = None
 
@@ -1688,7 +1754,13 @@ class SingleInvocationFlow(ProvenanceType):
         ProvenanceType.__init__(self)
 
     def apply_derivation_rule(
-        self, event, voidInvocation, iport=None, oport=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        iport=None,
+        oport=None,
+        data=None,
+        metadata=None,
     ):
         if (event == "end_invocation_event") and voidInvocation:
             self.discardInFlow(discardState=True)
@@ -1708,7 +1780,12 @@ class AccumulateStateTrace(ProvenanceType):
         ProvenanceType.__init__(self)
 
     def apply_derivation_rule(
-        self, event, voidInvocation, port=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        port=None,
+        data=None,
+        metadata=None,
     ):
         self.ignore_past_flow = False
         self.ignore_inputs = False
@@ -1731,7 +1808,13 @@ class IntermediateStatefulOut(ProvenanceType):
         ProvenanceType.__init__(self)
 
     def apply_derivation_rule(
-        self, event, voidInvocation, iport=None, oport=None, data=None, metadata=None,
+        self,
+        event,
+        voidInvocation,
+        iport=None,
+        oport=None,
+        data=None,
+        metadata=None,
     ):
         self.ignore_past_flow = False
         self.ignore_inputs = False
@@ -1794,7 +1877,12 @@ namespaces = {}
 
 
 def injectProv(
-    object, provType, active=True, componentsType=None, workflow=None, **kwargs,
+    object,
+    provType,
+    active=True,
+    componentsType=None,
+    workflow=None,
+    **kwargs,
 ):
     """
     This function dinamically extend the type of each the nodes of the graph
@@ -1810,7 +1898,11 @@ def injectProv(
 
         for x in nodelist:
             injectProv(
-                x, provType, componentsType=componentsType, workflow=workflow, **kwargs,
+                x,
+                provType,
+                componentsType=componentsType,
+                workflow=workflow,
+                **kwargs,
             )
     else:
         print(
@@ -1836,7 +1928,9 @@ def injectProv(
                 for x in provType:
                     body.update(x().__dict__)
                 object.__class__ = type(
-                    str(object.__class__), (*provType, object.__class__), body,
+                    str(object.__class__),
+                    (*provType, object.__class__),
+                    body,
                 )
 
             # if any associates a statful port to the provenance type
@@ -1855,7 +1949,9 @@ def injectProv(
             for x in provType:
                 body.update(x().__dict__)
             object.__class__ = type(
-                str(object.__class__), (*provType, object.__class__), body,
+                str(object.__class__),
+                (*provType, object.__class__),
+                body,
             )
 
         object.comp_id = object.id
@@ -1878,7 +1974,9 @@ def injectProv(
                 for x in inspect.getmembers(object, predicate=inspect.ismethod):
                     if x[1].__name__ == "_process":
                         code += pprint.pformat(
-                            inspect.getsource(x[1]), indent=1, compact=False,
+                            inspect.getsource(x[1]),
+                            indent=1,
+                            compact=False,
                         )
 
         workflow.update(
@@ -2004,7 +2102,8 @@ def components_type_str_list_2_class_tuple(prov_config):
             prov_ct = prov_config["s-prov:componentsType"][prov_ct_name]
             component_type_list = []
             if isinstance(
-                prov_ct["s-prov:type"], list,
+                prov_ct["s-prov:type"],
+                list,
             ):  # Inline config may contain list of classnames or tuple with clases
                 # Obtain the list of component types and convert the strings
                 # to python classes and add them to the s-prov:type list as
@@ -2381,7 +2480,11 @@ def attachProvenanceRecorderPE(
     for x in nodelist:
         if isinstance(x, (WorkflowGraph)):
             attachProvenanceRecorderPE(
-                x, provRecorderClass, runId=runId, username=username, w3c_prov=w3c_prov,
+                x,
+                provRecorderClass,
+                runId=runId,
+                username=username,
+                w3c_prov=w3c_prov,
             )
 
         if isinstance(x, (ProvenanceType)) and x.provon:
@@ -2434,7 +2537,9 @@ class ProvenanceSimpleFunctionPE(ProvenanceType):
 
     def __init__(self, *args, **kwargs):
         self.__class__ = type(
-            str(self.__class__), (self.__class__, SimpleFunctionPE), {},
+            str(self.__class__),
+            (self.__class__, SimpleFunctionPE),
+            {},
         )
         SimpleFunctionPE.__init__(self, *args, **kwargs)
         ProvenanceType.__init__(self, *args, **kwargs)
@@ -2680,7 +2785,6 @@ class ProvenanceRecorderToServiceBulk(ProvenanceRecorder):
             self.bulk[:] = []
 
 
-
 # For dynamic re-implementation testing purposes
 
 
@@ -2764,4 +2868,3 @@ class MyProvenanceRecorderWithFeedback(ProvenanceRecorder):
         }
         self.connection.request("POST", self.provurl.path, params, headers)
         self.connection.getresponse()
-

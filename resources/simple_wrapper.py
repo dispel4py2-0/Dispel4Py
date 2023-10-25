@@ -21,7 +21,7 @@ from output_writer import OutputWriter, decode_types, encode_types
 
 
 class SimpleWrapper(storm.BasicBolt):
-    def initialize(self, conf, context):
+    def initialize(self, conf):
         try:
             self.modname = conf["dispel4py.module"]
             self.scriptname = conf["dispel4py.script"]
@@ -84,21 +84,26 @@ class SimpleWrapper(storm.BasicBolt):
                 try:
                     storm.emit(result, stream=streamname)
                     storm.log(
-                        "Dispel4Py ------> {}: Emitted to stream {}: {}".format(self.script.id, streamname, str(result)[:200]),
+                        "Dispel4Py ------> {}: Emitted to stream {}: {}".format(
+                            self.script.id, streamname, str(result)[:200],
+                        ),
                     )
                 except TypeError:
                     # encode manually
                     encoded = encode_types(result)
                     storm.emit(encoded, stream=streamname)
                     storm.log(
-                        "Dispel4Py ------> {}: Emitted to stream {}".format(self.script.id, streamname),
+                        "Dispel4Py ------> {}: Emitted to stream {}".format(
+                            self.script.id, streamname,
+                        ),
                     )
                 # except:
                 #     storm.log("%s: %s"
                 #               % (self.script.id, traceback.format_exc()))
-        except:
+        except Exception as e:
             storm.log(
-                f"Dispel4Py ------> {self.script.id}: {traceback.format_exc()}",
+                f"Dispel4Py ------> {self.script.id}: Exceptio {e},"
+                f"Traceback: {traceback.format_exc()}",
             )
 
 
