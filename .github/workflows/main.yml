@@ -71,5 +71,5 @@ jobs:
 
       - name: Diff outputs for multi mapping
         run: |
-          diff -y dispel4py_autoscaling/output_old_multi.txt dispel4py/output_new_multi.txt
-          true # Don't fail test since we expect them to be different - old d4p logs things slightly differently
+          diff -y <(head -n -2 dispel4py_autoscaling/output_old_multi.txt) <(head -n -1 dispel4py/output_new_multi.txt)
+          # Ignore lines at the end - they contain elapsed time so we expect that to be different
