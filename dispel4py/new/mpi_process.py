@@ -47,7 +47,9 @@ For example::
     TestOneInOneOut4 (rank 4): Processed 5 iterations.
     TestOneInOneOut5 (rank 2): Processed 5 iterations.
 """
+from typing import Dict, Any
 
+from dispel4py.workflow_graph import WorkflowGraph
 from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
@@ -87,15 +89,23 @@ def parse_args(args, namespace):
     parser.add_argument(
         "-s", "--simple", help="force simple processing", action="store_true"
     )
+    parser.add_argument(
+        "-n",
+        "--num_processes",
+        help="number of MPI processes",
+        action="store",
+        type=int,
+    )
     result, remaining = parser.parse_known_args(args, namespace)
     return result
 
 
-def process(workflow, inputs, args):
+def process(workflow: WorkflowGraph, inputs: Dict[str, Any], args: argparse.Namespace):
     processes = {}
     inputmappings = {}
     outputmappings = {}
     success = True
+    size = args.num_processes
 
     nodes = [node.get_contained_object() for node in workflow.graph.nodes()]
     if rank == 0 and not args.simple:
@@ -151,10 +161,6 @@ def process(workflow, inputs, args):
     if not success:
         return
 
-    try:
-        inputs = {pe.id: v for pe, v in inputs.items()}
-    except AttributeError:
-        pass
     processes = comm.bcast(processes, root=0)
     inputmappings = comm.bcast(inputmappings, root=0)
     outputmappings = comm.bcast(outputmappings, root=0)
@@ -207,7 +213,7 @@ class MPIWrapper(GenericWrapper):
             return
         for inputName, communication in targets:
             output = {inputName: data}
-            dest = communication.getDestination(output)
+            dest = communication.get_destination(output)
             for i in dest:
                 try:
                     # self.pe.log('Sending %s to %s' % (output, i))

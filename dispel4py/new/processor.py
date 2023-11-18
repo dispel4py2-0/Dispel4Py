@@ -1000,9 +1000,9 @@ def main():  # pragma: no cover
     except SystemExit:
         # the sub parser raised an error
         raise
-    except Exception:
+    except Exception as e:
         # no other arguments required for target
-        pass
+        print(e)
 
     print("RUN ARGS: ")
     print(args)
