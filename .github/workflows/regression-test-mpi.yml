@@ -54,6 +54,7 @@ jobs:
           python3.7 -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
+          pip install mpi4py
 
       - name: Test multi mapping for this version of dispelpy
         run: |
