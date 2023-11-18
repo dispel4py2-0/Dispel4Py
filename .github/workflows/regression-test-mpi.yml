@@ -1,4 +1,4 @@
-name: Run Python Scripts
+name: Regression test (MPI mapping)
 
 on:
   push:
