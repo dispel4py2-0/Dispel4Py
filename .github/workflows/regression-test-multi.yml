@@ -1,4 +1,4 @@
-name: Run Python Scripts
+name: Regression Test (multi mapping)
 
 on:
   push:
