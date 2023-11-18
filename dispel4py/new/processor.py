@@ -987,7 +987,6 @@ def main():  # pragma: no cover
         return
 
     try:
-        # ToDo: 'config' literally does not exist - dead code?
         # see if platform is in the mappings file as a simple name
         target = config[args.target]
     except KeyError:
