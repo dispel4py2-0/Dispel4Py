@@ -7,13 +7,8 @@ PROV-DM: http://www.w3.org/TR/prov-dm/
 PROV-JSON: https://provenance.ecs.soton.ac.uk/prov-json/
 """
 
-__author__ = "Trung Dong Huynh"
-__email__ = "trungdong@donggiang.com"
-
 import itertools
 import logging
-
-logger = logging.getLogger(__name__)
 
 import datetime
 import io
@@ -29,6 +24,11 @@ from six.moves.urllib.parse import urlparse
 from prov import Error, serializers
 from prov.constants import *
 from prov.identifier import Identifier, QualifiedName
+
+
+__author__ = "Trung Dong Huynh"
+__email__ = "trungdong@donggiang.com"
+logger = logging.getLogger(__name__)
 
 
 # Data Types
@@ -436,11 +436,11 @@ class ProvRecord:
                 for value in self._attributes[attr]:
                     try:
                         # try if there is a prov-n representation defined
-                        provn_represenation = value.provn_representation()
+                        provn_representation = value.provn_representation()
                     except AttributeError:
-                        provn_represenation = encoding_provn_value(value)
+                        provn_representation = encoding_provn_value(value)
                     # TODO: QName export
-                    extra.append(f"{six.text_type(attr)}={provn_represenation}")
+                    extra.append(f"{six.text_type(attr)}={provn_representation}")
 
         if extra:
             items.append("[%s]" % ", ".join(extra))
@@ -490,17 +490,17 @@ class ProvEntity(ProvElement):
 
     # Convenient assertions that take the current ProvEntity as the first
     # (formal) argument
-    def wasGeneratedBy(self, activity, time=None, attributes=None):
+    def was_generated_by(self, activity, time=None, attributes=None):
         self._bundle.generation(self, activity, time, other_attributes=attributes)
         return self
 
-    def wasInvalidatedBy(self, activity, time=None, attributes=None):
+    def was_invalidated_by(self, activity, time=None, attributes=None):
         self._bundle.invalidation(self, activity, time, other_attributes=attributes)
         return self
 
-    def wasDerivedFrom(
+    def was_derived_from(
         self,
-        usedEntity,
+        used_entity,
         activity=None,
         generation=None,
         usage=None,
@@ -508,7 +508,7 @@ class ProvEntity(ProvElement):
     ):
         self._bundle.derivation(
             self,
-            usedEntity,
+            used_entity,
             activity,
             generation,
             usage,
@@ -516,19 +516,19 @@ class ProvEntity(ProvElement):
         )
         return self
 
-    def wasAttributedTo(self, agent, attributes=None):
+    def was_attributed_to(self, agent, attributes=None):
         self._bundle.attribution(self, agent, other_attributes=attributes)
         return self
 
-    def alternateOf(self, alternate2):
+    def alternate_of(self, alternate2):
         self._bundle.alternate(self, alternate2)
         return self
 
-    def specializationOf(self, generalEntity):
-        self._bundle.specialization(self, generalEntity)
+    def specialization_of(self, general_entity):
+        self._bundle.specialization(self, general_entity)
         return self
 
-    def hadMember(self, entity):
+    def had_member(self, entity):
         self._bundle.membership(self, entity)
         return self
 
@@ -546,11 +546,11 @@ class ProvActivity(ProvElement):
         if endTime is not None:
             self._attributes[PROV_ATTR_ENDTIME] = {endTime}
 
-    def get_startTime(self):
+    def get_start_time(self):
         values = self._attributes[PROV_ATTR_STARTTIME]
         return first(values) if values else None
 
-    def get_endTime(self):
+    def get_end_time(self):
         values = self._attributes[PROV_ATTR_ENDTIME]
         return first(values) if values else None
 
@@ -560,19 +560,19 @@ class ProvActivity(ProvElement):
         self._bundle.usage(self, entity, time, other_attributes=attributes)
         return self
 
-    def wasInformedBy(self, informant, attributes=None):
+    def was_informed_by(self, informant, attributes=None):
         self._bundle.communication(self, informant, other_attributes=attributes)
         return self
 
-    def wasStartedBy(self, trigger, starter=None, time=None, attributes=None):
+    def was_started_by(self, trigger, starter=None, time=None, attributes=None):
         self._bundle.start(self, trigger, starter, time, other_attributes=attributes)
         return self
 
-    def wasEndedBy(self, trigger, ender=None, time=None, attributes=None):
+    def was_ended_by(self, trigger, ender=None, time=None, attributes=None):
         self._bundle.end(self, trigger, ender, time, other_attributes=attributes)
         return self
 
-    def wasAssociatedWith(self, agent, plan=None, attributes=None):
+    def was_associated_with(self, agent, plan=None, attributes=None):
         self._bundle.association(self, agent, plan, other_attributes=attributes)
         return self
 
@@ -650,7 +650,7 @@ class ProvAgent(ProvElement):
 
     # Convenient assertions that take the current ProvAgent as the first
     # (formal) argument
-    def actedOnBehalfOf(self, responsible, activity=None, attributes=None):
+    def acted_on_behalf_of(self, responsible, activity=None, attributes=None):
         self._bundle.delegation(
             self,
             responsible,
@@ -808,9 +808,10 @@ class NamespaceManager(dict):
             new_prefix = self._get_unused_prefix(prefix)
             new_namespace = Namespace(new_prefix, namespace.uri)
             self._rename_map[namespace] = new_namespace
-            # TODO: What if the prefix is already in the map and point to a
-            # different Namespace? Raise an exception?
+
+            # TODO: What if the prefix is already in the map and point to a different Namespace? Raise an exception?
             self._prefix_renamed_map[prefix] = new_namespace
+
             prefix = new_prefix
             namespace = new_namespace
 
@@ -987,11 +988,13 @@ class ProvBundle:
             return results
 
     def get_record(self, identifier):
-        # TODO: This will not work with the new _id_map, which is now a map of
-        # (QName, list(ProvRecord))
+        # TODO: This will not work with the new _id_map, which is now a map of (QName, list(ProvRecord))
+
         if identifier is None:
             return None
+
         valid_id = self.valid_qualified_name(identifier)
+
         try:
             return self._id_map[valid_id]
         except KeyError:

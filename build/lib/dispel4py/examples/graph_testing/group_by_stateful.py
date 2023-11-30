@@ -1,4 +1,4 @@
-# Copyright (c) The University of Edinburgh 2014-2015
+# Copyright (c) The University of Edinburgh 2014
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from argparse import Namespace
+
+"""
+See group_by.py
+Only different is assign count with 2 numprocess
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
-from dispel4py.new.mpi_process import process
 from dispel4py.workflow_graph import WorkflowGraph
 
 
-def test_pipeline():
-    prod = t.TestProducer()
+def testGrouping():
+    """
+    Creates the test graph.
+    """
+    words = t.RandomWordProducer()
     cons1 = t.TestOneInOneOut()
     cons2 = t.TestOneInOneOut()
-
+    cons3 = t.TestOneInOneOut()
+    count = t.WordCounter()
+    count.numprocesses = 2
     graph = WorkflowGraph()
-    graph.connect(prod, "output", cons1, "input")
+    graph.connect(words, "output", cons1, "input")
     graph.connect(cons1, "output", cons2, "input")
+    graph.connect(cons2, "output", cons3, "input")
+    graph.connect(cons3, "output", count, "input")
 
-    process(graph, {prod: [{}, {}, {}]}, Namespace(num_processes=5, simple=False))
+    graph.partitions = [[words], [cons1, cons2, cons3], [count]]
+    return graph
+
+
+graph = testGrouping()

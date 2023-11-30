@@ -60,3 +60,5 @@ traitlets==5.10.0
 ujson==5.2.0
 urllib3==1.26.16
 wcwidth==0.2.6
+setuptools~=54.2.0
+obspy~=1.4.0

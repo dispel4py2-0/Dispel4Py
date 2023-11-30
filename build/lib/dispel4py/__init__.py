@@ -11,20 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from argparse import Namespace
 
-from dispel4py.examples.graph_testing import testing_PEs as t
-from dispel4py.new.mpi_process import process
-from dispel4py.workflow_graph import WorkflowGraph
-
-
-def test_pipeline():
-    prod = t.TestProducer()
-    cons1 = t.TestOneInOneOut()
-    cons2 = t.TestOneInOneOut()
-
-    graph = WorkflowGraph()
-    graph.connect(prod, "output", cons1, "input")
-    graph.connect(cons1, "output", cons2, "input")
-
-    process(graph, {prod: [{}, {}, {}]}, Namespace(num_processes=5, simple=False))
+"""
+The core packages for Dispel4Py.
+"""

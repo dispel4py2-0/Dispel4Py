@@ -11,20 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from argparse import Namespace
 
-from dispel4py.examples.graph_testing import testing_PEs as t
-from dispel4py.new.mpi_process import process
-from dispel4py.workflow_graph import WorkflowGraph
+"""
+The IPython module for visualising a dispel4py graph using Graphviz dot.
+
+For example, to visualise a graph named 'pipeline'::
+
+    from dispel4py.visualisation import display
+    display(pipeline)
+
+"""
+from IPython.core.display import display_png
+
+from dispel4py.workflow_graph import drawDot
 
 
-def test_pipeline():
-    prod = t.TestProducer()
-    cons1 = t.TestOneInOneOut()
-    cons2 = t.TestOneInOneOut()
-
-    graph = WorkflowGraph()
-    graph.connect(prod, "output", cons1, "input")
-    graph.connect(cons1, "output", cons2, "input")
-
-    process(graph, {prod: [{}, {}, {}]}, Namespace(num_processes=5, simple=False))
+def display(graph):
+    """
+    Visualises the input graph.
+    """
+    display_png(drawDot(graph), raw=True)

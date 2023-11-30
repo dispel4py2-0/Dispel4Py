@@ -159,8 +159,8 @@ def map_partitions(filename):
     return partitions_list, partitions_proc
 
 
-#### Important
-## You need to spicify the CSV to use here. This CSV is obtained using the --monitoring flag when the workflow was run
-## Atention to the naming format of the file: workflow_mapping_n[NUMPROCESSES]_platform.csv
-## Example:
-## map_partitions('corr_multi_n32.csv')
+# Important
+# You need to specify the CSV to use here. This CSV is obtained using the --monitoring flag when the workflow was run
+# Attention to the naming format of the file: workflow_mapping_n[NUMPROCESSES]_platform.csv
+# Example:
+# map_partitions('corr_multi_n32.csv')

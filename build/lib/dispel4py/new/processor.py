@@ -787,7 +787,7 @@ class SimpleWriter:
             if output_name in self.result_mappings[self.pe.id]:
                 self.simple_pe.wrapper._write((self.pe.id, output_name), [data])
         except Exception as e:
-            pass
+            print(e)
 
 
 def create_arg_parser():  # pragma: no cover
@@ -1001,7 +1001,7 @@ def main():  # pragma: no cover
         raise
     except Exception as e:
         # no other arguments required for target
-        pass
+        print(e)
 
     print("RUN ARGS: ")
     print(args)

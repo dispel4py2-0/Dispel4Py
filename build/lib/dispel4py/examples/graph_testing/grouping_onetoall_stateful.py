@@ -1,4 +1,4 @@
-# Copyright (c) The University of Edinburgh 2014-2015
+# Copyright (c) The University of Edinburgh 2014
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from argparse import Namespace
+
+"""
+See grouping_onetoall.py
+Only different is that this test give TestProducer a stateful property
+"""
 
 from dispel4py.examples.graph_testing import testing_PEs as t
-from dispel4py.new.mpi_process import process
 from dispel4py.workflow_graph import WorkflowGraph
 
 
-def test_pipeline():
-    prod = t.TestProducer()
-    cons1 = t.TestOneInOneOut()
-    cons2 = t.TestOneInOneOut()
-
+def testOnetoAll():
     graph = WorkflowGraph()
-    graph.connect(prod, "output", cons1, "input")
-    graph.connect(cons1, "output", cons2, "input")
+    prod = t.TestProducer()
+    prod.numprocesses = 1
+    prod.stateful = "nature"
+    cons = t.TestOneInOneOut()
+    cons.numprocesses = 2
+    cons.inputconnections["input"]["grouping"] = "all"
+    graph.connect(prod, "output", cons, "input")
+    return graph
 
-    process(graph, {prod: [{}, {}, {}]}, Namespace(num_processes=5, simple=False))
+
+""" important: this is the graph_variable """
+graph = testOnetoAll()
