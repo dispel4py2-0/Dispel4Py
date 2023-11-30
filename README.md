@@ -6,23 +6,42 @@ dispel4py is a free and open-source Python library for describing abstract strea
 
 dispel4py has been tested with Python *2.7.6*, *2.7.5*, *2.7.2*, *2.6.6* and Python *3.4.3*, *3.6*, *3.7*, *3.10*.
 
-The following Python packages are required to run dispel4py:
+The dependencies required for running dispel4py are listed in the requirements.txt file. To install them, please run:
+```shell
+pip install -r requirements.txt
+```
 
-- networkx (https://networkx.github.io/)
+You will also need the following installed on your system:
 
-If using the MPI mapping:
-
-- mpi4py (http://mpi4py.scipy.org/)
+- If using the MPI mapping, please install [mpi4py](http://mpi4py.scipy.org/)
+- If using the Redis mapping, please install [redis](https://redis.io/download/)
 
 ## Installation
 
-Clone this repository to your desktop. You can then install from the local copy to your python environment by calling:
+In order to install dispel4py on your system:
 
-```
-python setup.py install
-```
+- Clone the git repository
+- Make sure that `redis` and the `mpi4py` Python package are installed on your system
+- It is optional but recommended to create a virtual environment for dispel4py. Please refer to instructions bellow for setting it up with Conda.
+- Install the requirements by running: `pip install -r requirements.txt`
+- Run the dispel4py setup script: `python setup.py install`
+- Run dispel4py using one of the following commands:
+  - `dispel4py <mapping name> <workflow file> <args>`, OR
+  - `python -m dispel4py.new.processor <mapping module> <workflow module> <args>`
+- See "Examples" section bellow for more details
 
-from the dispel4py root directory.
+### Conda Environment
+
+For installing for development with a conda environment, please run the following commands in your terminal.
+
+1. `conda create --name py310 python=3.10`
+2. `conda activate py310`
+3. `pip uninstall py310`
+4. `git clone https://github.com/dispel4py2-0/dispel4py.git`
+5. `cd dispel4py`
+6. `pip install -r requirements.txt`
+7. `python setup.py install`
+
 
 ## Docker
 
@@ -44,60 +63,100 @@ For the EPOS use cases obspy is included in a separate Dockerfile `Dockerfile.se
 docker build . -f Dockerfile.seismo -t dare-dispel4py-seismo
 ```
 
-## Development
-For installing for development with a conda environment
 
-### Installing
-1. `conda create --name py7 python=3.7`
-2. `conda activate py37`
-3. `pip uninstall py37`
-4. `git clone https://github.com/dispel4py2-0/dispel4py.git`
-5. `cd dispel4py`
-6. `pip install -r requirements.txt`
-7. `python setup.py install`
+## Examples
 
-### Examples
-#### Word Count Example
+Some simple examples, intended for testing, are included in this repository.
+For more complex "real-world" examples for specific scientific domains, such as seismology, please see:
+https://github.com/rosafilgueira/dispel4py_workflows
 
-RDD:
-```sh
-python -m dispel4py.new.processor dispel4py.new.dynamic_redis_v1 dispel4py.examples.graph_testing.word_count -ri localhost -n 4 -i 10
+### Word Count Example
+
+#### Simple mapping
+
+```shell
+python -m dispel4py.new.processor dispel4py.new.simple_process dispel4py.examples.graph_testing.word_count -i 10
 ```
 
-FD - This is the one that works for groupings!!
+#### Multi mapping
 
-```sh
+```shell
+python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.word_count -n 5 -i 10
+```
+
+#### MPI Mapping
+```shell
+mpiexec -n 10 python -m dispel4py.new.processor dispel4py.new.mpi_process dispel4py.examples.graph_testing.word_count -i 20 -n 10
+```
+
+#### Redis mapping
+
+RDD:
+```shell
 python -m dispel4py.new.processor dispel4py.new.dynamic_redis dispel4py.examples.graph_testing.word_count -ri localhost -n 4 -i 10
 ```
 
-Note: In another tab, we need to have REDIS working in background: >> redis-server
+Note: In another tab, we need to have REDIS working in background:
+```shell
+redis-server
+```
+
+### Pipeline Test
+
+#### Simple mapping
+
+```shell
+python -m dispel4py.new.processor dispel4py.new.simple_process dispel4py.examples.graph_testing.pipeline_test -i 10
+```
+
+#### Multi mapping
+
+```shell
+python -m dispel4py.new.processor dispel4py.new.multi_process dispel4py.examples.graph_testing.pipeline_test -n 5 -i 10
+```
+
+#### MPI Mapping
+```shell
+mpiexec -n 10 python -m dispel4py.new.processor dispel4py.new.mpi_process dispel4py.examples.graph_testing.pipeline_test -i 20 -n 10
+```
+
+### Sentiment Analysis
+
+- Clone this repo: https://github.com/rosafilgueira/dispel4py_workflows/tree/master/twitter_sentiment
+- From the main directory of the example (`twitter_sentiment`), run:
+
+#### Simple mapping
+```shell
+dispel4py simple analysis_sentiment.py  -d '{"read":[{"input":"Articles_cleaned.csv"}]}' 
+```
+
+#### Multi mapping
+```shell
+dispel4py multi analysis_sentiment.py -n 15  -d '{"read":[{"input":"Articles_cleaned.csv"}]}' 
+```
+
+#### MPI mapping
+```shell
+mpiexec -np 15 dispel4py mpi analysis_sentiment.py -d '{"read":[{"input":"Articles_cleaned.csv"}]}'
+```
+
+## Contributing
+
+### Code Style
+
+This project is using the `black` package for automatic formatting of Python code. However, there is a lot of old code that may need to be reformatted manually.
+
+For more info, see: https://github.com/psf/black
+
+### Linting
+
+This project uses `ruff` for code linting. See: https://docs.astral.sh/ruff/
+
+Ruff rules are configured and documented in the pyproject.toml file.
+Future contributors are encouraged to lint their code using `ruff check .` before contributing and to help fix existing lint errors!
+
+### CI
+
+Some regression testing has been set up to compare the output of the current version of dispel4py with an older version. These tests currently fail, probably due to slightly different formatting and line order.
 
 ---
-
-#### Internal Extinction (dispel4py/examples/internal_extinction)
-
-RDD:
-```sh
-python -m dispel4py.new.processor  dispel4py.new.dynamic_redis_v1 dispel4py.examples.internal_extinction.int_ext_graph  -ri localhost -n 4 -d "{\"read\" : [ {\"input\" : \"dispel4py/examples/internal_extinction/coordinates.txt\"} ]}"
-```
-
-FD -This is the one that works for groupings!!
-
-**This doesn't seem to be working**
-```sh
-python -m dispel4py.new.processor  dispel4py.new.dynamic_redis dispel4py.examples.internal_extinction.int_ext_graph  -ri localhost -n 4 -d "{\"read\" : [ {\"input\" : \"dispel4py/examples/internal_extinction/coordinates.txt\"} ]}"
-```
-
-Note: In another tab, we need to have REDIS working in background: >> redis-server
-
----
-
-#### Sentiment Analysis (dispel4py/examples/article_sentiment_analysis)
-
-FD Strategy:
-```sh
-python -m dispel4py.new.processor  dispel4py.new.dynamic_redis dispel4py.examples.article_sentiment_analysis.analysis_sentiment -ri localhost -n 32 -d "{\"read\" : [ {\"input\" : \"dispel4py/examples/articles_sentiment_analysis/Articles_cleaned.csv\"} ]}
-```
-
-Note: In another tab, we need to have REDIS working in background: >> redis-server
-

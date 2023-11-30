@@ -15,8 +15,7 @@
 import storm
 
 
-class OutputWriter(object):
-
+class OutputWriter:
     def __init__(self, scriptname, streamname):
         self.scriptname = scriptname
         self.streamname = streamname
@@ -25,14 +24,21 @@ class OutputWriter(object):
         result = output if isinstance(output, list) else [output]
         try:
             storm.emit(result, stream=self.streamname)
-            storm.log("Dispel4Py ------> %s: Emitted to stream %s."
-                      % (self.scriptname, self.streamname))
+            storm.log(
+                "Dispel4Py ------> {}: Emitted to stream {}.".format(
+                    self.scriptname, self.streamname,
+                ),
+            )
         except TypeError:
             # encode manually
             encoded = encode_types(result)
             storm.emit(encoded, stream=self.streamname)
-            storm.log("Dispel4Py ------> %s: Emitted to stream %s."
-                      % (self.scriptname, self.streamname))
+            storm.log(
+                "Dispel4Py ------> {}: Emitted to stream {}.".format(
+                    self.scriptname, self.streamname,
+                ),
+            )
+
 
 # import io
 # import numpy
@@ -54,7 +60,7 @@ def encode_types(obj):
         for i in obj:
             new_obj.add(encode_types(i))
     elif isinstance(obj, dict):
-        new_obj = dict()
+        new_obj = {}
         for k, v in obj.iteritems():
             new_obj[k] = encode_types(v)
     # elif isinstance(obj, Stream):
@@ -108,7 +114,7 @@ def decode_types(obj):
         # except KeyError:
         #     pass
         # if it's just a normal dictionary then decode recursively
-        new_obj = dict()
+        new_obj = {}
         for k, v in obj.iteritems():
             new_obj[k] = decode_types(v)
     return new_obj

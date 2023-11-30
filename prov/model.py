@@ -6,32 +6,29 @@ References:
 PROV-DM: http://www.w3.org/TR/prov-dm/
 PROV-JSON: https://provenance.ecs.soton.ac.uk/prov-json/
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
-__author__ = 'Trung Dong Huynh'
-__email__ = 'trungdong@donggiang.com'
-
-import logging
 import itertools
-
-logger = logging.getLogger(__name__)
+import logging
 
 import datetime
-import dateutil.parser
-from collections import defaultdict
-from copy import deepcopy
 import io
-from prov import Error, serializers
-
 import os
 import shutil
 import tempfile
+from collections import defaultdict
+from copy import deepcopy
 
+import dateutil.parser
 from six.moves.urllib.parse import urlparse
 
-from prov.identifier import Identifier, QualifiedName
+from prov import Error, serializers
 from prov.constants import *
+from prov.identifier import Identifier, QualifiedName
+
+
+__author__ = "Trung Dong Huynh"
+__email__ = "trungdong@donggiang.com"
+logger = logging.getLogger(__name__)
 
 
 # Data Types
@@ -58,6 +55,7 @@ def parse_boolean(value):
     else:
         return None
 
+
 DATATYPE_PARSERS = {
     datetime.datetime: parse_xsd_datetime,
 }
@@ -72,14 +70,15 @@ XSD_DATATYPE_PARSERS = {
     XSD_INT: int,
     XSD_BOOLEAN: parse_boolean,
     XSD_DATETIME: parse_xsd_datetime,
-    XSD_ANYURI: Identifier
+    XSD_ANYURI: Identifier,
 }
 
 
 def parse_xsd_types(value, datatype):
     return (
         XSD_DATATYPE_PARSERS[datatype](value)
-        if datatype in XSD_DATATYPE_PARSERS else None
+        if datatype in XSD_DATATYPE_PARSERS
+        else None
     )
 
 
@@ -88,8 +87,7 @@ def first(a_set):
 
 
 def _ensure_multiline_string_triple_quoted(s):
-    format_str = '"""%s"""' if isinstance(s, six.string_types) and '\n' in s \
-        else '"%s"'
+    format_str = '"""%s"""' if isinstance(s, six.string_types) and "\n" in s else '"%s"'
     return format_str % s
 
 
@@ -97,35 +95,34 @@ def encoding_provn_value(value):
     if isinstance(value, six.string_types):
         return _ensure_multiline_string_triple_quoted(value)
     elif isinstance(value, datetime.datetime):
-        return u'"{0}" %% xsd:dateTime'.format(value.isoformat())
+        return f'"{value.isoformat()}" %% xsd:dateTime'
     elif isinstance(value, float):
-        return u'"%g" %%%% xsd:float' % value
+        return '"%g" %%%% xsd:float' % value
     elif isinstance(value, bool):
-        return u'"%i" %%%% xsd:boolean' % value
+        return '"%i" %%%% xsd:boolean' % value
     else:
         # TODO: QName export
         return six.text_type(value)
 
 
 @six.python_2_unicode_compatible
-class Literal(object):
+class Literal:
     def __init__(self, value, datatype=None, langtag=None):
         self._value = six.text_type(value)  # value is always a string
         if langtag:
             if datatype is None:
                 logger.debug(
-                    'Assuming prov:InternationalizedString as the type of '
-                    '"%s"@%s' % (value, langtag)
+                    "Assuming prov:InternationalizedString as the type of "
+                    f'"{value}"@{langtag}',
                 )
                 datatype = PROV["InternationalizedString"]
             # PROV JSON states that the type field must not be set when
             # using the lang attribute and PROV XML requires it to be an
             # internationalized string.
             elif datatype != PROV["InternationalizedString"]:
-                logger.warn(
-                    'Invalid data type (%s) for "%s"@%s, overridden as '
-                    'prov:InternationalizedString.' %
-                    (datatype, value, langtag)
+                logger.warning(
+                    'Invalid data type ({}) for "{}"@{}, overridden as '
+                    "prov:InternationalizedString.".format(datatype, value, langtag),
                 )
                 datatype = PROV["InternationalizedString"]
         self._datatype = datatype
@@ -136,14 +133,17 @@ class Literal(object):
         return self.provn_representation()
 
     def __repr__(self):
-        return u'<Literal: %s>' % self.provn_representation()
+        return "<Literal: %s>" % self.provn_representation()
 
     def __eq__(self, other):
         return (
-            (self._value == other.value and
-             self._datatype == other.datatype and
-             self._langtag == other.langtag)
-            if isinstance(other, Literal) else False
+            (
+                self._value == other.value
+                and self._datatype == other.datatype
+                and self._langtag == other.langtag
+            )
+            if isinstance(other, Literal)
+            else False
         )
 
     def __ne__(self, other):
@@ -170,26 +170,24 @@ class Literal(object):
     def provn_representation(self):
         if self._langtag:
             # a language tag can only go with prov:InternationalizedString
-            return '%s@%s' % (
+            return "{}@{}".format(
                 _ensure_multiline_string_triple_quoted(self._value),
-                six.text_type(self._langtag)
+                six.text_type(self._langtag),
             )
         else:
-            return '%s %%%% %s' % (
+            return "{} %% {}".format(
                 _ensure_multiline_string_triple_quoted(self._value),
-                six.text_type(self._datatype)
+                six.text_type(self._datatype),
             )
 
 
 # Exceptions and warnings
 class ProvException(Error):
     """Base class for PROV model exceptions."""
-    pass
 
 
 class ProvWarning(Warning):
     """Base class for PROV model warnings."""
-    pass
 
 
 @six.python_2_unicode_compatible
@@ -198,20 +196,20 @@ class ProvExceptionInvalidQualifiedName(ProvException):
         self.qname = qname
 
     def __str__(self):
-        return u'Invalid Qualified Name: %s' % self.qname
+        return "Invalid Qualified Name: %s" % self.qname
 
 
 @six.python_2_unicode_compatible
 class ProvElementIdentifierRequired(ProvException):
     def __str__(self):
-        return u'An identifier is missing. All PROV elements require a valid ' \
-               u'identifier.'
+        return "An identifier is missing. All PROV elements require a valid identifier."
 
 
 #  PROV records
 @six.python_2_unicode_compatible
-class ProvRecord(object):
+class ProvRecord:
     """Base class for PROV records."""
+
     FORMAL_ATTRIBUTES = ()
 
     def __init__(self, bundle, identifier, attributes=None):
@@ -222,21 +220,20 @@ class ProvRecord(object):
             self.add_attributes(attributes)
 
     def __hash__(self):
-        return hash(
-            (self.get_type(), self._identifier, frozenset(self.attributes))
-        )
+        return hash((self.get_type(), self._identifier, frozenset(self.attributes)))
 
     def copy(self):
         """
         Return an exact copy of this record.
         """
         return PROV_REC_CLS[self.get_type()](
-            self._bundle, self.identifier, self.attributes
+            self._bundle,
+            self.identifier,
+            self.attributes,
         )
 
     def get_type(self):
         """Returning the PROV type of the record"""
-        pass
 
     def get_asserted_types(self):
         return self._attributes[PROV_TYPE]
@@ -263,8 +260,7 @@ class ProvRecord(object):
     @property
     def args(self):
         return tuple(
-            first(self._attributes[attr_name])
-            for attr_name in self.FORMAL_ATTRIBUTES
+            first(self._attributes[attr_name]) for attr_name in self.FORMAL_ATTRIBUTES
         )
 
     @property
@@ -277,7 +273,8 @@ class ProvRecord(object):
     @property
     def extra_attributes(self):
         return [
-            (attr_name, attr_value) for attr_name, attr_value in self.attributes
+            (attr_name, attr_value)
+            for attr_name, attr_value in self.attributes
             if attr_name not in self.FORMAL_ATTRIBUTES
         ]
 
@@ -287,8 +284,11 @@ class ProvRecord(object):
 
     @property
     def label(self):
-        return first(self._attributes[PROV_LABEL]) \
-            if self._attributes[PROV_LABEL] else self._identifier
+        return (
+            first(self._attributes[PROV_LABEL])
+            if self._attributes[PROV_LABEL]
+            else self._identifier
+        )
 
     @property
     def value(self):
@@ -347,25 +347,31 @@ class ProvRecord(object):
 
                 if attr in PROV_ATTRIBUTE_QNAMES:
                     # Expecting a qualified name
-                    qname = original_value.identifier \
-                        if isinstance(original_value, ProvRecord) \
+                    qname = (
+                        original_value.identifier
+                        if isinstance(original_value, ProvRecord)
                         else original_value
+                    )
                     value = self._bundle.valid_qualified_name(qname)
                 elif attr in PROV_ATTRIBUTE_LITERALS:
-                    value = original_value \
-                        if isinstance(original_value, datetime.datetime) \
+                    value = (
+                        original_value
+                        if isinstance(original_value, datetime.datetime)
                         else parse_xsd_datetime(original_value)
+                    )
                 else:
                     value = self._auto_literal_conversion(original_value)
 
                 if value is None:
                     raise ProvException(
-                        'Invalid value for attribute %s: %s' %
-                        (attr, original_value)
+                        f"Invalid value for attribute {attr}: {original_value}",
                     )
 
-                if not is_collection and attr in PROV_ATTRIBUTES and \
-                        self._attributes[attr]:
+                if (
+                    not is_collection
+                    and attr in PROV_ATTRIBUTES
+                    and self._attributes[attr]
+                ):
                     existing_value = first(self._attributes[attr])
                     is_not_same_value = True
                     try:
@@ -376,8 +382,7 @@ class ProvRecord(object):
 
                     if is_not_same_value:
                         raise ProvException(
-                            'Cannot have more than one value for attribute %s'
-                            % attr
+                            "Cannot have more than one value for attribute %s" % attr,
                         )
                     else:
                         # Same value, ignore it
@@ -400,7 +405,7 @@ class ProvRecord(object):
         items = []
 
         # Generating identifier
-        relation_id = ''  # default blank
+        relation_id = ""  # default blank
         if self._identifier:
             identifier = six.text_type(self._identifier)  # TODO: QName export
             if self.is_element():
@@ -408,7 +413,7 @@ class ProvRecord(object):
             else:
                 # this is a relation
                 # relations use ; to separate identifiers
-                relation_id = identifier + '; '
+                relation_id = identifier + "; "
 
         # Writing out the formal attributes
         for attr in self.FORMAL_ATTRIBUTES:
@@ -417,11 +422,12 @@ class ProvRecord(object):
                 value = first(self._attributes[attr])
                 # TODO: QName export
                 items.append(
-                    value.isoformat() if isinstance(value, datetime.datetime)
-                    else six.text_type(value)
+                    value.isoformat()
+                    if isinstance(value, datetime.datetime)
+                    else six.text_type(value),
                 )
             else:
-                items.append('-')
+                items.append("-")
 
         # Writing out the remaining attributes
         extra = []
@@ -430,20 +436,19 @@ class ProvRecord(object):
                 for value in self._attributes[attr]:
                     try:
                         # try if there is a prov-n representation defined
-                        provn_represenation = value.provn_representation()
+                        provn_representation = value.provn_representation()
                     except AttributeError:
-                        provn_represenation = encoding_provn_value(value)
+                        provn_representation = encoding_provn_value(value)
                     # TODO: QName export
-                    extra.append(
-                        '%s=%s' % (six.text_type(attr), provn_represenation)
-                    )
+                    extra.append(f"{six.text_type(attr)}={provn_representation}")
 
         if extra:
-            items.append('[%s]' % ', '.join(extra))
-        prov_n = '%s(%s%s)' % (
-            PROV_N_MAP[self.get_type()], relation_id, ', '.join(items)
+            items.append("[%s]" % ", ".join(extra))
+        return "{}({}{})".format(
+            PROV_N_MAP[self.get_type()],
+            relation_id,
+            ", ".join(items),
         )
-        return prov_n
 
     def is_element(self):
         return False
@@ -457,15 +462,15 @@ class ProvElement(ProvRecord):
     def __init__(self, bundle, identifier, attributes=None):
         if identifier is None:
             # All types of PROV elements require a valid identifier
-            raise ProvElementIdentifierRequired()
+            raise ProvElementIdentifierRequired
 
-        super(ProvElement, self).__init__(bundle, identifier, attributes)
+        super().__init__(bundle, identifier, attributes)
 
     def is_element(self):
         return True
 
     def __repr__(self):
-        return '<%s: %s>' % (self.__class__.__name__, self._identifier)
+        return f"<{self.__class__.__name__}: {self._identifier}>"
 
 
 class ProvRelation(ProvRecord):
@@ -473,13 +478,9 @@ class ProvRelation(ProvRecord):
         return True
 
     def __repr__(self):
-        identifier = ' %s' % self._identifier if self._identifier else ''
-        element_1, element_2 = [
-            qname for _, qname in self.formal_attributes[:2]
-        ]
-        return '<%s:%s (%s, %s)>' % (
-            self.__class__.__name__, identifier, element_1, element_2
-        )
+        identifier = " %s" % self._identifier if self._identifier else ""
+        element_1, element_2 = (qname for _, qname in self.formal_attributes[:2])
+        return f"<{self.__class__.__name__}:{identifier} ({element_1}, {element_2})>"
 
 
 # Component 1: Entities and Activities
@@ -489,39 +490,45 @@ class ProvEntity(ProvElement):
 
     # Convenient assertions that take the current ProvEntity as the first
     # (formal) argument
-    def wasGeneratedBy(self, activity, time=None, attributes=None):
-        self._bundle.generation(
-            self, activity, time, other_attributes=attributes
-        )
+    def was_generated_by(self, activity, time=None, attributes=None):
+        self._bundle.generation(self, activity, time, other_attributes=attributes)
         return self
 
-    def wasInvalidatedBy(self, activity, time=None, attributes=None):
-        self._bundle.invalidation(
-            self, activity, time, other_attributes=attributes
-        )
+    def was_invalidated_by(self, activity, time=None, attributes=None):
+        self._bundle.invalidation(self, activity, time, other_attributes=attributes)
         return self
 
-    def wasDerivedFrom(self, usedEntity, activity=None, generation=None,
-                       usage=None, attributes=None):
+    def was_derived_from(
+        self,
+        used_entity,
+        activity=None,
+        generation=None,
+        usage=None,
+        attributes=None,
+    ):
         self._bundle.derivation(
-            self, usedEntity, activity, generation, usage,
-            other_attributes=attributes
+            self,
+            used_entity,
+            activity,
+            generation,
+            usage,
+            other_attributes=attributes,
         )
         return self
 
-    def wasAttributedTo(self, agent, attributes=None):
+    def was_attributed_to(self, agent, attributes=None):
         self._bundle.attribution(self, agent, other_attributes=attributes)
         return self
 
-    def alternateOf(self, alternate2):
+    def alternate_of(self, alternate2):
         self._bundle.alternate(self, alternate2)
         return self
 
-    def specializationOf(self, generalEntity):
-        self._bundle.specialization(self, generalEntity)
+    def specialization_of(self, general_entity):
+        self._bundle.specialization(self, general_entity)
         return self
 
-    def hadMember(self, entity):
+    def had_member(self, entity):
         self._bundle.membership(self, entity)
         return self
 
@@ -539,11 +546,11 @@ class ProvActivity(ProvElement):
         if endTime is not None:
             self._attributes[PROV_ATTR_ENDTIME] = {endTime}
 
-    def get_startTime(self):
+    def get_start_time(self):
         values = self._attributes[PROV_ATTR_STARTTIME]
         return first(values) if values else None
 
-    def get_endTime(self):
+    def get_end_time(self):
         values = self._attributes[PROV_ATTR_ENDTIME]
         return first(values) if values else None
 
@@ -553,28 +560,20 @@ class ProvActivity(ProvElement):
         self._bundle.usage(self, entity, time, other_attributes=attributes)
         return self
 
-    def wasInformedBy(self, informant, attributes=None):
-        self._bundle.communication(
-            self, informant, other_attributes=attributes
-        )
+    def was_informed_by(self, informant, attributes=None):
+        self._bundle.communication(self, informant, other_attributes=attributes)
         return self
 
-    def wasStartedBy(self, trigger, starter=None, time=None, attributes=None):
-        self._bundle.start(
-            self, trigger, starter, time, other_attributes=attributes
-        )
+    def was_started_by(self, trigger, starter=None, time=None, attributes=None):
+        self._bundle.start(self, trigger, starter, time, other_attributes=attributes)
         return self
 
-    def wasEndedBy(self, trigger, ender=None, time=None, attributes=None):
-        self._bundle.end(
-            self, trigger, ender, time, other_attributes=attributes
-        )
+    def was_ended_by(self, trigger, ender=None, time=None, attributes=None):
+        self._bundle.end(self, trigger, ender, time, other_attributes=attributes)
         return self
 
-    def wasAssociatedWith(self, agent, plan=None, attributes=None):
-        self._bundle.association(
-            self, agent, plan, other_attributes=attributes
-        )
+    def was_associated_with(self, agent, plan=None, attributes=None):
+        self._bundle.association(self, agent, plan, other_attributes=attributes)
         return self
 
 
@@ -600,16 +599,24 @@ class ProvCommunication(ProvRelation):
 
 
 class ProvStart(ProvRelation):
-    FORMAL_ATTRIBUTES = (PROV_ATTR_ACTIVITY, PROV_ATTR_TRIGGER,
-                         PROV_ATTR_STARTER, PROV_ATTR_TIME)
+    FORMAL_ATTRIBUTES = (
+        PROV_ATTR_ACTIVITY,
+        PROV_ATTR_TRIGGER,
+        PROV_ATTR_STARTER,
+        PROV_ATTR_TIME,
+    )
 
     def get_type(self):
         return PROV_START
 
 
 class ProvEnd(ProvRelation):
-    FORMAL_ATTRIBUTES = (PROV_ATTR_ACTIVITY, PROV_ATTR_TRIGGER,
-                         PROV_ATTR_ENDER, PROV_ATTR_TIME)
+    FORMAL_ATTRIBUTES = (
+        PROV_ATTR_ACTIVITY,
+        PROV_ATTR_TRIGGER,
+        PROV_ATTR_ENDER,
+        PROV_ATTR_TIME,
+    )
 
     def get_type(self):
         return PROV_END
@@ -624,9 +631,13 @@ class ProvInvalidation(ProvRelation):
 
 # Component 2: Derivations
 class ProvDerivation(ProvRelation):
-    FORMAL_ATTRIBUTES = (PROV_ATTR_GENERATED_ENTITY, PROV_ATTR_USED_ENTITY,
-                         PROV_ATTR_ACTIVITY, PROV_ATTR_GENERATION,
-                         PROV_ATTR_USAGE)
+    FORMAL_ATTRIBUTES = (
+        PROV_ATTR_GENERATED_ENTITY,
+        PROV_ATTR_USED_ENTITY,
+        PROV_ATTR_ACTIVITY,
+        PROV_ATTR_GENERATION,
+        PROV_ATTR_USAGE,
+    )
 
     def get_type(self):
         return PROV_DERIVATION
@@ -639,9 +650,12 @@ class ProvAgent(ProvElement):
 
     # Convenient assertions that take the current ProvAgent as the first
     # (formal) argument
-    def actedOnBehalfOf(self, responsible, activity=None, attributes=None):
+    def acted_on_behalf_of(self, responsible, activity=None, attributes=None):
         self._bundle.delegation(
-            self, responsible, activity, other_attributes=attributes
+            self,
+            responsible,
+            activity,
+            other_attributes=attributes,
         )
         return self
 
@@ -661,8 +675,7 @@ class ProvAssociation(ProvRelation):
 
 
 class ProvDelegation(ProvRelation):
-    FORMAL_ATTRIBUTES = (PROV_ATTR_DELEGATE, PROV_ATTR_RESPONSIBLE,
-                         PROV_ATTR_ACTIVITY)
+    FORMAL_ATTRIBUTES = (PROV_ATTR_DELEGATE, PROV_ATTR_RESPONSIBLE, PROV_ATTR_ACTIVITY)
 
     def get_type(self):
         return PROV_DELEGATION
@@ -691,8 +704,11 @@ class ProvAlternate(ProvRelation):
 
 
 class ProvMention(ProvSpecialization):
-    FORMAL_ATTRIBUTES = (PROV_ATTR_SPECIFIC_ENTITY, PROV_ATTR_GENERAL_ENTITY,
-                         PROV_ATTR_BUNDLE)
+    FORMAL_ATTRIBUTES = (
+        PROV_ATTR_SPECIFIC_ENTITY,
+        PROV_ATTR_GENERAL_ENTITY,
+        PROV_ATTR_BUNDLE,
+    )
 
     def get_type(self):
         return PROV_MENTION
@@ -708,28 +724,28 @@ class ProvMembership(ProvRelation):
 
 #  Class mappings from PROV record type
 PROV_REC_CLS = {
-    PROV_ENTITY:         ProvEntity,
-    PROV_ACTIVITY:       ProvActivity,
-    PROV_GENERATION:     ProvGeneration,
-    PROV_USAGE:          ProvUsage,
-    PROV_COMMUNICATION:  ProvCommunication,
-    PROV_START:          ProvStart,
-    PROV_END:            ProvEnd,
-    PROV_INVALIDATION:   ProvInvalidation,
-    PROV_DERIVATION:     ProvDerivation,
-    PROV_AGENT:          ProvAgent,
-    PROV_ATTRIBUTION:    ProvAttribution,
-    PROV_ASSOCIATION:    ProvAssociation,
-    PROV_DELEGATION:     ProvDelegation,
-    PROV_INFLUENCE:      ProvInfluence,
+    PROV_ENTITY: ProvEntity,
+    PROV_ACTIVITY: ProvActivity,
+    PROV_GENERATION: ProvGeneration,
+    PROV_USAGE: ProvUsage,
+    PROV_COMMUNICATION: ProvCommunication,
+    PROV_START: ProvStart,
+    PROV_END: ProvEnd,
+    PROV_INVALIDATION: ProvInvalidation,
+    PROV_DERIVATION: ProvDerivation,
+    PROV_AGENT: ProvAgent,
+    PROV_ATTRIBUTION: ProvAttribution,
+    PROV_ASSOCIATION: ProvAssociation,
+    PROV_DELEGATION: ProvDelegation,
+    PROV_INFLUENCE: ProvInfluence,
     PROV_SPECIALIZATION: ProvSpecialization,
-    PROV_ALTERNATE:      ProvAlternate,
-    PROV_MENTION:        ProvMention,
-    PROV_MEMBERSHIP:     ProvMembership,
+    PROV_ALTERNATE: ProvAlternate,
+    PROV_MENTION: ProvMention,
+    PROV_MEMBERSHIP: ProvMembership,
 }
 
 
-DEFAULT_NAMESPACES = {'prov': PROV, 'xsd': XSD, 'xsi': XSI}
+DEFAULT_NAMESPACES = {"prov": PROV, "xsd": XSD, "xsi": XSI}
 
 
 #  Bundle
@@ -747,9 +763,9 @@ class NamespaceManager(dict):
         self.parent = parent
         #  TODO check if default is in the default namespaces
         self._anon_id_count = 0
-        self._uri_map = dict()
-        self._rename_map = dict()
-        self._prefix_renamed_map = dict()
+        self._uri_map = {}
+        self._rename_map = {}
+        self._prefix_renamed_map = {}
         self.add_namespaces(namespaces)
 
     def get_namespace(self, uri):
@@ -762,8 +778,8 @@ class NamespaceManager(dict):
         return self._namespaces.values()
 
     def set_default_namespace(self, uri):
-        self._default = Namespace('', uri)
-        self[''] = self._default
+        self._default = Namespace("", uri)
+        self[""] = self._default
 
     def get_default_namespace(self):
         return self._default
@@ -792,9 +808,10 @@ class NamespaceManager(dict):
             new_prefix = self._get_unused_prefix(prefix)
             new_namespace = Namespace(new_prefix, namespace.uri)
             self._rename_map[namespace] = new_namespace
-            # TODO: What if the prefix is already in the map and point to a
-            # different Namespace? Raise an exception?
+
+            # TODO: What if the prefix is already in the map and point to a different Namespace? Raise an exception?
             self._prefix_renamed_map[prefix] = new_namespace
+
             prefix = new_prefix
             namespace = new_namespace
 
@@ -816,9 +833,7 @@ class NamespaceManager(dict):
         if isinstance(namespaces, dict):
             # expecting a dictionary of {prefix: uri},
             # convert it to a list of Namespace
-            namespaces = [
-                Namespace(prefix, uri) for prefix, uri in namespaces.items()
-            ]
+            namespaces = list(itertools.starmap(Namespace, namespaces.items()))
         if namespaces:
             for ns in namespaces:
                 self.add_namespace(ns)
@@ -844,7 +859,7 @@ class NamespaceManager(dict):
                 else:
                     # different default namespace,
                     # use the 'dn' prefix for the new namespace
-                    dn_namespace = Namespace('dn', namespace.uri)
+                    dn_namespace = Namespace("dn", namespace.uri)
                     dn_namespace = self.add_namespace(dn_namespace)
                     new_qname = dn_namespace[local_part]
             elif prefix in self and self[prefix] == namespace:
@@ -868,14 +883,13 @@ class NamespaceManager(dict):
             # Only proceed for string or URI values
             return None
         # Try to generate a Qualified Name
-        str_value = \
-            qname.uri if isinstance(qname, Identifier) else six.text_type(qname)
-        if str_value.startswith('_:'):
+        str_value = qname.uri if isinstance(qname, Identifier) else six.text_type(qname)
+        if str_value.startswith("_:"):
             # this is a blank node ID
             return None
-        elif ':' in str_value:
+        elif ":" in str_value:
             #  check if the identifier contains a registered prefix
-            prefix, local_part = str_value.split(':', 1)
+            prefix, local_part = str_value.split(":", 1)
             if prefix in self:
                 #  return a new QualifiedName
                 return self[prefix][local_part]
@@ -888,7 +902,7 @@ class NamespaceManager(dict):
                 for namespace in self.values():
                     if str_value.startswith(namespace.uri):
                         #  create a QName with the namespace
-                        return namespace[str_value.replace(namespace.uri, '')]
+                        return namespace[str_value.replace(namespace.uri, "")]
         elif self._default:
             # create and return an identifier in the default namespace
             return self._default[qname]
@@ -901,40 +915,39 @@ class NamespaceManager(dict):
         # Default to FAIL
         return None
 
-    def get_anonymous_identifier(self, local_prefix='id'):
+    def get_anonymous_identifier(self, local_prefix="id"):
         self._anon_id_count += 1
-        return Identifier('_:%s%d' % (local_prefix, self._anon_id_count))
+        return Identifier("_:%s%d" % (local_prefix, self._anon_id_count))
 
     def _get_unused_prefix(self, original_prefix):
         if original_prefix not in self:
             return original_prefix
         count = 1
         while True:
-            new_prefix = '_'.join((original_prefix, six.text_type(count)))
+            new_prefix = "_".join((original_prefix, six.text_type(count)))
             if new_prefix in self:
                 count += 1
             else:
                 return new_prefix
 
 
-class ProvBundle(object):
-    def __init__(self, records=None, identifier=None, namespaces=None,
-                 document=None):
+class ProvBundle:
+    def __init__(self, records=None, identifier=None, namespaces=None, document=None):
         #  Initializing bundle-specific attributes
         self._identifier = identifier
-        self._records = list()
+        self._records = []
         self._id_map = defaultdict(list)
         self._document = document
         self._namespaces = NamespaceManager(
             namespaces,
-            parent=(document._namespaces if document is not None else None)
+            parent=(document._namespaces if document is not None else None),
         )
         if records:
             for record in records:
                 self.add_record(record)
 
     def __repr__(self):
-        return '<%s: %s>' % (self.__class__.__name__, self._identifier)
+        return f"<{self.__class__.__name__}: {self._identifier}>"
 
     @property
     def namespaces(self):
@@ -959,9 +972,7 @@ class ProvBundle(object):
         if uri is None:
             return self._namespaces.add_namespace(namespace_or_prefix)
         else:
-            return self._namespaces.add_namespace(
-                Namespace(namespace_or_prefix, uri)
-            )
+            return self._namespaces.add_namespace(Namespace(namespace_or_prefix, uri))
 
     def get_registered_namespaces(self):
         return self._namespaces.get_registered_namespaces()
@@ -972,18 +983,18 @@ class ProvBundle(object):
     def get_records(self, class_or_type_or_tuple=None):
         results = list(self._records)
         if class_or_type_or_tuple:
-            return filter(
-                lambda rec: isinstance(rec, class_or_type_or_tuple), results
-            )
+            return filter(lambda rec: isinstance(rec, class_or_type_or_tuple), results)
         else:
             return results
 
     def get_record(self, identifier):
-        # TODO: This will not work with the new _id_map, which is now a map of
-        # (QName, list(ProvRecord))
+        # TODO: This will not work with the new _id_map, which is now a map of (QName, list(ProvRecord))
+
         if identifier is None:
             return None
+
         valid_id = self.valid_qualified_name(identifier)
+
         try:
             return self._id_map[valid_id]
         except KeyError:
@@ -1008,41 +1019,40 @@ class ProvBundle(object):
         return frozenset()
 
     def get_provn(self, _indent_level=0):
-        indentation = '' + ('  ' * _indent_level)
-        newline = '\n' + ('  ' * (_indent_level + 1))
+        indentation = "" + ("  " * _indent_level)
+        newline = "\n" + ("  " * (_indent_level + 1))
 
         #  if this is the document, start the document;
         # otherwise, start the bundle
-        lines = ['document'] if self.is_document() \
-            else ['bundle %s' % self._identifier]
+        lines = ["document"] if self.is_document() else ["bundle %s" % self._identifier]
 
         default_namespace = self._namespaces.get_default_namespace()
         if default_namespace:
-            lines.append('default <%s>' % default_namespace.uri)
+            lines.append("default <%s>" % default_namespace.uri)
 
         registered_namespaces = self._namespaces.get_registered_namespaces()
         if registered_namespaces:
             lines.extend(
-                ['prefix %s <%s>' % (namespace.prefix, namespace.uri)
-                 for namespace in registered_namespaces]
+                [
+                    f"prefix {namespace.prefix} <{namespace.uri}>"
+                    for namespace in registered_namespaces
+                ],
             )
 
         if default_namespace or registered_namespaces:
             #  a blank line between the prefixes and the assertions
-            lines.append('')
+            lines.append("")
 
         #  adding all the records
         lines.extend([record.get_provn() for record in self._records])
         if self.is_document():
             # Print out bundles
-            lines.extend(
-                bundle.get_provn(_indent_level + 1) for bundle in self.bundles
-            )
-        provn_str = newline.join(lines) + '\n'
+            lines.extend(bundle.get_provn(_indent_level + 1) for bundle in self.bundles)
+        provn_str = newline.join(lines) + "\n"
 
         #  closing the structure
         provn_str += indentation + (
-            'endDocument' if self.is_document() else 'endBundle'
+            "endDocument" if self.is_document() else "endBundle"
         )
         return provn_str
 
@@ -1064,8 +1074,8 @@ class ProvBundle(object):
                     break
             if not found:
                 logger.debug(
-                    'Equality (ProvBundle): Could not find this record: %s',
-                    six.text_type(record_a)
+                    "Equality (ProvBundle): Could not find this record: %s",
+                    six.text_type(record_a),
                 )
                 return False
         return True
@@ -1077,12 +1087,11 @@ class ProvBundle(object):
 
     # Transformations
     def _unified_records(self):
-        """Returns a list of unified records
-        """
+        """Returns a list of unified records"""
         # TODO: Check unification rules in the PROV-CONSTRAINTS document
         # This method simply merges the records having the same name
-        merged_records = dict()
-        for identifier, records in self._id_map.items():
+        merged_records = {}
+        for records in self._id_map.values():
             if len(records) > 1:
                 # more than one record having the same identifier
                 # merge the records
@@ -1097,7 +1106,7 @@ class ProvBundle(object):
             return list(self._records)
 
         added_merged_records = set()
-        unified_records = list()
+        unified_records = []
         for record in self._records:
             if record in merged_records:
                 merged = merged_records[record]
@@ -1115,10 +1124,7 @@ class ProvBundle(object):
         :returns: :py:class:`ProvBundle` -- the new unified bundle.
         """
         unified_records = self._unified_records()
-        bundle = ProvBundle(
-            records=unified_records, identifier=self.identifier
-        )
-        return bundle
+        return ProvBundle(records=unified_records, identifier=self.identifier)
 
     def update(self, other):
         """Append all the records of the *other* ProvBundle into this bundle.
@@ -1132,15 +1138,15 @@ class ProvBundle(object):
             if other.is_document() and other.has_bundles():
                 # Cannot add bundles to a bundle
                 raise ProvException(
-                    'ProvBundle.update(): The other bundle is a document with '
-                    'sub-bundle(s).'
+                    "ProvBundle.update(): The other bundle is a document with "
+                    "sub-bundle(s).",
                 )
             for record in other.get_records():
                 self.add_record(record)
         else:
             raise ProvException(
-                'ProvBundle.update(): The other bundle is not a ProvBundle '
-                'instance (%s)' % type(other)
+                "ProvBundle.update(): The other bundle is not a ProvBundle "
+                "instance (%s)" % type(other),
             )
 
     # Provenance statements
@@ -1152,242 +1158,369 @@ class ProvBundle(object):
             self._id_map[identifier].append(record)
         self._records.append(record)
 
-    def new_record(self, record_type, identifier, attributes=None,
-                   other_attributes=None):
+    def new_record(
+        self,
+        record_type,
+        identifier,
+        attributes=None,
+        other_attributes=None,
+    ):
         attr_list = []
         if attributes:
             if isinstance(attributes, dict):
-                attr_list.extend(
-                    (attr, value) for attr, value in attributes.items()
-                )
+                attr_list.extend((attr, value) for attr, value in attributes.items())
             else:
                 # expecting a list of attributes here
                 attr_list.extend(attributes)
         if other_attributes:
             attr_list.extend(
-                other_attributes.items() if isinstance(other_attributes, dict)
-                else other_attributes
+                other_attributes.items()
+                if isinstance(other_attributes, dict)
+                else other_attributes,
             )
         new_record = PROV_REC_CLS[record_type](
-            self, self.valid_qualified_name(identifier), attr_list
+            self,
+            self.valid_qualified_name(identifier),
+            attr_list,
         )
         self._add_record(new_record)
         return new_record
 
     def add_record(self, record):
         return self.new_record(
-            record.get_type(), record.identifier, record.formal_attributes,
-            record.extra_attributes
+            record.get_type(),
+            record.identifier,
+            record.formal_attributes,
+            record.extra_attributes,
         )
 
     def entity(self, identifier, other_attributes=None):
         return self.new_record(PROV_ENTITY, identifier, None, other_attributes)
 
-    def activity(self, identifier, startTime=None, endTime=None,
-                 other_attributes=None):
+    def activity(self, identifier, startTime=None, endTime=None, other_attributes=None):
         return self.new_record(
-            PROV_ACTIVITY, identifier, {
+            PROV_ACTIVITY,
+            identifier,
+            {
                 PROV_ATTR_STARTTIME: _ensure_datetime(startTime),
-                PROV_ATTR_ENDTIME: _ensure_datetime(endTime)
+                PROV_ATTR_ENDTIME: _ensure_datetime(endTime),
             },
-            other_attributes
+            other_attributes,
         )
 
-    def generation(self, entity, activity=None, time=None, identifier=None,
-                   other_attributes=None):
+    def generation(
+        self,
+        entity,
+        activity=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_GENERATION, identifier, {
+            PROV_GENERATION,
+            identifier,
+            {
                 PROV_ATTR_ENTITY: entity,
                 PROV_ATTR_ACTIVITY: activity,
-                PROV_ATTR_TIME: _ensure_datetime(time)
+                PROV_ATTR_TIME: _ensure_datetime(time),
             },
-            other_attributes
+            other_attributes,
         )
 
-    def usage(self, activity, entity=None, time=None, identifier=None,
-              other_attributes=None):
+    def usage(
+        self,
+        activity,
+        entity=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_USAGE, identifier, {
+            PROV_USAGE,
+            identifier,
+            {
                 PROV_ATTR_ACTIVITY: activity,
                 PROV_ATTR_ENTITY: entity,
-                PROV_ATTR_TIME: _ensure_datetime(time)},
-            other_attributes
+                PROV_ATTR_TIME: _ensure_datetime(time),
+            },
+            other_attributes,
         )
 
-    def start(self, activity, trigger=None, starter=None, time=None,
-              identifier=None, other_attributes=None):
+    def start(
+        self,
+        activity,
+        trigger=None,
+        starter=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_START, identifier, {
+            PROV_START,
+            identifier,
+            {
                 PROV_ATTR_ACTIVITY: activity,
                 PROV_ATTR_TRIGGER: trigger,
                 PROV_ATTR_STARTER: starter,
-                PROV_ATTR_TIME: _ensure_datetime(time)
+                PROV_ATTR_TIME: _ensure_datetime(time),
             },
-            other_attributes
+            other_attributes,
         )
 
-    def end(self, activity, trigger=None, ender=None, time=None,
-            identifier=None, other_attributes=None):
+    def end(
+        self,
+        activity,
+        trigger=None,
+        ender=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_END, identifier, {
+            PROV_END,
+            identifier,
+            {
                 PROV_ATTR_ACTIVITY: activity,
                 PROV_ATTR_TRIGGER: trigger,
                 PROV_ATTR_ENDER: ender,
-                PROV_ATTR_TIME: _ensure_datetime(time)
+                PROV_ATTR_TIME: _ensure_datetime(time),
             },
-            other_attributes
+            other_attributes,
         )
 
-    def invalidation(self, entity, activity=None, time=None, identifier=None,
-                     other_attributes=None):
+    def invalidation(
+        self,
+        entity,
+        activity=None,
+        time=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_INVALIDATION, identifier, {
+            PROV_INVALIDATION,
+            identifier,
+            {
                 PROV_ATTR_ENTITY: entity,
                 PROV_ATTR_ACTIVITY: activity,
-                PROV_ATTR_TIME: _ensure_datetime(time)
+                PROV_ATTR_TIME: _ensure_datetime(time),
             },
-            other_attributes
+            other_attributes,
         )
 
-    def communication(self, informed, informant, identifier=None,
-                      other_attributes=None):
+    def communication(
+        self,
+        informed,
+        informant,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_COMMUNICATION, identifier, {
-                PROV_ATTR_INFORMED: informed,
-                PROV_ATTR_INFORMANT: informant
-            },
-            other_attributes
+            PROV_COMMUNICATION,
+            identifier,
+            {PROV_ATTR_INFORMED: informed, PROV_ATTR_INFORMANT: informant},
+            other_attributes,
         )
 
     def agent(self, identifier, other_attributes=None):
         return self.new_record(PROV_AGENT, identifier, None, other_attributes)
 
-    def attribution(self, entity, agent, identifier=None,
-                    other_attributes=None):
+    def attribution(self, entity, agent, identifier=None, other_attributes=None):
         return self.new_record(
-            PROV_ATTRIBUTION, identifier, {
-                PROV_ATTR_ENTITY: entity,
-                PROV_ATTR_AGENT: agent
-            },
-            other_attributes
+            PROV_ATTRIBUTION,
+            identifier,
+            {PROV_ATTR_ENTITY: entity, PROV_ATTR_AGENT: agent},
+            other_attributes,
         )
 
-    def association(self, activity, agent=None, plan=None, identifier=None,
-                    other_attributes=None):
+    def association(
+        self,
+        activity,
+        agent=None,
+        plan=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_ASSOCIATION, identifier, {
+            PROV_ASSOCIATION,
+            identifier,
+            {
                 PROV_ATTR_ACTIVITY: activity,
                 PROV_ATTR_AGENT: agent,
-                PROV_ATTR_PLAN: plan
+                PROV_ATTR_PLAN: plan,
             },
-            other_attributes
+            other_attributes,
         )
 
-    def delegation(self, delegate, responsible, activity=None, identifier=None,
-                   other_attributes=None):
+    def delegation(
+        self,
+        delegate,
+        responsible,
+        activity=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         return self.new_record(
-            PROV_DELEGATION, identifier, {
+            PROV_DELEGATION,
+            identifier,
+            {
                 PROV_ATTR_DELEGATE: delegate,
                 PROV_ATTR_RESPONSIBLE: responsible,
-                PROV_ATTR_ACTIVITY: activity
+                PROV_ATTR_ACTIVITY: activity,
             },
-            other_attributes
+            other_attributes,
         )
 
-    def influence(self, influencee, influencer, identifier=None,
-                  other_attributes=None):
+    def influence(self, influencee, influencer, identifier=None, other_attributes=None):
         return self.new_record(
-            PROV_INFLUENCE, identifier, {
-                PROV_ATTR_INFLUENCEE: influencee,
-                PROV_ATTR_INFLUENCER: influencer
-            },
-            other_attributes
+            PROV_INFLUENCE,
+            identifier,
+            {PROV_ATTR_INFLUENCEE: influencee, PROV_ATTR_INFLUENCER: influencer},
+            other_attributes,
         )
 
-    def derivation(self, generatedEntity, usedEntity, activity=None,
-                   generation=None, usage=None,
-                   identifier=None, other_attributes=None):
-        attributes = {PROV_ATTR_GENERATED_ENTITY: generatedEntity,
-                      PROV_ATTR_USED_ENTITY: usedEntity,
-                      PROV_ATTR_ACTIVITY: activity,
-                      PROV_ATTR_GENERATION: generation,
-                      PROV_ATTR_USAGE: usage}
+    def derivation(
+        self,
+        generatedEntity,
+        usedEntity,
+        activity=None,
+        generation=None,
+        usage=None,
+        identifier=None,
+        other_attributes=None,
+    ):
+        attributes = {
+            PROV_ATTR_GENERATED_ENTITY: generatedEntity,
+            PROV_ATTR_USED_ENTITY: usedEntity,
+            PROV_ATTR_ACTIVITY: activity,
+            PROV_ATTR_GENERATION: generation,
+            PROV_ATTR_USAGE: usage,
+        }
         return self.new_record(
-            PROV_DERIVATION, identifier, attributes, other_attributes
+            PROV_DERIVATION,
+            identifier,
+            attributes,
+            other_attributes,
         )
 
-    def revision(self, generatedEntity, usedEntity, activity=None,
-                 generation=None, usage=None,
-                 identifier=None, other_attributes=None):
+    def revision(
+        self,
+        generatedEntity,
+        usedEntity,
+        activity=None,
+        generation=None,
+        usage=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         record = self.derivation(
-            generatedEntity, usedEntity, activity, generation, usage,
-            identifier, other_attributes
+            generatedEntity,
+            usedEntity,
+            activity,
+            generation,
+            usage,
+            identifier,
+            other_attributes,
         )
-        record.add_asserted_type(PROV['Revision'])
+        record.add_asserted_type(PROV["Revision"])
         return record
 
-    def quotation(self, generatedEntity, usedEntity, activity=None,
-                  generation=None, usage=None,
-                  identifier=None, other_attributes=None):
+    def quotation(
+        self,
+        generatedEntity,
+        usedEntity,
+        activity=None,
+        generation=None,
+        usage=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         record = self.derivation(
-            generatedEntity, usedEntity, activity, generation, usage,
-            identifier, other_attributes
+            generatedEntity,
+            usedEntity,
+            activity,
+            generation,
+            usage,
+            identifier,
+            other_attributes,
         )
-        record.add_asserted_type(PROV['Quotation'])
+        record.add_asserted_type(PROV["Quotation"])
         return record
 
-    def primary_source(self, generatedEntity, usedEntity, activity=None,
-                       generation=None, usage=None,
-                       identifier=None, other_attributes=None):
+    def primary_source(
+        self,
+        generatedEntity,
+        usedEntity,
+        activity=None,
+        generation=None,
+        usage=None,
+        identifier=None,
+        other_attributes=None,
+    ):
         record = self.derivation(
-            generatedEntity, usedEntity, activity, generation, usage,
-            identifier, other_attributes
+            generatedEntity,
+            usedEntity,
+            activity,
+            generation,
+            usage,
+            identifier,
+            other_attributes,
         )
-        record.add_asserted_type(PROV['PrimarySource'])
+        record.add_asserted_type(PROV["PrimarySource"])
         return record
 
     def specialization(self, specificEntity, generalEntity):
         return self.new_record(
-            PROV_SPECIALIZATION, None, {
+            PROV_SPECIALIZATION,
+            None,
+            {
                 PROV_ATTR_SPECIFIC_ENTITY: specificEntity,
-                PROV_ATTR_GENERAL_ENTITY: generalEntity
-            }
+                PROV_ATTR_GENERAL_ENTITY: generalEntity,
+            },
         )
 
     def alternate(self, alternate1, alternate2):
         return self.new_record(
-            PROV_ALTERNATE, None, {
-                PROV_ATTR_ALTERNATE1: alternate1,
-                PROV_ATTR_ALTERNATE2: alternate2
+            PROV_ALTERNATE,
+            None,
+            {PROV_ATTR_ALTERNATE1: alternate1, PROV_ATTR_ALTERNATE2: alternate2},
+        )
+
+    def mention(
+        self,
+        specificEntity,
+        generalEntity,
+        bundle,
+    ):
+        return self.new_record(
+            PROV_MENTION,
+            None,
+            {
+                PROV_ATTR_SPECIFIC_ENTITY: specificEntity,
+                PROV_ATTR_GENERAL_ENTITY: generalEntity,
+                PROV_ATTR_BUNDLE: bundle,
             },
         )
 
-    def mention(self, specificEntity, generalEntity, bundle,):
-        return self.new_record(
-            PROV_MENTION, None, {
-                PROV_ATTR_SPECIFIC_ENTITY: specificEntity,
-                PROV_ATTR_GENERAL_ENTITY: generalEntity,
-                PROV_ATTR_BUNDLE: bundle
-            }
-        )
-
     def collection(self, identifier, other_attributes=None):
-        record = self.new_record(
-            PROV_ENTITY, identifier, None, other_attributes
-        )
-        record.add_asserted_type(PROV['Collection'])
+        record = self.new_record(PROV_ENTITY, identifier, None, other_attributes)
+        record.add_asserted_type(PROV["Collection"])
         return record
 
     def membership(self, collection, entity):
         return self.new_record(
-            PROV_MEMBERSHIP, None, {
-                PROV_ATTR_COLLECTION: collection,
-                PROV_ATTR_ENTITY: entity
-            }
+            PROV_MEMBERSHIP,
+            None,
+            {PROV_ATTR_COLLECTION: collection, PROV_ATTR_ENTITY: entity},
         )
 
-    def plot(self, filename=None, show_nary=True, use_labels=False,
-             show_element_attributes=True, show_relation_attributes=True):
+    def plot(
+        self,
+        filename=None,
+        show_nary=True,
+        use_labels=False,
+        show_element_attributes=True,
+        show_relation_attributes=True,
+    ):
         """
         Convenience function to plot a prov document.
 
@@ -1410,14 +1543,17 @@ class ProvBundle(object):
         from prov import dot
 
         if filename:
-            format = os.path.splitext(filename)[-1].lower().strip(
-                os.path.extsep)
+            format = os.path.splitext(filename)[-1].lower().strip(os.path.extsep)
         else:
             format = "png"
         format = format.lower()
-        d = dot.prov_to_dot(self, show_nary=show_nary, use_labels=use_labels,
-                            show_element_attributes=show_element_attributes,
-                            show_relation_attributes=show_relation_attributes)
+        d = dot.prov_to_dot(
+            self,
+            show_nary=show_nary,
+            use_labels=use_labels,
+            show_element_attributes=show_element_attributes,
+            show_relation_attributes=show_relation_attributes,
+        )
         method = "create_%s" % format
         if not hasattr(d, method):
             raise ValueError("Format '%s' cannot be saved." % format)
@@ -1431,8 +1567,8 @@ class ProvBundle(object):
             else:
                 # Use matplotlib to show the image as it likely is more
                 # widespread then PIL and works nicely in the ipython notebook.
-                import matplotlib.pylab as plt
                 import matplotlib.image as mpimg
+                import matplotlib.pylab as plt
 
                 max_size = 30
 
@@ -1440,10 +1576,7 @@ class ProvBundle(object):
                 # pydot makes a border around the image. remove it.
                 img = img[1:-1, 1:-1]
                 size = (img.shape[1] / 100.0, img.shape[0] / 100.0)
-                if max(size) > max_size:
-                    scale = max_size / max(size)
-                else:
-                    scale = 1.0
+                scale = max_size / max(size) if max(size) > max_size else 1.0
                 size = (scale * size[0], scale * size[1])
 
                 plt.figure(figsize=size)
@@ -1478,18 +1611,21 @@ class ProvBundle(object):
 class ProvDocument(ProvBundle):
     def __init__(self, records=None, namespaces=None):
         ProvBundle.__init__(
-            self, records=records, identifier=None, namespaces=namespaces
+            self,
+            records=records,
+            identifier=None,
+            namespaces=namespaces,
         )
-        self._bundles = dict()
+        self._bundles = {}
 
     def __repr__(self):
-        return '<ProvDocument>'
+        return "<ProvDocument>"
 
     def __eq__(self, other):
         if not isinstance(other, ProvDocument):
             return False
         # Comparing the documents' content
-        if not super(ProvDocument, self).__eq__(other):
+        if not super().__eq__(other):
             return False
 
         # Comparing the documents' bundles
@@ -1518,7 +1654,7 @@ class ProvDocument(ProvBundle):
 
     # Transformations
     def flattened(self):
-        """ Flattens the document by moving all the records in its bundles up
+        """Flattens the document by moving all the records in its bundles up
         to the document level.
 
         :returns: :py:class:`ProvDocument` -- the (new) flattened document.
@@ -1527,7 +1663,7 @@ class ProvDocument(ProvBundle):
             # Creating a new document for all the records
             new_doc = ProvDocument()
             bundled_records = itertools.chain(
-                *[b.get_records() for b in self._bundles.values()]
+                *[b.get_records() for b in self._bundles.values()],
             )
             for record in itertools.chain(self._records, bundled_records):
                 new_doc.add_record(record)
@@ -1570,24 +1706,23 @@ class ProvDocument(ProvBundle):
                         new_bundle.update(bundle)
         else:
             raise ProvException(
-                'ProvDocument.update(): The other is not a ProvDocument or '
-                'ProvBundle instance (%s)' % type(other)
+                "ProvDocument.update(): The other is not a ProvDocument or "
+                "ProvBundle instance (%s)" % type(other),
             )
 
     # Bundle operations
     def add_bundle(self, bundle, identifier=None):
-        """Add a bundle to the current document
-        """
+        """Add a bundle to the current document"""
         if not isinstance(bundle, ProvBundle):
             raise ProvException(
-                'Only a ProvBundle instance can be added as a bundle in a '
-                'ProvDocument.'
+                "Only a ProvBundle instance can be added as a bundle in a "
+                "ProvDocument.",
             )
 
         if bundle.is_document():
             if bundle.has_bundles():
                 raise ProvException(
-                    'Cannot add a document with nested bundles as a bundle.'
+                    "Cannot add a document with nested bundles as a bundle.",
                 )
             # Make it a new ProvBundle
             new_bundle = ProvBundle(namespaces=bundle.namespaces)
@@ -1598,7 +1733,7 @@ class ProvDocument(ProvBundle):
             identifier = bundle.identifier
 
         if not identifier:
-            raise ProvException('The provided bundle has no identifier')
+            raise ProvException("The provided bundle has no identifier")
 
         # Link the bundle namespace manager to the document's
         bundle._namespaces.parent = self._namespaces
@@ -1608,7 +1743,7 @@ class ProvDocument(ProvBundle):
         bundle._identifier = valid_id
 
         if valid_id in self._bundles:
-            raise ProvException('A bundle with that identifier already exists')
+            raise ProvException("A bundle with that identifier already exists")
 
         self._bundles[valid_id] = bundle
         bundle._document = self
@@ -1616,21 +1751,21 @@ class ProvDocument(ProvBundle):
     def bundle(self, identifier):
         if identifier is None:
             raise ProvException(
-                'An identifier is required. Cannot create an unnamed bundle.'
+                "An identifier is required. Cannot create an unnamed bundle.",
             )
         valid_id = self.valid_qualified_name(identifier)
         if valid_id is None:
             raise ProvException(
-                'The provided identifier "%s" is not valid' % identifier
+                'The provided identifier "%s" is not valid' % identifier,
             )
         if valid_id in self._bundles:
-            raise ProvException('A bundle with that identifier already exists')
+            raise ProvException("A bundle with that identifier already exists")
         b = ProvBundle(identifier=valid_id, document=self)
         self._bundles[valid_id] = b
         return b
 
     # Serializing and deserializing
-    def serialize(self, destination=None, format='json', **args):
+    def serialize(self, destination=None, format="json", **args):
         """Serialize the :class:`ProvDocument` to destination
 
         If destination is None serialize method returns the serialization as a
@@ -1644,25 +1779,30 @@ class ProvDocument(ProvBundle):
         if hasattr(destination, "write"):
             stream = destination
             serializer.serialize(stream, **args)
+            return None
         else:
             location = destination
             scheme, netloc, path, params, _query, fragment = urlparse(location)
             if netloc != "":
-                print("WARNING: not saving as location " +
-                      "is not a local file reference")
-                return
+                print(
+                    "WARNING: not saving as location "
+                    + "is not a local file reference",
+                )
+                return None
             fd, name = tempfile.mkstemp()
             stream = os.fdopen(fd, "wb")
             serializer.serialize(stream, **args)
             stream.close()
             if hasattr(shutil, "move"):
                 shutil.move(name, path)
+                return None
             else:
                 shutil.copy(name, path)
                 os.remove(name)
+                return None
 
     @staticmethod
-    def deserialize(source=None, content=None, format='json', **args):
+    def deserialize(source=None, content=None, format="json", **args):
         """Deserialize the :class:`ProvDocument` from source (a stream or a
         filepath) or directly from a string content
 
@@ -1673,8 +1813,9 @@ class ProvDocument(ProvBundle):
         if content is not None:
             # io.StringIO only accepts unicode strings
             stream = io.StringIO(
-                content if not isinstance(content, six.binary_type)
-                else content.decode()
+                content
+                if not isinstance(content, six.binary_type)
+                else content.decode(),
             )
             return serializer.deserialize(stream, **args)
 
@@ -1684,6 +1825,7 @@ class ProvDocument(ProvBundle):
             else:
                 with open(source) as f:
                     return serializer.deserialize(f, **args)
+        return None
 
 
 def sorted_attributes(element, attributes):
@@ -1699,17 +1841,16 @@ def sorted_attributes(element, attributes):
 
     # Append label, location, role, type, and value attributes. This is
     # universal amongst all elements.
-    order.extend([PROV_LABEL, PROV_LOCATION, PROV_ROLE, PROV_TYPE,
-                  PROV_VALUE])
+    order.extend([PROV_LABEL, PROV_LOCATION, PROV_ROLE, PROV_TYPE, PROV_VALUE])
 
     # Sort function. The PROV XML specification talks about alphabetical
     # sorting. We now interpret it as sorting by tag including the prefix
     # first and then sorting by the text, also including the namespace
     # prefix if given.
-    sort_fct = lambda x: (
-        six.text_type(x[0]),
-        six.text_type(x[1].value if hasattr(x[1], "value") else x[1])
-    )
+    def sort_fct(x):
+        return six.text_type(x[0]), six.text_type(
+            x[1].value if hasattr(x[1], "value") else x[1],
+        )
 
     sorted_elements = []
     for item in order:
