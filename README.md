@@ -140,22 +140,22 @@ dispel4py multi analysis_sentiment.py -n 15  -d '{"read":[{"input":"Articles_cle
 mpiexec -np 15 dispel4py mpi analysis_sentiment.py -d '{"read":[{"input":"Articles_cleaned.csv"}]}'
 ```
 
-### Contributing
+## Contributing
 
-#### Code Style
+### Code Style
 
 This project is using the `black` package for automatic formatting of Python code. However, there is a lot of old code that may need to be reformatted manually.
 
 For more info, see: https://github.com/psf/black
 
-#### Linting
+### Linting
 
 This project uses `ruff` for code linting. See: https://docs.astral.sh/ruff/
 
 Ruff rules are configured and documented in the pyproject.toml file.
 Future contributors are encouraged to lint their code using `ruff check .` before contributing and to help fix existing lint errors!
 
-#### CI
+### CI
 
 Some regression testing has been set up to compare the output of the current version of dispel4py with an older version. These tests currently fail, probably due to slightly different formatting and line order.
 
